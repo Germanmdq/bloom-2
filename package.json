@@ -12,8 +12,10 @@
     "lint": "eslint",
     "upload:fachada": "node scripts/upload-fachada-to-supabase.mjs",
     "upload:menu-category": "node scripts/upload-menu-category-image.mjs",
-    "upload:menu-categories-batch": "node scripts/upload-category-images-batch.mjs"
+    "upload:menu-categories-batch": "node scripts/upload-category-images-batch.mjs",
+    "deploy": "node scripts/push-to-github.mjs"
   },
+
   "dependencies": {
     "@afipsdk/afip.js": "^1.2.3",
     "@google/generative-ai": "^0.24.1",
