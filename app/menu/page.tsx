@@ -18,10 +18,7 @@ import {
   Send,
   Trash2,
   CheckCircle2,
-  MapPin,
-  Clock,
   Phone,
-  Instagram,
   ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
@@ -115,7 +112,10 @@ const FALLBACK_PRODUCTS = [
 
 // Emojis e íconos por nombre de categoría (funciona con cualquier ID de Supabase)
 const CATEGORY_EMOJIS: Record<string, React.ReactNode> = {
+  "menú del día": "🍛",
   "cafetería": "☕",
+  "platos": "🍽️",
+  "ofertas": "🏷️",
   "cafetería delivery": "🛵",
   "pastelería": "🧁",
   "desayunos y meriendas": "🥞",
@@ -143,6 +143,11 @@ const CATEGORY_EMOJIS: Record<string, React.ReactNode> = {
 
 // Categorías que NO deben mostrarse en la grilla de inicio (se manejan aparte)
 const HIDDEN_CATEGORIES = ["plato del día", "platos diarios"];
+
+// Cambiar esta versión cuando cambia la estructura del catálogo. Así no se
+// hidratan categorías/productos de una versión anterior desde localStorage.
+const MENU_CACHE_VERSION = "v2-four-categories";
+const menuCacheKey = (name: string) => `bloom_${MENU_CACHE_VERSION}_${name}`;
 
 interface CartItem {
   id: string;
@@ -224,9 +229,9 @@ function MenuContent() {
   useEffect(() => {
     // 1. Hidratación instantánea desde caché local (0ms, funciona sin conexión)
     try {
-      const cachedCats = localStorage.getItem("bloom_cached_categories");
-      const cachedProds = localStorage.getItem("bloom_cached_products");
-      const cachedPlato = localStorage.getItem("bloom_cached_plato_dia");
+      const cachedCats = localStorage.getItem(menuCacheKey("categories"));
+      const cachedProds = localStorage.getItem(menuCacheKey("products"));
+      const cachedPlato = localStorage.getItem(menuCacheKey("plato_dia"));
       if (cachedCats) setCategories(JSON.parse(cachedCats));
       if (cachedProds) setProducts(JSON.parse(cachedProds));
       if (cachedPlato) setPlatoDia(JSON.parse(cachedPlato));
@@ -245,11 +250,11 @@ function MenuContent() {
 
         if (cats && cats.length > 0) {
           setCategories(cats);
-          try { localStorage.setItem("bloom_cached_categories", JSON.stringify(cats)); } catch {}
+          try { localStorage.setItem(menuCacheKey("categories"), JSON.stringify(cats)); } catch {}
         }
         if (prods && prods.length > 0) {
           setProducts(prods);
-          try { localStorage.setItem("bloom_cached_products", JSON.stringify(prods)); } catch {}
+          try { localStorage.setItem(menuCacheKey("products"), JSON.stringify(prods)); } catch {}
 
           // Buscar el Plato del Día configurado en el dashboard
           if (settings?.plato_del_dia_id) {
@@ -260,7 +265,7 @@ function MenuContent() {
                 price: settings.plato_dia_price || found.price,
               };
               setPlatoDia(fullPlato);
-              try { localStorage.setItem("bloom_cached_plato_dia", JSON.stringify(fullPlato)); } catch {}
+              try { localStorage.setItem(menuCacheKey("plato_dia"), JSON.stringify(fullPlato)); } catch {}
             }
           }
         }
@@ -543,36 +548,6 @@ function MenuContent() {
       </header>
 
       <main className="page-content max-w-[1180px] mx-auto pt-2">
-        {/* BARRA SUPERIOR DE MODALIDAD (Comer en el local / Para retirar) */}
-        <div className="px-4 md:px-0 mb-3">
-          <div className="bg-[#f2f0e6] p-1.5 rounded-2xl flex items-center gap-1.5 shadow-inner border border-[#c4b896]/20">
-            <button
-              type="button"
-              onClick={() => setOrderModality("mesa")}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
-                orderModality === "mesa"
-                  ? "bg-[#1a3028] text-[#f5e8ca] shadow-md"
-                  : "text-[#7a765a] hover:text-[#1a3028]"
-              }`}
-            >
-              <span className="text-base">🍽️</span>
-              <span>Comer en el local {selectedTableNum ? `· Mesa ${selectedTableNum}` : ""}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setOrderModality("retiro")}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
-                orderModality === "retiro"
-                  ? "bg-[#1a3028] text-[#f5e8ca] shadow-md"
-                  : "text-[#7a765a] hover:text-[#1a3028]"
-              }`}
-            >
-              <span className="text-base">🏃</span>
-              <span>Para retirar</span>
-            </button>
-          </div>
-        </div>
-
         {/* ============================================
             TAB: INICIO — Tarjetas de categorías + Info del local
         ============================================ */}
@@ -696,70 +671,6 @@ function MenuContent() {
                 );
               })}
             </section>
-
-            {/* SECCIÓN: INFORMACIÓN DEL LOCAL */}
-            <div className="px-4 md:px-0 mb-2">
-              <h3 className="text-base font-extrabold text-[#1a3028] mb-3 tracking-tight">
-                Sobre Nosotros
-              </h3>
-            </div>
-            <div className="px-4 md:px-0 mb-6">
-              <div className="bg-white rounded-[20px] border border-[#c4b896]/25 p-5 shadow-sm space-y-4">
-                {/* Dirección */}
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#f2f0e6] flex items-center justify-center text-[#1a3028] shrink-0 mt-0.5">
-                    <MapPin size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-[#1a3028]">Dirección</h4>
-                    <p className="text-xs text-[#5f5c46] leading-relaxed mt-0.5">
-                      Av. San Martín 1234, Centro<br />
-                      La Plata, Buenos Aires
-                    </p>
-                  </div>
-                </div>
-
-                {/* Horarios */}
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#f2f0e6] flex items-center justify-center text-[#1a3028] shrink-0 mt-0.5">
-                    <Clock size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-[#1a3028]">Horarios</h4>
-                    <p className="text-xs text-[#5f5c46] leading-relaxed mt-0.5">
-                      Lunes a Viernes: 8:00 – 20:00<br />
-                      Sábados y Domingos: 9:00 – 21:00
-                    </p>
-                  </div>
-                </div>
-
-                {/* Teléfono */}
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#f2f0e6] flex items-center justify-center text-[#1a3028] shrink-0 mt-0.5">
-                    <Phone size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-[#1a3028]">Teléfono</h4>
-                    <p className="text-xs text-[#5f5c46] leading-relaxed mt-0.5">
-                      +54 221 123-4567
-                    </p>
-                  </div>
-                </div>
-
-                {/* Redes sociales */}
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#f2f0e6] flex items-center justify-center text-[#1a3028] shrink-0 mt-0.5">
-                    <Instagram size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-[#1a3028]">Redes Sociales</h4>
-                    <p className="text-xs text-[#5f5c46] leading-relaxed mt-0.5">
-                      @bloom.cafe
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             {/* CTA FINAL */}
             <div className="px-4 md:px-0 mb-8">

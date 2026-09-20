@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { IconLoader2, IconEye, IconEyeOff, IconArrowLeft } from "@tabler/icons-react";
+import { IconLoader2, IconEye, IconEyeOff, IconArrowLeft, IconBrandGoogle } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
 
 const GREEN = "#2d4a3e";
@@ -14,6 +14,7 @@ export default function AccesoPage() {
     const [password, setPassword] = useState("");
     const [showPwd, setShowPwd] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
     const [error, setError] = useState("");
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -46,6 +47,22 @@ export default function AccesoPage() {
         window.location.replace(isStaff ? "/dashboard" : "/menu");
     };
 
+    const continueWithGoogle = async () => {
+        setError("");
+        setGoogleLoading(true);
+        const { error: oauthError } = await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: {
+                redirectTo: `${window.location.origin}/auth/callback?next=/registro-google`,
+            },
+        });
+
+        if (oauthError) {
+            setError("No pudimos iniciar Google. Intentá de nuevo.");
+            setGoogleLoading(false);
+        }
+    };
+
     return (
         <div className="min-h-[100dvh] flex flex-col items-center justify-center px-4 py-12" style={{ backgroundColor: CREAM }}>
             <div className="w-full max-w-[400px]">
@@ -67,6 +84,22 @@ export default function AccesoPage() {
                 </div>
 
                 <div className="rounded-3xl border border-black/[0.07] bg-white p-8 shadow-xl">
+                    <button
+                        type="button"
+                        onClick={() => void continueWithGoogle()}
+                        disabled={googleLoading || loading}
+                        className="flex min-h-[54px] w-full items-center justify-center gap-3 rounded-2xl border-2 border-neutral-200 bg-white text-[16px] font-black text-neutral-800 shadow-sm transition hover:bg-neutral-50 disabled:opacity-60"
+                    >
+                        {googleLoading ? <IconLoader2 className="h-5 w-5 animate-spin" /> : <IconBrandGoogle className="h-5 w-5 text-[#4285F4]" />}
+                        Continuar con Google
+                    </button>
+
+                    <div className="my-6 flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+                        <span className="h-px flex-1 bg-neutral-200" />
+                        o ingresá con tu cuenta
+                        <span className="h-px flex-1 bg-neutral-200" />
+                    </div>
+
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-[14px] font-bold text-neutral-700 mb-1.5">Email</label>
