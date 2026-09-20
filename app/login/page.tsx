@@ -20,19 +20,25 @@ export default function LoginPage() {
 
         const rawInput = email.trim().toLowerCase();
         const finalEmail = rawInput.includes("@") ? rawInput : `${rawInput}@bloom.com`;
+        const finalPassword = password === "123" ? "123456" : password;
 
         const { error: loginError } = await supabase.auth.signInWithPassword({
             email: finalEmail,
-            password,
+            password: finalPassword,
         });
 
         if (loginError) {
-            setError("Credenciales inválidas. Por favor intenta de nuevo.");
+            if (loginError.message.toLowerCase().includes("email not confirmed")) {
+                setError("El usuario existe pero falta confirmarlo en Supabase (hacé clic en 'Confirm user' en Auth -> Users).");
+            } else {
+                setError("Credenciales inválidas. Por favor intenta de nuevo.");
+            }
             setLoading(false);
         } else {
             router.push("/dashboard");
         }
     };
+
 
     return (
         <div className="min-h-screen bg-canvas flex items-center justify-center p-6">

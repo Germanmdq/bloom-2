@@ -72,11 +72,20 @@ CREATE TABLE IF NOT EXISTS public.app_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Perfiles de Usuarios / Staff
+-- Perfiles de Usuarios / Staff / Clientes
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
     full_name TEXT,
     role public.user_role DEFAULT 'WAITER'::public.user_role NOT NULL,
+    is_customer BOOLEAN DEFAULT false,
+    coffee_stamps INTEGER DEFAULT 0,
+    balance DECIMAL(12,2) DEFAULT 0,
+    customer_number TEXT,
+    birthday DATE,
+    birthdate DATE,
+    phone TEXT,
+    cuit TEXT,
+    default_address TEXT,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -104,18 +113,25 @@ CREATE TABLE IF NOT EXISTS public.salon_tables (
 CREATE TABLE IF NOT EXISTS public.orders (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     table_id INTEGER,
+    customer_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     customer_name TEXT,
     customer_phone TEXT,
     order_type TEXT DEFAULT 'WEB',
     delivery_type TEXT,
+    delivery_info TEXT,
     items JSONB NOT NULL,
     total DECIMAL(10,2) NOT NULL,
     status TEXT DEFAULT 'pending',
     paid BOOLEAN DEFAULT false,
+    cuenta_corriente BOOLEAN DEFAULT false,
     stock_applied BOOLEAN DEFAULT true,
     stock_deducted BOOLEAN DEFAULT true,
     payment_method TEXT DEFAULT 'PENDING',
     payment_notes TEXT,
+    cae TEXT,
+    voucher_number TEXT,
+    cae_expiration TEXT,
+    debt_payment_amount DECIMAL(12,2) DEFAULT 0,
     waiter_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL
