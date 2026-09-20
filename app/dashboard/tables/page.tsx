@@ -43,6 +43,10 @@ export default function TablesPage() {
     const [selectedWebOrder, setSelectedWebOrder] = useState<WebOrder | null>(null);
     const [mounted, setMounted] = useState(false);
 
+    // Toast de nuevo pedido
+    type OrderToast = { id: string; customer_name: string; total: number; order_type: string; delivery_type?: string; table_id?: number | null; };
+    const [newOrderToasts, setNewOrderToasts] = useState<OrderToast[]>([]);
+
     // New Table Modal State
     const [isNewTableModalOpen, setIsNewTableModalOpen] = useState(false);
     const [newTableType, setNewTableType] = useState<'LOCAL' | 'DELIVERY' | 'TAKEAWAY'>('LOCAL');
@@ -196,9 +200,28 @@ export default function TablesPage() {
         // Listen to orders changes (web orders & salon tables)
         const ordersChannel = supabase
             .channel('orders_realtime_tables')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
                 fetchTables();
                 fetchWebOrders();
+                // Mostrar toast solo para pedidos nuevos (INSERT) con status pending
+                if (payload.eventType === 'INSERT') {
+                    const row = payload.new as any;
+                    if (row && row.status === 'pending') {
+                        const toast: OrderToast = {
+                            id: row.id,
+                            customer_name: row.customer_name || 'Cliente',
+                            total: row.total || 0,
+                            order_type: row.order_type || 'LOCAL',
+                            delivery_type: row.delivery_type,
+                            table_id: row.table_id,
+                        };
+                        setNewOrderToasts(prev => [...prev, toast]);
+                        // Auto-dismiss después de 6 segundos
+                        setTimeout(() => {
+                            setNewOrderToasts(prev => prev.filter(t => t.id !== toast.id));
+                        }, 6000);
+                    }
+                }
             })
             .subscribe();
 
@@ -557,6 +580,44 @@ export default function TablesPage() {
 
     return (
         <div className="relative min-h-full">
+            {/* 🔔 Toasts de nuevos pedidos */}
+            <AnimatePresence>
+                {newOrderToasts.map((toast) => {
+                    const isDelivery = toast.delivery_type === 'delivery' || toast.order_type === 'DELIVERY';
+                    const isTakeaway = toast.delivery_type === 'takeaway' || toast.order_type === 'TAKEAWAY';
+                    const label = isDelivery ? '🛵 Delivery' : isTakeaway ? '🏃 Retiro' : `🍽️ Mesa ${toast.table_id ?? ''}`;
+                    const bg = isDelivery ? 'from-red-500 to-rose-600' : isTakeaway ? 'from-amber-500 to-orange-500' : 'from-emerald-500 to-green-600';
+                    return (
+                        <motion.div
+                            key={toast.id}
+                            initial={{ opacity: 0, y: -60, x: 20 }}
+                            animate={{ opacity: 1, y: 0, x: 0 }}
+                            exit={{ opacity: 0, y: -60, x: 20 }}
+                            transition={{ type: 'spring', damping: 20, stiffness: 200 }}
+                            className={`fixed top-4 right-4 z-[999] bg-gradient-to-br ${bg} text-white rounded-2xl shadow-2xl px-5 py-4 min-w-[260px] max-w-[320px] cursor-pointer select-none`}
+                            onClick={() => setNewOrderToasts(prev => prev.filter(t => t.id !== toast.id))}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="text-2xl">🔔</div>
+                                <div className="flex-1">
+                                    <p className="text-xs font-bold uppercase tracking-wider opacity-80 mb-0.5">{label} — Nuevo pedido</p>
+                                    <p className="font-black text-base leading-tight">{toast.customer_name}</p>
+                                    <p className="text-sm font-semibold opacity-90 mt-0.5">${toast.total.toLocaleString('es-AR')}</p>
+                                </div>
+                                <button className="opacity-60 hover:opacity-100 text-white">✕</button>
+                            </div>
+                            {/* Barra de progreso */}
+                            <motion.div
+                                className="absolute bottom-0 left-0 h-1 rounded-b-2xl bg-white/40"
+                                initial={{ width: '100%' }}
+                                animate={{ width: '0%' }}
+                                transition={{ duration: 6, ease: 'linear' }}
+                            />
+                        </motion.div>
+                    );
+                })}
+            </AnimatePresence>
+
             {/* OrderSheet Overlay */}
             {selectedTable && (
                 <div className="fixed inset-0 z-50 overflow-hidden">
