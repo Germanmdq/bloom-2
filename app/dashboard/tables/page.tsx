@@ -41,9 +41,6 @@ export default function TablesPage() {
     // Web orders state
     const [webOrders, setWebOrders] = useState<WebOrder[]>([]);
     const [selectedWebOrder, setSelectedWebOrder] = useState<WebOrder | null>(null);
-
-    // View Mode: 'all' (Salón completo 1-40) o 'active' (Solo ocupadas / comandas)
-    const [viewMode, setViewMode] = useState<'all' | 'active'>('all');
     const [mounted, setMounted] = useState(false);
 
     // New Table Modal State
@@ -305,35 +302,14 @@ export default function TablesPage() {
             const { data, error } = await supabase
                 .from('salon_tables')
                 .select('*')
+                .eq('status', 'OCCUPIED')
                 .order('id', { ascending: true });
 
             if (error) {
                 console.error('[TablesPage] fetchTables error:', error.message);
                 setError(error.message);
-            } else {
-                const dbTables = (data as Table[]) || [];
-                const dbTableMap = new Map<number, Table>();
-                dbTables.forEach(t => dbTableMap.set(t.id, t));
-
-                const fullTables: Table[] = [];
-                for (let i = 1; i <= 40; i++) {
-                    if (dbTableMap.has(i)) {
-                        fullTables.push(dbTableMap.get(i)!);
-                    } else {
-                        fullTables.push({
-                            id: i,
-                            status: 'FREE',
-                            total: 0,
-                            items: [],
-                        } as Table);
-                    }
-                }
-                // Incluir mesas virtuales (> 40) si existen
-                dbTables.forEach(t => {
-                    if (t.id > 40) fullTables.push(t);
-                });
-
-                setTables(fullTables);
+            } else if (data) {
+                setTables(data as Table[]);
             }
         } catch (err: any) {
             setError(err.message || 'Error inesperado');
@@ -479,7 +455,7 @@ export default function TablesPage() {
     const totalActiveCount = activeTablesCount + webOrders.length;
 
     const sortedTables = [...tables]
-        .filter(t => viewMode === 'all' ? true : t.status === 'OCCUPIED')
+        .filter(t => t.status === 'OCCUPIED')
         .sort((a, b) => a.id - b.id);
         
     const filteredSortedTables = sortedTables.filter(t => {
@@ -998,34 +974,14 @@ export default function TablesPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-4">
-                    {/* Switcher de Vista: Salón Completo (40) vs Solo Activas */}
-                    <div className="flex items-center bg-gray-100 p-1 rounded-2xl border border-gray-200/60 shadow-inner">
-                        <button
-                            onClick={() => setViewMode('all')}
-                            className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
-                                viewMode === 'all'
-                                    ? 'bg-white text-gray-900 shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-900'
-                            }`}
-                        >
-                            🍽️ Salón Completo (40)
-                        </button>
-                        <button
-                            onClick={() => setViewMode('active')}
-                            className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
-                                viewMode === 'active'
-                                    ? 'bg-white text-gray-900 shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-900'
-                            }`}
-                        >
-                            ⚡ Solo Activas
-                            {totalActiveCount > 0 && (
-                                <span className="bg-amber-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black">
-                                    {totalActiveCount}
-                                </span>
-                            )}
-                        </button>
-                    </div>
+                    {totalActiveCount > 0 && (
+                        <div className="bg-amber-50 border border-amber-200/60 px-3 py-1.5 rounded-xl flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                            <span className="text-xs font-black text-amber-900">
+                                {totalActiveCount} {totalActiveCount === 1 ? 'Activa' : 'Activas'}
+                            </span>
+                        </div>
+                    )}
 
                     <div className="flex gap-3">
                         <div className="flex items-center gap-1.5 text-xs text-gray-500 font-bold">
@@ -1067,14 +1023,12 @@ export default function TablesPage() {
                     </div>
                     <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-xs">Salón Vacío</p>
                     <p className="text-gray-400 text-sm max-w-md">{tableSearch ? 'No se encontraron resultados para la búsqueda.' : 'No hay mesas abiertas en este momento.'}</p>
-                    {viewMode === 'active' && (
-                        <button
-                            onClick={() => setViewMode('all')}
-                            className="mt-2 px-5 py-2.5 bg-black text-white text-xs font-bold rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-lg"
-                        >
-                            Ver Salón Completo (40 mesas)
-                        </button>
-                    )}
+                    <button
+                        onClick={() => setIsNewTableModalOpen(true)}
+                        className="mt-2 px-6 py-3 bg-black text-white text-xs font-bold uppercase tracking-widest rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-lg"
+                    >
+                        + Abrir Mesa
+                    </button>
                 </div>
             ) : (
                 <>
