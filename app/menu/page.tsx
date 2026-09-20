@@ -200,6 +200,23 @@ function MenuContent() {
   const [customerName, setCustomerName] = useState("");
   const [orderNotes, setOrderNotes] = useState("");
 
+  // Modalidad del pedido: 'mesa' | 'delivery' | 'retiro'
+  const [orderModality, setOrderModality] = useState<"mesa" | "delivery" | "retiro">(
+    tableId ? "mesa" : "delivery"
+  );
+  const [selectedTableNum, setSelectedTableNum] = useState<string>(
+    tableId ? String(tableId) : "1"
+  );
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+
+  useEffect(() => {
+    if (tableId) {
+      setOrderModality("mesa");
+      setSelectedTableNum(String(tableId));
+    }
+  }, [tableId]);
+
   // Plato del Día (configurable desde el dashboard)
   const [platoDia, setPlatoDia] = useState<any | null>(null);
 
@@ -335,11 +352,44 @@ function MenuContent() {
 
   const handleConfirmOrder = async () => {
     if (cart.length === 0 || isSending) return;
+
+    if (orderModality === "delivery") {
+      if (!deliveryAddress.trim()) {
+        toast.error("Por favor ingresá la dirección de entrega.");
+        return;
+      }
+      if (!customerPhone.trim()) {
+        toast.error("Por favor ingresá tu teléfono o WhatsApp de contacto.");
+        return;
+      }
+      if (!customerName.trim()) {
+        toast.error("Por favor ingresá tu nombre.");
+        return;
+      }
+    } else if (orderModality === "mesa") {
+      const parsedTable = parseInt(selectedTableNum, 10);
+      if (isNaN(parsedTable) || parsedTable < 1) {
+        toast.error("Por favor ingresá un número de mesa válido (1 al 40).");
+        return;
+      }
+    } else if (orderModality === "retiro") {
+      if (!customerName.trim()) {
+        toast.error("Por favor ingresá tu nombre para retirar en el local.");
+        return;
+      }
+    }
+
     setIsSending(true);
 
+    const numericTable = orderModality === "mesa" ? (parseInt(selectedTableNum, 10) || 1) : null;
+    const computedCustomerName = customerName.trim() || (numericTable ? `Mesa ${numericTable}` : "Cliente Web");
+
     const orderPayload = {
-      table_id: tableId || null,
-      customer_name: customerName.trim() || (tableLabel ? tableLabel : "Cliente Web"),
+      table_id: numericTable,
+      delivery_type: orderModality === "mesa" ? "salon" : (orderModality === "delivery" ? "delivery" : "takeaway"),
+      delivery_info: orderModality === "delivery" ? deliveryAddress.trim() : null,
+      customer_name: computedCustomerName,
+      customer_phone: customerPhone.trim() || null,
       notes: orderNotes.trim() || null,
       items: cart.map((i) => ({
         id: i.id,
@@ -356,6 +406,8 @@ function MenuContent() {
       setOrderSuccess(true);
       setCart([]);
       setCustomerName("");
+      setDeliveryAddress("");
+      setCustomerPhone("");
       setOrderNotes("");
       toast.warning("¡Pedido guardado sin conexión! 📶", {
         description: "Se enviará automáticamente a la cocina en cuanto recuperes señal.",
@@ -364,7 +416,7 @@ function MenuContent() {
       setTimeout(() => {
         setOrderSuccess(false);
         setIsCartOpen(false);
-      }, 3000);
+      }, 3500);
       setIsSending(false);
       return;
     }
@@ -385,18 +437,28 @@ function MenuContent() {
       setOrderSuccess(true);
       setCart([]);
       setCustomerName("");
+      setDeliveryAddress("");
+      setCustomerPhone("");
       setOrderNotes("");
-      toast.success("¡Pedido enviado directo al local! 🎉");
+      toast.success(
+        orderModality === "mesa"
+          ? `¡Pedido enviado para Mesa ${numericTable}! 🎉`
+          : orderModality === "delivery"
+          ? "¡Pedido para Delivery registrado! 🛵"
+          : "¡Pedido para Retiro registrado! 🏃"
+      );
       setTimeout(() => {
         setOrderSuccess(false);
         setIsCartOpen(false);
-      }, 2500);
+      }, 3000);
     } catch (err: any) {
       // Si la llamada falló por pérdida repentina de red, resguardar en cola offline
       saveOfflineOrder(orderPayload);
       setOrderSuccess(true);
       setCart([]);
       setCustomerName("");
+      setDeliveryAddress("");
+      setCustomerPhone("");
       setOrderNotes("");
       toast.warning("Fallo de red: Pedido guardado localmente 📶", {
         description: "Se enviará automáticamente al local en cuanto se restablezca la conexión.",
@@ -405,7 +467,7 @@ function MenuContent() {
       setTimeout(() => {
         setOrderSuccess(false);
         setIsCartOpen(false);
-      }, 3000);
+      }, 3500);
     } finally {
       setIsSending(false);
     }
@@ -919,7 +981,11 @@ function MenuContent() {
                   <CheckCircle2 size={64} className="text-[#10b981] mb-4 animate-bounce" />
                   <h3 className="font-extrabold text-2xl text-[#1a3028] mb-2">¡Pedido Confirmado!</h3>
                   <p className="text-sm text-[#5f5c46] max-w-xs leading-relaxed">
-                    Tu pedido ya ingresó al sistema del local y la cocina comenzará a prepararlo.
+                    {orderModality === 'mesa' 
+                      ? `Tu pedido fue enviado a la cocina para Mesa ${selectedTableNum || 1}. En breve te lo alcanzamos a tu mesa.`
+                      : orderModality === 'delivery'
+                      ? `Tu pedido para delivery a "${deliveryAddress}" fue enviado al local. ¡Ya lo estamos preparando!`
+                      : `Tu pedido para retirar fue enviado al local. Te avisaremos cuando esté listo en la barra.`}
                   </p>
                 </div>
               ) : cart.length === 0 ? (
@@ -980,27 +1046,187 @@ function MenuContent() {
                     ))}
                   </div>
 
-                  {/* FOOTER DEL CARRITO: Sin WhatsApp, va directo al Dashboard */}
-                  <div className="p-5 pb-8 sm:pb-6 bg-white border-t border-[#c4b896]/25 space-y-3">
-                    {/* Campos opcionales de identificación */}
-                    {!tableLabel && (
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          placeholder="Tu nombre o N° de mesa (opcional)"
-                          value={customerName}
-                          onChange={(e) => setCustomerName(e.target.value)}
-                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-[#f9f8f3] outline-none focus:border-[#1a3028]"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Aclaraciones (ej: sin hielo, edulcorante)"
-                          value={orderNotes}
-                          onChange={(e) => setOrderNotes(e.target.value)}
-                          className="w-full text-xs px-3.5 py-2 rounded-xl border border-[#c4b896]/30 bg-[#f9f8f3] outline-none focus:border-[#1a3028]"
-                        />
+                  {/* FOOTER DEL CARRITO: Modalidad + Identificación */}
+                  <div className="p-4 sm:p-5 pb-8 sm:pb-6 bg-white border-t border-[#c4b896]/25 space-y-3.5">
+                    {/* Selector de Modalidad */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-black tracking-wider uppercase text-[#7a765a]">
+                          ¿Cómo querés tu pedido?
+                        </label>
+                        {tableLabel && orderModality === "mesa" && (
+                          <span className="text-[10px] font-extrabold text-[#1a3028] bg-[#f2f0e6] px-2 py-0.5 rounded-md">
+                            {tableLabel}
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-1 bg-[#f2f0e6] p-1 rounded-2xl">
+                        <button
+                          type="button"
+                          onClick={() => setOrderModality("mesa")}
+                          className={`py-2 px-1 rounded-xl text-xs font-black transition-all flex flex-col items-center gap-0.5 ${
+                            orderModality === "mesa"
+                              ? "bg-[#1a3028] text-[#f5e8ca] shadow-sm scale-[1.02]"
+                              : "text-[#7a765a] hover:text-[#1a3028]"
+                          }`}
+                        >
+                          <span className="text-base">🍽️</span>
+                          <span>En Mesa</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setOrderModality("delivery")}
+                          className={`py-2 px-1 rounded-xl text-xs font-black transition-all flex flex-col items-center gap-0.5 ${
+                            orderModality === "delivery"
+                              ? "bg-[#1a3028] text-[#f5e8ca] shadow-sm scale-[1.02]"
+                              : "text-[#7a765a] hover:text-[#1a3028]"
+                          }`}
+                        >
+                          <span className="text-base">🛵</span>
+                          <span>Delivery</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setOrderModality("retiro")}
+                          className={`py-2 px-1 rounded-xl text-xs font-black transition-all flex flex-col items-center gap-0.5 ${
+                            orderModality === "retiro"
+                              ? "bg-[#1a3028] text-[#f5e8ca] shadow-sm scale-[1.02]"
+                              : "text-[#7a765a] hover:text-[#1a3028]"
+                          }`}
+                        >
+                          <span className="text-base">🏃</span>
+                          <span>Retiro</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Campos dinámicos según la modalidad elegida */}
+                    {orderModality === "mesa" && (
+                      <div className="space-y-2 bg-[#fdfbf7] p-3 rounded-2xl border border-[#c4b896]/30">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1">
+                              N° de Mesa *
+                            </label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min={1}
+                                max={40}
+                                value={selectedTableNum}
+                                onChange={(e) => setSelectedTableNum(e.target.value)}
+                                placeholder="Ej: 3"
+                                className="w-full text-xs font-extrabold px-3 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028] focus:ring-1 focus:ring-[#1a3028]"
+                              />
+                              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#7a765a]">
+                                1-40
+                              </span>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1">
+                              Tu Nombre (opcional)
+                            </label>
+                            <input
+                              type="text"
+                              value={customerName}
+                              onChange={(e) => setCustomerName(e.target.value)}
+                              placeholder="Ej: Sofía"
+                              className="w-full text-xs px-3 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                            />
+                          </div>
+                        </div>
                       </div>
                     )}
+
+                    {orderModality === "delivery" && (
+                      <div className="space-y-2 bg-[#fdfbf7] p-3 rounded-2xl border border-[#c4b896]/30">
+                        <div>
+                          <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1 flex items-center gap-1">
+                            <MapPin size={12} className="text-red-500" /> Dirección de Entrega *
+                          </label>
+                          <input
+                            type="text"
+                            value={deliveryAddress}
+                            onChange={(e) => setDeliveryAddress(e.target.value)}
+                            placeholder="Calle, altura, piso/depto, entrecalles"
+                            className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1">
+                              Tu Nombre *
+                            </label>
+                            <input
+                              type="text"
+                              value={customerName}
+                              onChange={(e) => setCustomerName(e.target.value)}
+                              placeholder="Nombre"
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1 flex items-center gap-1">
+                              <Phone size={11} className="text-emerald-600" /> WhatsApp *
+                            </label>
+                            <input
+                              type="tel"
+                              value={customerPhone}
+                              onChange={(e) => setCustomerPhone(e.target.value)}
+                              placeholder="Ej: 223 555-1234"
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {orderModality === "retiro" && (
+                      <div className="space-y-2 bg-[#fdfbf7] p-3 rounded-2xl border border-[#c4b896]/30">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1">
+                              Tu Nombre para Retirar *
+                            </label>
+                            <input
+                              type="text"
+                              value={customerName}
+                              onChange={(e) => setCustomerName(e.target.value)}
+                              placeholder="Ej: Juan"
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1 flex items-center gap-1">
+                              <Phone size={11} className="text-gray-500" /> Teléfono (opcional)
+                            </label>
+                            <input
+                              type="tel"
+                              value={customerPhone}
+                              onChange={(e) => setCustomerPhone(e.target.value)}
+                              placeholder="Contacto de aviso"
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Aclaraciones / Notas adicionales */}
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Aclaraciones (ej: sin hielo, salsa aparte, timbre roto)"
+                        value={orderNotes}
+                        onChange={(e) => setOrderNotes(e.target.value)}
+                        className="w-full text-xs px-3.5 py-2 rounded-xl border border-[#c4b896]/30 bg-[#f9f8f3] outline-none focus:border-[#1a3028]"
+                      />
+                    </div>
 
                     <div className="flex items-center justify-between text-sm font-semibold text-[#5f5c46] pt-1">
                       <span>Subtotal</span>

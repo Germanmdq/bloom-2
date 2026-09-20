@@ -1100,11 +1100,21 @@ export default function TablesPage() {
                                              </span>
                                          </div>
 
-                                         {/* Nombre del cliente — izquierda, truncado */}
-                                         <div className="flex-1 flex items-center">
+                                         {/* Nombre del cliente y dirección — izquierda */}
+                                         <div className="flex-1 flex flex-col justify-center min-w-0">
                                              <span className={`${s.name} font-black leading-tight tracking-tight truncate w-full text-white`}>
                                                  {displayName}
                                              </span>
+                                             {order.delivery_info && (
+                                                 <span className="text-[11px] font-bold text-white/90 truncate mt-0.5 flex items-center gap-1">
+                                                     📍 {order.delivery_info}
+                                                 </span>
+                                             )}
+                                             {!order.delivery_info && order.customer_phone && (
+                                                 <span className="text-[11px] font-bold text-white/80 truncate mt-0.5 flex items-center gap-1">
+                                                     📞 {order.customer_phone}
+                                                 </span>
+                                             )}
                                          </div>
 
                                          {/* Divider sutil */}

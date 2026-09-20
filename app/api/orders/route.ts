@@ -5,7 +5,7 @@ import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { items, total, customer_name, customer_phone, table_id, notes, delivery_type } = body;
+        const { items, total, customer_name, customer_phone, table_id, notes, delivery_type, delivery_info } = body;
 
         if (!items || !items.length) {
             return NextResponse.json({ error: "El pedido no contiene productos" }, { status: 400 });
@@ -13,6 +13,8 @@ export async function POST(request: Request) {
 
         const supabase = createClient(getSupabaseUrl(), getSupabaseAnonKey());
         const numericTableId = table_id ? Number(table_id) : null;
+        const finalDeliveryType = numericTableId ? "salon" : (delivery_type || "retiro");
+        const finalOrderType = numericTableId ? "LOCAL" : (finalDeliveryType === "delivery" ? "DELIVERY" : "TAKEAWAY");
         const displayName = customer_name?.trim() || (numericTableId ? `Mesa ${numericTableId}` : "Cliente Web");
 
         // 0. Validación y Descuento de Inventario en Tiempo Real
@@ -64,12 +66,13 @@ export async function POST(request: Request) {
             }
         }
 
-        // 1. Crear Orden en tabla 'orders' (aparece en Historial de Órdenes del Dashboard)
+        // 1. Crear Orden en tabla 'orders' (aparece en Historial de Órdenes y en el Salón)
         const orderPayload = {
             customer_name: displayName,
             customer_phone: customer_phone?.trim() || null,
-            order_type: numericTableId ? "MESA" : "WEB",
-            delivery_type: delivery_type || (numericTableId ? "salon" : "retiro"),
+            order_type: finalOrderType,
+            delivery_type: finalDeliveryType,
+            delivery_info: delivery_info?.trim() || null,
             table_id: numericTableId,
             items,
             total: Number(total) || 0,
@@ -93,11 +96,18 @@ export async function POST(request: Request) {
         }
 
         // 2. Crear Comanda en tabla 'kitchen_tickets' (aparece en Cocina del Dashboard)
+        const kitchenNotes = [
+            displayName,
+            numericTableId ? `Mesa ${numericTableId}` : (finalDeliveryType === 'delivery' ? `DELIVERY: ${delivery_info || ''}` : 'RETIRO EN LOCAL'),
+            customer_phone ? `Tel: ${customer_phone}` : null,
+            notes ? `Nota: ${notes}` : null
+        ].filter(Boolean).join(" | ");
+
         const kitchenPayload = {
             table_id: numericTableId || 0,
             items: items.map((i: any) => ({ name: i.name, quantity: i.quantity, price: i.price })),
             status: "PENDING",
-            notes: notes ? `${displayName} - ${notes}` : displayName,
+            notes: kitchenNotes,
             created_at: new Date().toISOString()
         };
 
@@ -109,7 +119,7 @@ export async function POST(request: Request) {
             console.error("[orders API] error insertando kitchen_ticket:", kitchenError);
         }
 
-        // 3. Si hay mesa, actualizar 'salon_tables'
+        // 3. Si hay mesa, actualizar 'salon_tables' para que aparezca ocupada en el salón
         if (numericTableId) {
             try {
                 const { data: tableData } = await supabase
@@ -120,12 +130,27 @@ export async function POST(request: Request) {
 
                 const existingItems = Array.isArray(tableData?.items) ? tableData.items : [];
                 const existingTotal = Number(tableData?.total) || 0;
-                const mergedItems = [...existingItems, ...items];
+
+                const hasCustomName = customer_name?.trim() && !customer_name.trim().toLowerCase().startsWith('mesa ');
+                const hasExistingMeta = existingItems.some((it: any) => it.id === 'meta-customer');
+
+                let mergedItems = [...existingItems];
+                if (hasCustomName && !hasExistingMeta) {
+                    mergedItems.unshift({
+                        id: 'meta-customer',
+                        name: `Cliente: ${customer_name.trim()}`,
+                        price: 0,
+                        quantity: 1,
+                        category: 'METADATA'
+                    });
+                }
+                mergedItems = [...mergedItems, ...items];
                 const mergedTotal = existingTotal + (Number(total) || 0);
 
                 await supabase.from("salon_tables").upsert({
                     id: numericTableId,
                     status: "OCCUPIED",
+                    order_type: "LOCAL",
                     total: mergedTotal,
                     items: mergedItems,
                     updated_at: new Date().toISOString(),

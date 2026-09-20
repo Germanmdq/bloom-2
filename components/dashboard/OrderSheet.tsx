@@ -641,7 +641,7 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                 .subscribe();
             return () => { supabase.removeChannel(channel); };
         }
-    }, [tableId, webOrderId]);
+    }, [tableId, webOrderId, webOrderData]);
 
     const persistTableState = async () => {
         if (finishingRef.current) return;
@@ -1803,6 +1803,24 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
 
                 {/* ── DERECHA: Datos Cliente + Carrito ── */}
                 <div className="w-72 xl:w-96 flex flex-col bg-white border-l border-bloom-gold/20 shrink-0">
+
+                    {/* Banner de Entrega / Contacto si corresponde */}
+                    {(customerAddress || customerPhone) && (
+                        <div className="mx-4 mt-3 p-3 bg-red-50 border border-red-200/70 rounded-2xl text-xs flex flex-col gap-1 shadow-sm shrink-0">
+                            {customerAddress && (
+                                <div className="font-bold text-red-950 flex items-start gap-1.5 leading-snug">
+                                    <span className="shrink-0 text-sm">📍</span>
+                                    <span>{customerAddress}</span>
+                                </div>
+                            )}
+                            {customerPhone && (
+                                <div className="text-[11px] font-bold text-red-800 flex items-center gap-1.5">
+                                    <span className="shrink-0">📞</span>
+                                    <span>{customerPhone}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Lista de Productos en el Carrito */}
                     <div className="flex-1 overflow-y-auto px-4 py-2 no-scrollbar scroll-smooth">
