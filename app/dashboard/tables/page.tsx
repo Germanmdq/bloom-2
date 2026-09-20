@@ -44,6 +44,7 @@ export default function TablesPage() {
 
     // View Mode: 'all' (Salón completo 1-40) o 'active' (Solo ocupadas / comandas)
     const [viewMode, setViewMode] = useState<'all' | 'active'>('all');
+    const [mounted, setMounted] = useState(false);
 
     // New Table Modal State
     const [isNewTableModalOpen, setIsNewTableModalOpen] = useState(false);
@@ -176,6 +177,7 @@ export default function TablesPage() {
     }, [tableSearch]);
 
     useEffect(() => {
+        setMounted(true);
         fetchTables();
         fetchWebOrders();
         
@@ -567,6 +569,15 @@ export default function TablesPage() {
             subTextColor: 'text-amber-900/60',
         };
     };
+
+    if (!mounted) {
+        return (
+            <div className="flex flex-col items-center justify-center py-40 gap-4">
+                <IconLoader2 className="animate-spin text-gray-200" size={64} />
+                <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-xs">Cargando salón...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="relative min-h-full">
