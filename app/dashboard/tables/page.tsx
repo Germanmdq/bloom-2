@@ -42,6 +42,9 @@ export default function TablesPage() {
     const [webOrders, setWebOrders] = useState<WebOrder[]>([]);
     const [selectedWebOrder, setSelectedWebOrder] = useState<WebOrder | null>(null);
 
+    // View Mode: 'all' (Salón completo 1-40) o 'active' (Solo ocupadas / comandas)
+    const [viewMode, setViewMode] = useState<'all' | 'active'>('all');
+
     // New Table Modal State
     const [isNewTableModalOpen, setIsNewTableModalOpen] = useState(false);
     const [newTableType, setNewTableType] = useState<'LOCAL' | 'DELIVERY' | 'TAKEAWAY'>('LOCAL');
@@ -300,13 +303,35 @@ export default function TablesPage() {
             const { data, error } = await supabase
                 .from('salon_tables')
                 .select('*')
-                .eq('status', 'OCCUPIED')
                 .order('id', { ascending: true });
 
             if (error) {
+                console.error('[TablesPage] fetchTables error:', error.message);
                 setError(error.message);
-            } else if (data) {
-                setTables(data as Table[]);
+            } else {
+                const dbTables = (data as Table[]) || [];
+                const dbTableMap = new Map<number, Table>();
+                dbTables.forEach(t => dbTableMap.set(t.id, t));
+
+                const fullTables: Table[] = [];
+                for (let i = 1; i <= 40; i++) {
+                    if (dbTableMap.has(i)) {
+                        fullTables.push(dbTableMap.get(i)!);
+                    } else {
+                        fullTables.push({
+                            id: i,
+                            status: 'FREE',
+                            total: 0,
+                            items: [],
+                        } as Table);
+                    }
+                }
+                // Incluir mesas virtuales (> 40) si existen
+                dbTables.forEach(t => {
+                    if (t.id > 40) fullTables.push(t);
+                });
+
+                setTables(fullTables);
             }
         } catch (err: any) {
             setError(err.message || 'Error inesperado');
@@ -448,8 +473,11 @@ export default function TablesPage() {
         handleOpenTable(num);
     };
 
+    const activeTablesCount = tables.filter(t => t.status === 'OCCUPIED').length;
+    const totalActiveCount = activeTablesCount + webOrders.length;
+
     const sortedTables = [...tables]
-        .filter(t => t.status === 'OCCUPIED')
+        .filter(t => viewMode === 'all' ? true : t.status === 'OCCUPIED')
         .sort((a, b) => a.id - b.id);
         
     const filteredSortedTables = sortedTables.filter(t => {
@@ -473,7 +501,19 @@ export default function TablesPage() {
     
 
     const getCardStyles = (table: Table) => {
-        // 1. IconCheck order_type first (Most reliable)
+        // Mesa libre en el salón
+        if (table.status === 'FREE') {
+            return {
+                bg: 'bg-white hover:bg-amber-50/40 border-2 border-dashed border-gray-200 hover:border-amber-400 shadow-sm transition-all',
+                dot: 'bg-gray-300',
+                badgeBg: 'bg-gray-100 text-gray-500',
+                label: 'Libre',
+                textColor: 'text-gray-800',
+                subTextColor: 'text-gray-400',
+            };
+        }
+
+        // 1. Check order_type first (Most reliable)
         if (table.order_type === 'DELIVERY') {
             return {
                 bg: 'bg-red-500 shadow-[0_22px_70px_rgba(0,0,0,0.18)]',
@@ -946,15 +986,46 @@ export default function TablesPage() {
                         </button>
                     </div>
                 </div>
-                <div className="flex gap-4">
-                    <div className="flex items-center gap-2 text-sm text-gray-500 font-bold">
-                        <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]" /> Salón
+                <div className="flex items-center gap-4">
+                    {/* Switcher de Vista: Salón Completo (40) vs Solo Activas */}
+                    <div className="flex items-center bg-gray-100 p-1 rounded-2xl border border-gray-200/60 shadow-inner">
+                        <button
+                            onClick={() => setViewMode('all')}
+                            className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
+                                viewMode === 'all'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-900'
+                            }`}
+                        >
+                            🍽️ Salón Completo (40)
+                        </button>
+                        <button
+                            onClick={() => setViewMode('active')}
+                            className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                                viewMode === 'active'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-900'
+                            }`}
+                        >
+                            ⚡ Solo Activas
+                            {totalActiveCount > 0 && (
+                                <span className="bg-amber-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black">
+                                    {totalActiveCount}
+                                </span>
+                            )}
+                        </button>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500 font-bold">
-                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]" /> Retiro
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500 font-bold">
-                        <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)]" /> Delivery
+
+                    <div className="flex gap-3">
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500 font-bold">
+                            <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]" /> Salón
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500 font-bold">
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]" /> Retiro
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500 font-bold">
+                            <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)]" /> Delivery
+                        </div>
                     </div>
                 </div>
             </div>
@@ -985,6 +1056,14 @@ export default function TablesPage() {
                     </div>
                     <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-xs">Salón Vacío</p>
                     <p className="text-gray-400 text-sm max-w-md">{tableSearch ? 'No se encontraron resultados para la búsqueda.' : 'No hay mesas abiertas en este momento.'}</p>
+                    {viewMode === 'active' && (
+                        <button
+                            onClick={() => setViewMode('all')}
+                            className="mt-2 px-5 py-2.5 bg-black text-white text-xs font-bold rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-lg"
+                        >
+                            Ver Salón Completo (40 mesas)
+                        </button>
+                    )}
                 </div>
             ) : (
                 <>
@@ -1082,6 +1161,7 @@ export default function TablesPage() {
                             {/* POS Tables */}
                             {filteredSortedTables.map(table => {
                                 const styles = getCardStyles(table);
+                                const isFree = table.status === 'FREE';
                                 const now = Date.now();
                                 const startTime = table.created_at || table.updated_at;
                                 const lastActive = startTime ? new Date(startTime).getTime() : now;
@@ -1098,7 +1178,7 @@ export default function TablesPage() {
                                     ? metaCust.name.replace('Cliente: ', '')
                                     : isVirtual
                                         ? (isDeliveryTable ? 'Delivery' : 'Retiro')
-                                        : String(table.id);
+                                        : (isFree ? `Mesa ${table.id}` : String(table.id));
                                 const itemCount = (table.items || []).filter((i: any) => i.id !== 'meta-customer').length;
                                 const orderLabel = table.order_type === 'DELIVERY' ? 'Delivery' : table.order_type === 'TAKEAWAY' ? 'Retiro' : 'Salón';
 
@@ -1108,24 +1188,32 @@ export default function TablesPage() {
                                         layoutId={`table-${table.id}`}
                                         whileHover={{ scale: 1.03 }}
                                         whileTap={{ scale: 0.97 }}
-                                        onClick={() => setSelectedTable(table)}
+                                        onClick={() => {
+                                            if (isFree) {
+                                                handleOpenTable(table.id);
+                                            } else {
+                                                setSelectedTable(table);
+                                            }
+                                        }}
                                         className={`rounded-3xl ${s.pad} flex flex-col justify-between cursor-pointer transition-all duration-300 relative overflow-hidden ${s.minH} ${styles.bg}`}
                                     >
                                         {/* Fila superior: chip tipo + tiempo con reloj */}
                                         <div className="flex items-center justify-between w-full">
                                             <span
-                                                title={orderLabel}
+                                                title={isFree ? 'Libre' : orderLabel}
                                                 className={`${s.badge} font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded-full ${styles.badgeBg}`}
                                             >
-                                                {orderLabel}
+                                                {isFree ? 'Libre' : orderLabel}
                                             </span>
-                                            <span
-                                                title={`${minutesElapsed} minutos activa`}
-                                                className={`flex items-center gap-0.5 ${s.time} ${minutesElapsed >= 60 ? 'font-black' : 'font-semibold'} opacity-80 ${styles.textColor}`}
-                                            >
-                                                <IconClock size={s.iconSize} strokeWidth={minutesElapsed >= 60 ? 2.5 : 1.8} />
-                                                {displayTime}
-                                            </span>
+                                            {!isFree && (
+                                                <span
+                                                    title={`${minutesElapsed} minutos activa`}
+                                                    className={`flex items-center gap-0.5 ${s.time} ${minutesElapsed >= 60 ? 'font-black' : 'font-semibold'} opacity-80 ${styles.textColor}`}
+                                                >
+                                                    <IconClock size={s.iconSize} strokeWidth={minutesElapsed >= 60 ? 2.5 : 1.8} />
+                                                    {displayTime}
+                                                </span>
+                                            )}
                                         </div>
 
                                         {/* Nombre / número — izquierda, truncado */}
@@ -1137,22 +1225,29 @@ export default function TablesPage() {
                                                         : <IconShoppingBag size={s.iconSize * 2.8} strokeWidth={1.5} />}
                                                 </div>
                                             ) : (
-                                                <span className={`${s.name} font-black leading-tight tracking-tight truncate w-full ${styles.textColor}`}>
-                                                    {displayName}
-                                                </span>
+                                                <div className="flex flex-col">
+                                                    <span className={`${s.name} font-black leading-tight tracking-tight truncate w-full ${styles.textColor}`}>
+                                                        {displayName}
+                                                    </span>
+                                                    {isFree && (
+                                                        <span className="text-[11px] font-bold text-amber-600/80 mt-0.5">
+                                                            + Abrir comanda
+                                                        </span>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
 
                                         {/* Divider sutil */}
-                                        <div className={`w-full h-px mb-1 ${styles.textColor === 'text-white' ? 'bg-white/20' : 'bg-black/10'}`} />
+                                        <div className={`w-full h-px mb-1 ${isFree ? 'bg-gray-100' : (styles.textColor === 'text-white' ? 'bg-white/20' : 'bg-black/10')}`} />
 
                                         {/* Fila inferior: items izquierda + total derecha */}
                                         <div className="flex items-center justify-between w-full">
-                                            <span className={`${s.meta} font-bold uppercase tracking-widest opacity-60 ${styles.textColor}`}>
-                                                {itemCount > 0 ? `${itemCount} items` : '—'}
+                                            <span className={`${s.meta} font-bold uppercase tracking-widest ${isFree ? 'text-gray-400' : 'opacity-60'} ${styles.textColor}`}>
+                                                {isFree ? 'Disponible' : (itemCount > 0 ? `${itemCount} items` : '—')}
                                             </span>
-                                            <span className={`${s.total} font-black tracking-tight ${styles.textColor}`}>
-                                                ${Number(table.total || 0).toLocaleString('es-AR')}
+                                            <span className={`${s.total} font-black tracking-tight ${isFree ? 'text-gray-300' : styles.textColor}`}>
+                                                {isFree ? '$0' : `$${Number(table.total || 0).toLocaleString('es-AR')}`}
                                             </span>
                                         </div>
                                     </motion.div>

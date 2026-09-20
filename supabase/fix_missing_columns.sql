@@ -53,8 +53,7 @@ EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- 4. CONFIRMAR ADMIN Y ASEGURAR PERFIL
 UPDATE auth.users 
-SET email_confirmed_at = NOW(), 
-    confirmed_at = NOW() 
+SET email_confirmed_at = NOW()
 WHERE email = 'admin@bloom.com';
 
 INSERT INTO public.profiles (id, full_name, role, is_customer)
