@@ -205,7 +205,7 @@ function MenuContent() {
     "mesa"
   );
   const [selectedTableNum, setSelectedTableNum] = useState<string>(
-    tableId ? String(tableId) : "1"
+    tableId ? String(tableId) : ""
   );
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -367,9 +367,17 @@ function MenuContent() {
         return;
       }
     } else if (orderModality === "mesa") {
+      if (!selectedTableNum.trim()) {
+        toast.error("Por favor ingresá tu número de mesa.");
+        return;
+      }
       const parsedTable = parseInt(selectedTableNum, 10);
-      if (isNaN(parsedTable) || parsedTable < 1) {
+      if (isNaN(parsedTable) || parsedTable < 1 || parsedTable > 40) {
         toast.error("Por favor ingresá un número de mesa válido (1 al 40).");
+        return;
+      }
+      if (!customerName.trim()) {
+        toast.error("Por favor ingresá tu nombre.");
         return;
       }
     } else if (orderModality === "retiro") {
@@ -1097,7 +1105,7 @@ function MenuContent() {
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1">
-                              N° de Mesa
+                              N° de Mesa *
                             </label>
                             <div className="relative">
                               <input
@@ -1116,7 +1124,7 @@ function MenuContent() {
                           </div>
                           <div>
                             <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1">
-                              Tu Nombre
+                              Tu Nombre *
                             </label>
                             <input
                               type="text"
