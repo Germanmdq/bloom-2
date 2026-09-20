@@ -185,45 +185,67 @@ export default function TablesPage() {
         // Listen to salon_tables changes (POS tables)
         const tableChannel = supabase
             .channel('salon_tables_realtime')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'salon_tables' }, (payload) => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'salon_tables' }, () => {
                 fetchTables();
-                if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
-                    const row = payload.new as Table;
-                    if (row && row.status === 'OCCUPIED' && row.items && row.items.length > 0) {
-                        // REVERTIDO: No hacer auto-pop de la mesa. El usuario prefiere clickearla manualmente.
-                        // Solo actualizamos el state de las mesas (arriba en fetchTables).
-                    }
-                }
             })
             .subscribe();
 
-        // Listen to orders changes (web orders & salon tables)
+        // Listen to orders changes (web orders & salon tables) - para refrescar datos
         const ordersChannel = supabase
             .channel('orders_realtime_tables')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
                 fetchTables();
                 fetchWebOrders();
-                // Mostrar toast solo para pedidos nuevos (INSERT) con status pending
-                if (payload.eventType === 'INSERT') {
-                    const row = payload.new as any;
-                    if (row && row.status === 'pending') {
-                        const toast: OrderToast = {
-                            id: row.id,
-                            customer_name: row.customer_name || 'Cliente',
-                            total: row.total || 0,
-                            order_type: row.order_type || 'LOCAL',
-                            delivery_type: row.delivery_type,
-                            table_id: row.table_id,
-                        };
-                        setNewOrderToasts(prev => [...prev, toast]);
-                        // Auto-dismiss después de 6 segundos
-                        setTimeout(() => {
-                            setNewOrderToasts(prev => prev.filter(t => t.id !== toast.id));
-                        }, 6000);
-                    }
-                }
             })
             .subscribe();
+
+        // ── Polling cada 4s para detectar pedidos nuevos y mostrar toast ──
+        // (Realtime con anon key no siempre entrega eventos INSERT por RLS)
+        const knownIds = new Set<string>();
+        let isFirstPoll = true;
+
+        const pollNewOrders = async () => {
+            const { data } = await supabase
+                .from('orders')
+                .select('id, customer_name, total, order_type, delivery_type, table_id, status')
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (!data) return;
+
+            if (isFirstPoll) {
+                // En el primer poll solo registramos los IDs existentes, sin toast
+                data.forEach((o: any) => knownIds.add(o.id));
+                isFirstPoll = false;
+                return;
+            }
+
+            // Detectar IDs nuevos
+            data.forEach((o: any) => {
+                if (!knownIds.has(o.id)) {
+                    knownIds.add(o.id);
+                    const toast: OrderToast = {
+                        id: o.id,
+                        customer_name: o.customer_name || 'Cliente',
+                        total: o.total || 0,
+                        order_type: o.order_type || 'LOCAL',
+                        delivery_type: o.delivery_type,
+                        table_id: o.table_id,
+                    };
+                    setNewOrderToasts(prev => [...prev, toast]);
+                    setTimeout(() => {
+                        setNewOrderToasts(prev => prev.filter(t => t.id !== toast.id));
+                    }, 6000);
+                    // Refrescar la lista también
+                    fetchTables();
+                    fetchWebOrders();
+                }
+            });
+        };
+
+        const pollInterval = setInterval(pollNewOrders, 4000);
+        pollNewOrders(); // primera llamada inmediata
 
         // Listener para refrescar desde la notificación "Ir a gestionar"
         const handleRefreshEvent = () => {
@@ -235,6 +257,7 @@ export default function TablesPage() {
         return () => {
             supabase.removeChannel(tableChannel);
             supabase.removeChannel(ordersChannel);
+            clearInterval(pollInterval);
             window.removeEventListener('bloom-refresh-tables', handleRefreshEvent);
         };
     }, []);
