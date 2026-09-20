@@ -1065,26 +1065,60 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
 
                 // ── Crear orden y liberar mesa ──
                 if (!isWebTable) {
-                    // Mesa real: usar RPC atómico (orden + liberar mesa + cerrar tickets en una transacción)
+                    // Mesa real: intentar RPC atómico, y si no existe en la DB, usar fallback directo
                     const orderStatus = (tableId >= 100) ? 'completed' : 'paid';
-                    const { data: rpcResult, error: rpcErr } = await supabase.rpc('close_table_and_create_order', {
-                        p_table_id: tableId,
-                        p_total: finalTotal,
-                        p_payment_method: paymentMethod,
-                        p_status: orderStatus,
-                        p_paid: true,
-                        p_waiter_id: selectedWaiter || null,
-                        p_customer_id: customerIdForDb || null,
-                        p_customer_name: customerName || null,
-                        p_discount: discount,
-                        p_items: cart,
-                        p_delivery_person_id: selectedDeliveryPerson ? parseInt(selectedDeliveryPerson) : null,
-                    });
-                    if (rpcErr) {
-                        console.error("❌ [finishOrder] close_table_and_create_order RPC failed:", rpcErr.message);
-                        throw rpcErr;
+                    let rpcDone = false;
+                    try {
+                        const { data: rpcResult, error: rpcErr } = await supabase.rpc('close_table_and_create_order', {
+                            p_table_id: tableId,
+                            p_total: finalTotal,
+                            p_payment_method: paymentMethod,
+                            p_status: orderStatus,
+                            p_paid: true,
+                            p_waiter_id: selectedWaiter || null,
+                            p_customer_id: customerIdForDb || null,
+                            p_customer_name: customerName || null,
+                            p_discount: discount,
+                            p_items: cart,
+                            p_delivery_person_id: selectedDeliveryPerson ? parseInt(selectedDeliveryPerson) : null,
+                        });
+                        if (!rpcErr) {
+                            rpcDone = true;
+                            console.log("✅ [finishOrder] RPC success, order_id:", rpcResult?.order_id);
+                        } else {
+                            console.warn("⚠️ [finishOrder] close_table_and_create_order RPC falló o no existe:", rpcErr.message, "- usando fallback directo");
+                        }
+                    } catch (e: any) {
+                        console.warn("⚠️ [finishOrder] Excepción en RPC, usando fallback:", e?.message);
                     }
-                    console.log("✅ [finishOrder] RPC success, order_id:", rpcResult?.order_id);
+
+                    if (!rpcDone) {
+                        // Fallback: liberar mesa, registrar orden y actualizar tickets directamente
+                        const { error: freeErr } = await supabase.from("salon_tables").update({ status: "FREE", total: 0, items: [] }).eq("id", tableId);
+                        if (freeErr) console.error("❌ [finishOrder] salon_tables FREE failed:", freeErr.message);
+
+                        await createOrder.mutateAsync({
+                            table_id: tableId,
+                            total: finalTotal,
+                            payment_method: paymentMethod,
+                            waiter_id: selectedWaiter || null,
+                            discount: discount,
+                            status: orderStatus,
+                            paid: true,
+                            customer_id: customerIdForDb || null,
+                            customer_name: customerName || null,
+                            delivery_person_id: selectedDeliveryPerson ? parseInt(selectedDeliveryPerson) : null,
+                            items: cart,
+                        });
+
+                        // Cerrar tickets de cocina de la mesa
+                        await supabase.from('kitchen_tickets')
+                            .update({ status: 'DELIVERED' })
+                            .eq('table_id', tableId)
+                            .eq('status', 'PENDING');
+
+                        await releaseCurrentTable(customerIdForDb);
+                    }
                 } else {
                     // Web table: liberar manualmente y crear orden por separado
                     const { error: freeErr } = await supabase.from("salon_tables").update({ status: "FREE", total: 0, items: [] }).eq("id", tableId);

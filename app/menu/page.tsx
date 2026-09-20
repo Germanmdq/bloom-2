@@ -202,7 +202,7 @@ function MenuContent() {
 
   // Modalidad del pedido: 'mesa' | 'delivery' | 'retiro'
   const [orderModality, setOrderModality] = useState<"mesa" | "delivery" | "retiro">(
-    tableId ? "mesa" : "delivery"
+    "mesa"
   );
   const [selectedTableNum, setSelectedTableNum] = useState<string>(
     tableId ? String(tableId) : "1"
@@ -1048,67 +1048,56 @@ function MenuContent() {
 
                   {/* FOOTER DEL CARRITO: Modalidad + Identificación */}
                   <div className="p-4 sm:p-5 pb-8 sm:pb-6 bg-white border-t border-[#c4b896]/25 space-y-3.5">
-                    {/* Selector de Modalidad */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-black tracking-wider uppercase text-[#7a765a]">
-                          ¿Cómo querés tu pedido?
-                        </label>
-                        {tableLabel && orderModality === "mesa" && (
-                          <span className="text-[10px] font-extrabold text-[#1a3028] bg-[#f2f0e6] px-2 py-0.5 rounded-md">
-                            {tableLabel}
-                          </span>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-3 gap-1 bg-[#f2f0e6] p-1 rounded-2xl">
+                    {/* Selector de Modalidad — 2 opciones grandes */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black tracking-wider uppercase text-[#7a765a]">
+                        ¿Cómo querés tu pedido?
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Comer en el local */}
                         <button
                           type="button"
                           onClick={() => setOrderModality("mesa")}
-                          className={`py-2 px-1 rounded-xl text-xs font-black transition-all flex flex-col items-center gap-0.5 ${
+                          className={`relative flex flex-col items-center justify-center gap-1.5 py-4 px-3 rounded-2xl border-2 transition-all font-black text-sm ${
                             orderModality === "mesa"
-                              ? "bg-[#1a3028] text-[#f5e8ca] shadow-sm scale-[1.02]"
-                              : "text-[#7a765a] hover:text-[#1a3028]"
+                              ? "border-[#1a3028] bg-[#1a3028] text-[#f5e8ca] shadow-lg scale-[1.02]"
+                              : "border-[#c4b896]/50 bg-[#fdfbf7] text-[#7a765a] hover:border-[#1a3028]/40"
                           }`}
                         >
-                          <span className="text-base">🍽️</span>
-                          <span>En Mesa</span>
+                          <span className="text-2xl">🍽️</span>
+                          <span className="text-center leading-tight">Comer en<br/>el local</span>
+                          {orderModality === "mesa" && (
+                            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#f5e8ca]" />
+                          )}
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() => setOrderModality("delivery")}
-                          className={`py-2 px-1 rounded-xl text-xs font-black transition-all flex flex-col items-center gap-0.5 ${
-                            orderModality === "delivery"
-                              ? "bg-[#1a3028] text-[#f5e8ca] shadow-sm scale-[1.02]"
-                              : "text-[#7a765a] hover:text-[#1a3028]"
-                          }`}
-                        >
-                          <span className="text-base">🛵</span>
-                          <span>Delivery</span>
-                        </button>
-
+                        {/* Retirar */}
                         <button
                           type="button"
                           onClick={() => setOrderModality("retiro")}
-                          className={`py-2 px-1 rounded-xl text-xs font-black transition-all flex flex-col items-center gap-0.5 ${
+                          className={`relative flex flex-col items-center justify-center gap-1.5 py-4 px-3 rounded-2xl border-2 transition-all font-black text-sm ${
                             orderModality === "retiro"
-                              ? "bg-[#1a3028] text-[#f5e8ca] shadow-sm scale-[1.02]"
-                              : "text-[#7a765a] hover:text-[#1a3028]"
+                              ? "border-[#1a3028] bg-[#1a3028] text-[#f5e8ca] shadow-lg scale-[1.02]"
+                              : "border-[#c4b896]/50 bg-[#fdfbf7] text-[#7a765a] hover:border-[#1a3028]/40"
                           }`}
                         >
-                          <span className="text-base">🏃</span>
-                          <span>Retiro</span>
+                          <span className="text-2xl">🏃</span>
+                          <span className="text-center leading-tight">Retirar<br/>del local</span>
+                          {orderModality === "retiro" && (
+                            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#f5e8ca]" />
+                          )}
                         </button>
                       </div>
                     </div>
 
-                    {/* Campos dinámicos según la modalidad elegida */}
+                    {/* Campos según la modalidad */}
                     {orderModality === "mesa" && (
                       <div className="space-y-2 bg-[#fdfbf7] p-3 rounded-2xl border border-[#c4b896]/30">
+                        <p className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider">Tu información</p>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1">
-                              N° de Mesa *
+                              N° de Mesa
                             </label>
                             <div className="relative">
                               <input
@@ -1125,10 +1114,9 @@ function MenuContent() {
                               </span>
                             </div>
                           </div>
-
                           <div>
                             <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1">
-                              Tu Nombre (opcional)
+                              Tu Nombre
                             </label>
                             <input
                               type="text"
@@ -1142,6 +1130,39 @@ function MenuContent() {
                       </div>
                     )}
 
+                    {orderModality === "retiro" && (
+                      <div className="space-y-2 bg-[#fdfbf7] p-3 rounded-2xl border border-[#c4b896]/30">
+                        <p className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider">Tu información</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1">
+                              Tu Nombre *
+                            </label>
+                            <input
+                              type="text"
+                              value={customerName}
+                              onChange={(e) => setCustomerName(e.target.value)}
+                              placeholder="Ej: Juan"
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1 flex items-center gap-1">
+                              <Phone size={11} className="text-gray-500" /> Teléfono
+                            </label>
+                            <input
+                              type="tel"
+                              value={customerPhone}
+                              onChange={(e) => setCustomerPhone(e.target.value)}
+                              placeholder="223 555-1234"
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Delivery oculto — solo se activa si viene por URL param o desde el dashboard */}
                     {orderModality === "delivery" && (
                       <div className="space-y-2 bg-[#fdfbf7] p-3 rounded-2xl border border-[#c4b896]/30">
                         <div>
@@ -1156,7 +1177,6 @@ function MenuContent() {
                             className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
                           />
                         </div>
-
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1">
@@ -1179,37 +1199,6 @@ function MenuContent() {
                               value={customerPhone}
                               onChange={(e) => setCustomerPhone(e.target.value)}
                               placeholder="Ej: 223 555-1234"
-                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {orderModality === "retiro" && (
-                      <div className="space-y-2 bg-[#fdfbf7] p-3 rounded-2xl border border-[#c4b896]/30">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1">
-                              Tu Nombre para Retirar *
-                            </label>
-                            <input
-                              type="text"
-                              value={customerName}
-                              onChange={(e) => setCustomerName(e.target.value)}
-                              placeholder="Ej: Juan"
-                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1 flex items-center gap-1">
-                              <Phone size={11} className="text-gray-500" /> Teléfono (opcional)
-                            </label>
-                            <input
-                              type="tel"
-                              value={customerPhone}
-                              onChange={(e) => setCustomerPhone(e.target.value)}
-                              placeholder="Contacto de aviso"
                               className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
                             />
                           </div>
