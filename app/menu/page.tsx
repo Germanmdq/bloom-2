@@ -418,7 +418,7 @@ function MenuContent() {
       setCustomerPhone("");
       setOrderNotes("");
       toast.warning("¡Pedido guardado sin conexión! 📶", {
-        description: "Se enviará automáticamente a la cocina en cuanto recuperes señal.",
+        description: "Se enviará automáticamente en cuanto recuperes señal.",
         duration: 5000,
       });
       setTimeout(() => {
@@ -990,10 +990,10 @@ function MenuContent() {
                   <h3 className="font-extrabold text-2xl text-[#1a3028] mb-2">¡Pedido Confirmado!</h3>
                   <p className="text-sm text-[#5f5c46] max-w-xs leading-relaxed">
                     {orderModality === 'mesa' 
-                      ? `Tu pedido fue enviado a la cocina para Mesa ${selectedTableNum || 1}. En breve te lo alcanzamos a tu mesa.`
+                      ? `Tu pedido fue recibido con éxito para la Mesa ${selectedTableNum || 1}. En breve te lo alcanzamos a tu mesa.`
                       : orderModality === 'delivery'
-                      ? `Tu pedido para delivery a "${deliveryAddress}" fue enviado al local. ¡Ya lo estamos preparando!`
-                      : `Tu pedido para retirar fue enviado al local. Te avisaremos cuando esté listo en la barra.`}
+                      ? `Tu pedido fue recibido con éxito. ¡Ya lo estamos preparando para el envío!`
+                      : `Tu pedido fue recibido con éxito. Te avisaremos cuando esté listo en el mostrador.`}
                   </p>
                 </div>
               ) : cart.length === 0 ? (
@@ -1242,12 +1242,12 @@ function MenuContent() {
                       {isSending ? (
                         <>
                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Enviando al sistema...</span>
+                          <span>Enviando pedido...</span>
                         </>
                       ) : (
                         <>
                           <CheckCircle2 size={18} />
-                          <span>Crear Pedido · {formatCurrency(cartTotal)}</span>
+                          <span>Confirmar Pedido · {formatCurrency(cartTotal)}</span>
                         </>
                       )}
                     </button>

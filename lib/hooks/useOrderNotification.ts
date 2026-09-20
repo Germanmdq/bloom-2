@@ -19,16 +19,16 @@ export function useOrderNotification() {
                 (payload: any) => {
                     const newOrder = payload.new;
                     const total = Number(newOrder.total ?? 0);
-                    const customer = newOrder.customer_name || `Pedido #${newOrder.id?.slice(0, 4)}`;
-                    const isWeb = newOrder.order_type === 'web';
+                    const isMesa = Boolean(newOrder.table_id) || newOrder.order_type === 'LOCAL';
+                    const isDelivery = newOrder.delivery_type === 'delivery' || newOrder.order_type === 'DELIVERY';
+                    const customer = newOrder.customer_name || (isMesa ? `Mesa ${newOrder.table_id}` : `Pedido #${newOrder.id?.slice(0, 4)}`);
+                    const tag = isMesa ? `Mesa ${newOrder.table_id}` : isDelivery ? 'Delivery' : 'Retiro';
                     
-                    if (isWeb) {
-                        soundAlerts.playOrderAlert();
-                        toast.success(`Nuevo pedido web: ${customer}`, {
-                            description: `Total: $${total.toLocaleString()}`,
-                            duration: 8000,
-                        });
-                    }
+                    soundAlerts.playOrderAlert();
+                    toast.success(`Nuevo pedido (${tag}): ${customer}`, {
+                        description: `Total: $${total.toLocaleString('es-AR')}`,
+                        duration: 8000,
+                    });
                 }
             )
             .on(
