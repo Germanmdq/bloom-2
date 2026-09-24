@@ -24,6 +24,9 @@ import {
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { saveOfflineOrder } from "@/lib/offline/order-queue";
+import IntroSlider from "@/components/Menu/IntroSlider";
+import PlatoDelDiaSlider from "@/components/Menu/PlatoDelDiaSlider";
+import { TakeAwayIcon, SalonIcon } from "@/components/Menu/AnimatedIcons";
 import "./menu-pwa.css";
 
 // Formato de moneda argentina
@@ -144,6 +147,21 @@ const CATEGORY_EMOJIS: Record<string, React.ReactNode> = {
 // Categorías que NO deben mostrarse en la grilla de inicio (se manejan aparte)
 const HIDDEN_CATEGORIES = ["plato del día", "platos diarios"];
 
+// Categorías cuyos productos se muestran en el slider del Plato del Día
+const PLATO_DIA_CATEGORIES = ["plato del día", "platos diarios", "menú del día"];
+
+// Slide de muestra cuando todavía no hay plato del día cargado
+const PLATO_DIA_PLACEHOLDER = {
+  id: "plato-dia-placeholder",
+  name: "Menú del día",
+  description: "Cada día una receta distinta, recién hecha por nuestra cocina. Consultá el plato de hoy.",
+  price: 0,
+  image_url: "/images/categories/platos-diarios.png",
+};
+
+// El slider de bienvenida se muestra una vez por cada apertura de la app
+const INTRO_SEEN_KEY = "bloom_intro_seen";
+
 // Cambiar esta versión cuando cambia la estructura del catálogo. Así no se
 // hidratan categorías/productos de una versión anterior desde localStorage.
 const MENU_CACHE_VERSION = "v2-four-categories";
@@ -177,9 +195,20 @@ function MenuContent() {
 
   // Montaje en cliente (evita hydration mismatch)
   const [mounted, setMounted] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
   useEffect(() => {
     setMounted(true);
+    try {
+      if (!sessionStorage.getItem(INTRO_SEEN_KEY)) setShowIntro(true);
+    } catch {
+      setShowIntro(true);
+    }
   }, []);
+
+  const finishIntro = () => {
+    setShowIntro(false);
+    try { sessionStorage.setItem(INTRO_SEEN_KEY, "1"); } catch {}
+  };
 
   // Pestaña activa: 'inicio' | 'menu'
   const [activeTab, setActiveTab] = useState<"inicio" | "menu">("inicio");
@@ -296,6 +325,27 @@ function MenuContent() {
       return matchCategory && matchSearch;
     });
   }, [products, selectedCategory, searchQuery]);
+
+  // Slides del Plato del Día: el configurado en el dashboard primero, luego
+  // los productos de las categorías de platos diarios.
+  const platoDiaSlides = useMemo(() => {
+    const catIds = new Set(
+      categories
+        .filter((c) => PLATO_DIA_CATEGORIES.includes(c.name?.toLowerCase()))
+        .map((c) => c.id)
+    );
+    const daily = products.filter((p) => catIds.has(p.category_id));
+    const slides = platoDia ? [platoDia, ...daily.filter((p) => p.id !== platoDia.id)] : daily;
+    return slides.length > 0 ? slides.slice(0, 8) : [PLATO_DIA_PLACEHOLDER];
+  }, [categories, products, platoDia]);
+
+  const startOrder = (modality: "retiro" | "mesa") => {
+    setOrderModality(modality);
+    setSelectedCategory("all");
+    setActiveTab("menu");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    toast.success(modality === "retiro" ? "Pedido para llevar 🛍️" : "Pedido en el salón ☕");
+  };
 
   // Carrito helpers
   const cartTotal = useMemo(
@@ -496,6 +546,10 @@ function MenuContent() {
 
   return (
     <div className="app-shell" suppressHydrationWarning>
+      <AnimatePresence>
+        {showIntro && <IntroSlider onFinish={finishIntro} />}
+      </AnimatePresence>
+
       {/* HEADER SUPERIOR */}
       <header className="sticky top-0 z-40 bg-[#fffdf8]/90 backdrop-blur-md border-b border-[#c4b896]/20 px-4 py-3 sm:px-8">
         <div className="max-w-[1180px] mx-auto flex items-center justify-between">
@@ -553,92 +607,47 @@ function MenuContent() {
         ============================================ */}
         {activeTab === "inicio" && (
           <>
-            {/* BANNER HERO */}
-            <div className="px-4 md:px-0 mb-5">
-              <div className="rounded-[24px] bg-[#1a3028] text-white p-6 shadow-md border border-[#c4b896]/20 relative overflow-hidden">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-[#c4b896] bg-white/10 px-3 py-1 rounded-full inline-block mb-2">
-                  Bloom Café de Especialidad
-                </span>
-                <h2 className="text-2xl font-extrabold text-[#f5e8ca]">Donde cada taza florece</h2>
-                <p className="text-xs text-[#a8c9b8] mt-1.5 max-w-sm leading-relaxed">
-                  Disfrutá de nuestros cafés tostados de especialidad, pastelería fresca del día y tostados artesanales.
-                </p>
-                <div className="mt-4 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab("menu");
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                    className="bg-[#c4b896] text-[#1a3028] text-xs font-bold px-4 py-2.5 rounded-full hover:bg-[#f5e8ca] transition-transform active:scale-95 cursor-pointer"
-                  >
-                    Explorar Menú Completo →
-                  </button>
-                </div>
-              </div>
+            {/* ========== TAKE AWAY / SALÓN ========== */}
+            <div className="px-4 md:px-0 mb-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => startOrder("retiro")}
+                className="flex flex-col items-center justify-center gap-2 py-6 rounded-[22px] bg-[#1a3028] text-[#f5e8ca] shadow-md active:scale-[0.97] transition-transform"
+              >
+                <TakeAwayIcon size={48} />
+                <span className="text-base font-extrabold tracking-wide">TAKE AWAY</span>
+                <span className="text-[11px] text-[#a8c9b8] font-semibold">Para llevar</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => startOrder("mesa")}
+                className="flex flex-col items-center justify-center gap-2 py-6 rounded-[22px] bg-[#c4b896] text-[#1a3028] shadow-md active:scale-[0.97] transition-transform"
+              >
+                <SalonIcon size={48} />
+                <span className="text-base font-extrabold tracking-wide">SALÓN</span>
+                <span className="text-[11px] text-[#1a3028]/70 font-semibold">Comer en el local</span>
+              </button>
             </div>
 
-            {/* ========== PLATO DEL DÍA ========== */}
-            {platoDia && (
-              <>
-                <div className="px-4 md:px-0 mb-3">
-                  <h2 className="text-xl font-extrabold text-[#1a3028] tracking-tight">
-                    🍽️ Plato del Día
-                  </h2>
-                  <p className="text-xs text-[#7a765a] mt-0.5">
-                    Nuestra recomendación especial de hoy
-                  </p>
-                </div>
-                <div className="px-4 md:px-0 mb-6">
-                  <div
-                    onClick={() => handleOpenProduct(platoDia)}
-                    className="w-full bg-white rounded-[22px] border border-[#c4b896]/25 overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow"
-                  >
-                    {/* Franja superior destacada para el badge sin superposición */}
-                    <div className="bg-[#1a3028] px-4 py-2.5 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-[#f5e8ca] text-xs font-extrabold uppercase tracking-wider">
-                        <span>⭐</span>
-                        <span>Plato del Día</span>
-                      </div>
-                      <span className="text-[11px] text-[#c4b896] font-semibold">
-                        Recomendación del chef
-                      </span>
-                    </div>
-
-                    {/* Imagen del plato */}
-                    <div className="w-full h-[190px] sm:h-[230px] overflow-hidden relative bg-[#edeae0]">
-                      <img
-                        src={
-                          platoDia.image_url ||
-                          "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop"
-                        }
-                        alt=""
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop";
-                        }}
-                      />
-                    </div>
-
-                    {/* Info del plato */}
-                    <div className="p-4 pb-5">
-                      <h3 className="font-extrabold text-lg text-[#1a3028] leading-snug">{platoDia.name}</h3>
-                      {platoDia.description && (
-                        <p className="text-[13px] text-[#6b6756] mt-1.5 leading-relaxed line-clamp-2">{platoDia.description}</p>
-                      )}
-                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#c4b896]/20">
-                        <span className="font-extrabold text-xl text-[#1a3028]">
-                          {formatCurrency(platoDia.price)}
-                        </span>
-                        <span className="bg-[#1a3028] text-[#f5e8ca] text-xs font-bold px-4 py-2 rounded-full shadow-sm">
-                          Ver detalle →
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
+            {/* ========== PLATO DEL DÍA (slider a todo el ancho) ========== */}
+            <div className="px-4 md:px-0 mb-3">
+              <h2 className="text-xl font-extrabold text-[#1a3028] tracking-tight">
+                🍽️ Plato del Día
+              </h2>
+              <p className="text-xs text-[#7a765a] mt-0.5">
+                Nuestra recomendación especial de hoy
+              </p>
+            </div>
+            <div className="px-4 md:px-0 mb-6">
+              <PlatoDelDiaSlider
+                items={platoDiaSlides}
+                onSelect={(item) => {
+                  if (item.id !== PLATO_DIA_PLACEHOLDER.id) return handleOpenProduct(item);
+                  setActiveTab("menu");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              />
+            </div>
 
             {/* ========== CATEGORÍAS CON EMOJIS ========== */}
             <div className="px-4 md:px-0 mb-3">

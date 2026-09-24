@@ -512,3 +512,83 @@
   }
 }
 
+
+/* ================================
+   SLIDER PLATO DEL DÍA
+================================ */
+
+.plato-slider {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.plato-slider::-webkit-scrollbar {
+  display: none;
+}
+
+/* ================================
+   ÍCONOS ANIMADOS (minimalistas)
+================================ */
+
+.anim-icon {
+  overflow: visible;
+}
+
+.anim-bag-body {
+  transform-origin: 24px 42px;
+  animation: anim-bag-sway 2.8s ease-in-out infinite;
+}
+
+.anim-bag-check {
+  stroke-dasharray: 20;
+  stroke-dashoffset: 20;
+  animation: anim-draw 2.8s ease-in-out infinite;
+}
+
+.anim-steam {
+  opacity: 0;
+  animation: anim-steam 2.4s ease-in-out infinite;
+}
+
+.anim-steam-2 { animation-delay: 0.4s; }
+.anim-steam-3 { animation-delay: 0.8s; }
+
+.anim-dish-lid {
+  transform-origin: 8px 32px;
+  animation: anim-lid 3s ease-in-out infinite;
+}
+
+@keyframes anim-bag-sway {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-5deg); }
+  40% { transform: rotate(4deg); }
+  55% { transform: rotate(0deg); }
+}
+
+@keyframes anim-draw {
+  0%, 35% { stroke-dashoffset: 20; }
+  60%, 100% { stroke-dashoffset: 0; }
+}
+
+@keyframes anim-steam {
+  0% { opacity: 0; transform: translateY(4px); }
+  40% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-5px); }
+}
+
+@keyframes anim-lid {
+  0%, 60%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-14deg); }
+  40% { transform: rotate(-14deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-bag-body,
+  .anim-bag-check,
+  .anim-steam,
+  .anim-dish-lid {
+    animation: none;
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+}
