@@ -17,13 +17,15 @@ import {
   Trash2,
   CheckCircle2,
   Phone,
+  ChevronLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { saveOfflineOrder } from "@/lib/offline/order-queue";
 import IntroSlider from "@/components/Menu/IntroSlider";
 import { TakeAwayIcon, SalonIcon } from "@/components/Menu/AnimatedIcons";
-import { buildCatalog, type MenuVariant } from "@/lib/menu/catalog";
+import { buildCatalog, toMenuItem, type MenuItem } from "@/lib/menu/catalog";
+import OptionSheet, { type SheetLine } from "@/components/Menu/OptionSheet";
 import "./menu-pwa.css";
 
 // Formato de moneda argentina
@@ -113,6 +115,14 @@ const FALLBACK_PRODUCTS = [
   },
 ];
 
+// Íconos de las tarjetas de categorías del menú
+const CATEGORY_ICONS: Record<string, string> = {
+  "menú del día": "⭐",
+  "cafetería": "☕",
+  "platos": "🍽️",
+  "promos": "🏷️",
+};
+
 // El slider de bienvenida se muestra una vez por cada apertura de la app
 const INTRO_SEEN_KEY = "bloom_intro_seen";
 
@@ -178,9 +188,7 @@ function MenuContent() {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Producto seleccionado para el modal de detalle
-  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
-  const [modalQuantity, setModalQuantity] = useState(1);
-  const [selectedVariant, setSelectedVariant] = useState<MenuVariant | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<MenuItem | null>(null);
 
   // Carrito
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -264,22 +272,31 @@ function MenuContent() {
     loadData();
   }, [supabase]);
 
-  // Catálogo a mostrar: combos dentro de Promos y Café/Té agrupados
-  const catalog = useMemo(() => buildCatalog(categories, products), [categories, products]);
+  // Modalidad del menú: Take Away (retiro/delivery) o Salón
+  const menuModality = orderModality === "mesa" ? "salon" : "takeaway";
 
-  // Filtrado reactivo de productos
+  // Catálogo de la modalidad: combos en Promos y productos con variantes agrupados
+  const catalog = useMemo(
+    () => buildCatalog(categories, products, menuModality),
+    [categories, products, menuModality]
+  );
+
+  // Productos a mostrar: los de la categoría abierta, o los que coinciden con la búsqueda
   const filteredProducts = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    return catalog.items.filter((p) => {
-      const matchCategory = selectedCategory === "all" || p.category_id === selectedCategory;
-      const matchSearch =
-        !q ||
-        p.name?.toLowerCase().includes(q) ||
-        p.description?.toLowerCase().includes(q) ||
-        p.variants?.some((v: MenuVariant) => v.label.toLowerCase().includes(q));
-      return matchCategory && matchSearch;
-    });
+    if (q) {
+      return catalog.items.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q) ||
+          p.variants.some((v) => v.label.toLowerCase().includes(q)) ||
+          p.options.some((o) => o.choices.some((c) => c.toLowerCase().includes(q)))
+      );
+    }
+    return catalog.items.filter((p) => p.category_id === selectedCategory);
   }, [catalog, selectedCategory, searchQuery]);
+
+  const openCategory = catalog.displayCategories.find((c) => c.id === selectedCategory);
 
   const startOrder = (modality: "retiro" | "mesa") => {
     setOrderModality(modality);
@@ -299,43 +316,21 @@ function MenuContent() {
     [cart]
   );
 
-  const handleOpenProduct = (p: any) => {
-    setSelectedProduct(p);
-    setSelectedVariant(p.variants?.[0] ?? null);
-    setModalQuantity(1);
-  };
+  const handleOpenProduct = (item: MenuItem) => setSelectedProduct(item);
 
-  // Lo que se agrega al pedido: la variante elegida o el producto suelto
-  const modalItem = selectedProduct
-    ? selectedVariant
-      ? {
-          id: selectedVariant.productId,
-          name: selectedVariant.label,
-          price: selectedVariant.price,
-          image_url: selectedVariant.image_url,
-        }
-      : {
-          id: selectedProduct.id,
-          name: selectedProduct.name,
-          price: Number(selectedProduct.price) || 0,
-          image_url: selectedProduct.image_url,
-        }
-    : null;
-
-  const handleAddToCart = () => {
-    if (!modalItem) return;
-    const key = `${modalItem.id}::${modalItem.name}`;
+  const handleAddToCart = (line: SheetLine, quantity: number) => {
+    const key = `${line.id}::${line.name}`;
     setCart((prev) => {
       if (prev.some((item) => item.key === key)) {
         return prev.map((item) =>
-          item.key === key ? { ...item, quantity: item.quantity + modalQuantity } : item
+          item.key === key ? { ...item, quantity: item.quantity + quantity } : item
         );
       }
-      return [...prev, { key, ...modalItem, quantity: modalQuantity }];
+      return [...prev, { key, ...line, quantity }];
     });
 
-    toast.success(`Agregado al pedido (${modalQuantity})`, {
-      description: modalItem.name,
+    toast.success(`Agregado al pedido (${quantity})`, {
+      description: line.name,
     });
     setSelectedProduct(null);
   };
@@ -591,7 +586,7 @@ function MenuContent() {
                 </div>
                 <div className="px-4 md:px-0 mb-8">
                   <article
-                    onClick={() => handleOpenProduct(platoDia)}
+                    onClick={() => handleOpenProduct(toMenuItem(platoDia))}
                     className="w-full bg-white rounded-[22px] border border-[#c4b896]/25 overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow"
                   >
                     <div className="w-full h-[210px] sm:h-[280px] relative bg-[#edeae0] overflow-hidden">
@@ -635,12 +630,31 @@ function MenuContent() {
         ============================================ */}
         {activeTab === "menu" && (
           <>
+            {/* MODALIDAD ELEGIDA */}
+            <div className="flex items-center justify-between px-[18px] md:px-0 pt-3">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-[#4b4e38]">
+                {menuModality === "salon" ? "🍽️ Salón" : "🛍️ Take Away"}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("inicio");
+                  setSelectedCategory("all");
+                  setSearchQuery("");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="text-xs font-bold text-[#777b5b] underline underline-offset-4"
+              >
+                Cambiar
+              </button>
+            </div>
+
             {/* BUSCADOR */}
             <section className="search-box" aria-label="Buscador de productos">
               <Search size={18} className="text-[#a39a7f] shrink-0" />
               <input
                 type="text"
-                placeholder="Buscar café, tostados, medialunas..."
+                placeholder={menuModality === "salon" ? "Buscar en Salón…" : "Buscar en Take Away…"}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -655,191 +669,124 @@ function MenuContent() {
               )}
             </section>
 
-            {/* FILTROS HORIZONTALES DE CATEGORÍAS */}
-            <nav className="filter-scroll" aria-label="Categorías de productos">
-              <button
-                onClick={() => setSelectedCategory("all")}
-                className={`filter-chip ${selectedCategory === "all" ? "active" : ""}`}
-              >
-                Todos
-              </button>
-              {catalog.displayCategories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`filter-chip ${selectedCategory === cat.id ? "active" : ""}`}
-                >
-                  {cat.name}
-                </button>
-              ))}
-            </nav>
+            {/* CATEGORÍAS DE LA MODALIDAD (tarjetas) */}
+            {!searchQuery.trim() && !openCategory && (
+              <section className="menu-category-grid" aria-label="Categorías">
+                {catalog.displayCategories.map((cat) => {
+                  const catItems = catalog.items.filter((it) => it.category_id === cat.id);
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory(cat.id);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className="menu-category-card"
+                    >
+                      <span className="text-4xl leading-none">
+                        {CATEGORY_ICONS[cat.name.toLowerCase()] ?? "🍴"}
+                      </span>
+                      <span className="font-extrabold text-base text-[#4b4e38] mt-1">{cat.name}</span>
+                      <span className="text-[12px] text-[#7a765a] leading-snug line-clamp-2">
+                        {catItems.map((it) => it.name).join(" · ")}
+                      </span>
+                    </button>
+                  );
+                })}
+              </section>
+            )}
 
-            {/* GRILLA DE PRODUCTOS */}
-            <section className="products-grid" aria-label="Catálogo de productos">
-              {filteredProducts.map((p) => {
-                const catObj = catalog.displayCategories.find((c) => c.id === p.category_id);
-                const catName = catObj?.name || "Café & Delicias";
-                const imageUrl = p.image_url || FALLBACK_PRODUCT_IMAGE;
+            {/* PRODUCTOS DE LA CATEGORÍA ABIERTA O DE LA BÚSQUEDA */}
+            {(searchQuery.trim() || openCategory) && (
+              <>
+                {!searchQuery.trim() && openCategory && (
+                  <div className="flex items-center gap-3 px-[18px] md:px-0 mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory("all")}
+                      className="flex items-center gap-1 text-xs font-bold bg-white border border-[#c4b896]/40 text-[#4b4e38] px-3.5 py-2 rounded-full shadow-sm"
+                    >
+                      <ChevronLeft size={15} /> Categorías
+                    </button>
+                    <h2 className="font-extrabold text-xl text-[#4b4e38] truncate">{openCategory.name}</h2>
+                  </div>
+                )}
 
-                return (
-                  <article
-                    key={p.id}
-                    onClick={() => handleOpenProduct(p)}
-                    className="product-card"
-                  >
-                    <div className="product-image">
-                      <Image
-                        src={imageUrl}
-                        alt={p.name}
-                        width={400}
-                        height={400}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    </div>
-                    <div className="product-info">
-                      <small>{catName}</small>
-                      <h3>{p.name}</h3>
-                      {p.description && <p>{p.description}</p>}
-                      <span className="product-price">{p.variants ? `Desde ${formatCurrency(p.price)}` : formatCurrency(p.price)}</span>
-                    </div>
-                  </article>
-                );
-              })}
-            </section>
+                <section className="products-grid" aria-label="Productos">
+                  {filteredProducts.map((p) => {
+                    const catName =
+                      catalog.displayCategories.find((c) => c.id === p.category_id)?.name ?? "";
+                    const hasChoices =
+                      p.variants.length > 1 || p.options.length > 0 || !!p.pick || !!p.repeat;
+                    return (
+                      <article
+                        key={p.id}
+                        onClick={() => handleOpenProduct(p)}
+                        className="product-card"
+                      >
+                        <div className="product-image">
+                          <Image
+                            src={p.image_url || FALLBACK_PRODUCT_IMAGE}
+                            alt={p.name}
+                            width={400}
+                            height={400}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                        <div className="product-info">
+                          <small>{catName}</small>
+                          <h3>{p.name}</h3>
+                          {p.description && <p>{p.description}</p>}
+                          <span className="product-price">
+                            {p.variants.length > 1 ? `Desde ${formatCurrency(p.price)}` : formatCurrency(p.price)}
+                          </span>
+                          {hasChoices && (
+                            <span className="block mt-1 text-[11px] font-bold text-[#777b5b]">
+                              Elegir opciones ›
+                            </span>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </section>
 
-            {filteredProducts.length === 0 && (
-              <div className="text-center py-16 px-4">
-                <p className="text-[#7a765a] font-medium text-sm">
-                  No encontramos productos que coincidan con tu búsqueda.
-                </p>
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedCategory("all");
-                  }}
-                  className="mt-3 text-xs font-bold text-[#4b4e38] underline underline-offset-4"
-                >
-                  Ver todos los productos
-                </button>
-              </div>
+                {filteredProducts.length === 0 && (
+                  <div className="text-center py-16 px-4">
+                    <p className="text-[#7a765a] font-medium text-sm">
+                      No encontramos productos que coincidan con tu búsqueda.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setSearchQuery("");
+                        setSelectedCategory("all");
+                      }}
+                      className="mt-3 text-xs font-bold text-[#4b4e38] underline underline-offset-4"
+                    >
+                      Ver categorías
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
       </main>
 
-      {/* MODAL: PRODUCTO ABIERTO */}
+      {/* HOJA INFERIOR: VARIANTES Y OPCIONES DEL PRODUCTO */}
       <AnimatePresence>
         {selectedProduct && (
-          <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedProduct(null)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-            />
-
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", stiffness: 350, damping: 35 }}
-              className="relative w-full max-w-lg bg-[#ffffff] rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col z-[160] pb-6 sm:pb-4"
-            >
-              <button
-                onClick={() => setSelectedProduct(null)}
-                className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/40 text-white backdrop-blur-md flex items-center justify-center hover:bg-black/60 transition-colors"
-                aria-label="Cerrar detalle"
-              >
-                <X size={20} />
-              </button>
-
-              <div className="overflow-y-auto product-detail">
-                <div className="product-detail-image">
-                  <Image
-                    src={modalItem?.image_url || selectedProduct.image_url || FALLBACK_PRODUCT_IMAGE}
-                    alt={selectedProduct.name}
-                    width={600}
-                    height={600}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                <div className="product-detail-content">
-                  <small>
-                    {catalog.displayCategories.find((c) => c.id === selectedProduct.category_id)?.name ||
-                      "Bloom Selección"}
-                  </small>
-                  <h1>{selectedProduct.name}</h1>
-                  {selectedProduct.description && (
-                    <p>{selectedProduct.description}</p>
-                  )}
-                  {selectedProduct.variants && (
-                    <label className="block mt-5">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#7a765a] block mb-2">
-                        Elegí la opción:
-                      </span>
-                      <select
-                        value={selectedProduct.variants.indexOf(selectedVariant)}
-                        onChange={(e) =>
-                          setSelectedVariant(selectedProduct.variants[Number(e.target.value)])
-                        }
-                        className="w-full text-sm font-semibold text-[#4b4e38] px-4 py-3 rounded-2xl border border-[#c4b896]/50 bg-[#fdfbf7] outline-none focus:border-[#777b5b]"
-                      >
-                        {selectedProduct.variants.map((v: MenuVariant, i: number) => (
-                          <option key={`${v.productId}-${v.label}`} value={i}>
-                            {v.label} — {formatCurrency(v.price)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
-
-                  <span className="product-detail-price">
-                    {formatCurrency((modalItem?.price ?? 0) * modalQuantity)}
-                  </span>
-
-                  {/* Selector de cantidad */}
-                  <div className="flex items-center gap-4 mt-6">
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#7a765a]">
-                      Cantidad:
-                    </span>
-                    <div className="flex items-center gap-3 bg-[#f2f0e6] px-3 py-1.5 rounded-full border border-[#c4b896]/30">
-                      <button
-                        onClick={() => setModalQuantity((q) => Math.max(1, q - 1))}
-                        disabled={modalQuantity <= 1}
-                        className="p-1 rounded-full text-[#4b4e38] disabled:opacity-30"
-                        aria-label="Disminuir cantidad"
-                      >
-                        <Minus size={16} />
-                      </button>
-                      <span className="font-bold text-sm min-w-[20px] text-center text-[#4b4e38]">
-                        {modalQuantity}
-                      </span>
-                      <button
-                        onClick={() => setModalQuantity((q) => q + 1)}
-                        className="p-1 rounded-full text-[#4b4e38]"
-                        aria-label="Aumentar cantidad"
-                      >
-                        <Plus size={16} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleAddToCart}
-                    className="primary-action"
-                  >
-                    <ShoppingBag size={20} />
-                    <span>
-                      Agregar al pedido · {formatCurrency((modalItem?.price ?? 0) * modalQuantity)}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
+          <OptionSheet
+            key={selectedProduct.id}
+            item={selectedProduct}
+            categoryName={
+              catalog.displayCategories.find((c) => c.id === selectedProduct.category_id)?.name
+            }
+            onClose={() => setSelectedProduct(null)}
+            onAdd={handleAddToCart}
+          />
         )}
       </AnimatePresence>
 
