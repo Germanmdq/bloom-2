@@ -539,7 +539,7 @@ function MenuContent() {
   if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f7f5ef]" suppressHydrationWarning>
-        <div className="w-10 h-10 border-4 border-[#c4b896] border-t-[#1a3028] rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-[#c4b896] border-t-[#777b5b] rounded-full animate-spin" />
       </div>
     );
   }
@@ -565,11 +565,11 @@ function MenuContent() {
               }}
               className="flex items-center gap-2.5 cursor-pointer text-left no-underline"
             >
-              <div className="w-9 h-9 rounded-xl bg-[#1a3028] flex items-center justify-center text-[#f5e8ca] shadow-sm">
+              <div className="w-9 h-9 rounded-xl bg-[#777b5b] flex items-center justify-center text-[#f5e8ca] shadow-sm">
                 <Coffee size={19} />
               </div>
               <div>
-                <span className="font-extrabold text-base tracking-tight text-[#1a3028] block leading-none">
+                <span className="font-extrabold text-base tracking-tight text-[#4b4e38] block leading-none">
                   BLOOM
                 </span>
                 <span className="text-[10px] uppercase font-bold tracking-widest text-[#7a765a] block leading-tight">
@@ -581,18 +581,18 @@ function MenuContent() {
 
           <div className="flex items-center gap-2">
             {tableLabel && (
-              <span className="bg-[#1a3028] text-[#f5e8ca] text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
+              <span className="bg-[#777b5b] text-[#f5e8ca] text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
                 {tableLabel}
               </span>
             )}
             <button
               onClick={() => setIsCartOpen(true)}
-              className="relative p-2 rounded-xl bg-white border border-[#c4b896]/30 text-[#1a3028] shadow-sm hover:bg-[#f2f0e6] transition-colors"
+              className="relative p-2 rounded-xl bg-white border border-[#c4b896]/30 text-[#4b4e38] shadow-sm hover:bg-[#f2f0e6] transition-colors"
               aria-label="Abrir carrito de compras"
             >
               <ShoppingBag size={20} />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#1a3028] text-[#f5e8ca] text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
+                <span className="absolute -top-1 -right-1 bg-[#777b5b] text-[#f5e8ca] text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
                   {cartCount}
                 </span>
               )}
@@ -612,26 +612,26 @@ function MenuContent() {
               <button
                 type="button"
                 onClick={() => startOrder("retiro")}
-                className="flex flex-col items-center justify-center gap-2 py-6 rounded-[22px] bg-[#1a3028] text-[#f5e8ca] shadow-md active:scale-[0.97] transition-transform"
+                className="flex flex-col items-center justify-center gap-2 py-6 rounded-[22px] bg-[#777b5b] text-[#f5e8ca] shadow-md active:scale-[0.97] transition-transform"
               >
                 <TakeAwayIcon size={48} />
                 <span className="text-base font-extrabold tracking-wide">TAKE AWAY</span>
-                <span className="text-[11px] text-[#a8c9b8] font-semibold">Para llevar</span>
+                <span className="text-[11px] text-[#ebe8d6] font-semibold">Para llevar</span>
               </button>
               <button
                 type="button"
                 onClick={() => startOrder("mesa")}
-                className="flex flex-col items-center justify-center gap-2 py-6 rounded-[22px] bg-[#c4b896] text-[#1a3028] shadow-md active:scale-[0.97] transition-transform"
+                className="flex flex-col items-center justify-center gap-2 py-6 rounded-[22px] bg-[#c4b896] text-[#4b4e38] shadow-md active:scale-[0.97] transition-transform"
               >
                 <SalonIcon size={48} />
                 <span className="text-base font-extrabold tracking-wide">SALÓN</span>
-                <span className="text-[11px] text-[#1a3028]/70 font-semibold">Comer en el local</span>
+                <span className="text-[11px] text-[#4b4e38]/70 font-semibold">Comer en el local</span>
               </button>
             </div>
 
             {/* ========== PLATO DEL DÍA (slider a todo el ancho) ========== */}
             <div className="px-4 md:px-0 mb-3">
-              <h2 className="text-xl font-extrabold text-[#1a3028] tracking-tight">
+              <h2 className="text-xl font-extrabold text-[#4b4e38] tracking-tight">
                 🍽️ Plato del Día
               </h2>
               <p className="text-xs text-[#7a765a] mt-0.5">
@@ -651,7 +651,7 @@ function MenuContent() {
 
             {/* ========== CATEGORÍAS CON EMOJIS ========== */}
             <div className="px-4 md:px-0 mb-3">
-              <h3 className="text-base font-extrabold text-[#1a3028] tracking-tight">
+              <h3 className="text-base font-extrabold text-[#4b4e38] tracking-tight">
                 Nuestras Categorías
               </h3>
             </div>
@@ -672,7 +672,7 @@ function MenuContent() {
                     className="category-card-emoji"
                   >
                     <span className="text-4xl h-10 flex items-center justify-center mb-2">{emoji}</span>
-                    <h3 className="font-bold text-sm text-[#1a3028] leading-tight">{cat.name}</h3>
+                    <h3 className="font-bold text-sm text-[#4b4e38] leading-tight">{cat.name}</h3>
                     <small className="text-[11px] text-[#7a765a] font-medium mt-1 block">
                       {productCount} {productCount === 1 ? "producto" : "productos"}
                     </small>
@@ -689,7 +689,7 @@ function MenuContent() {
                   setActiveTab("menu");
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className="w-full flex items-center justify-center gap-2 bg-[#1a3028] text-[#f5e8ca] text-sm font-bold px-6 py-4 rounded-2xl shadow-lg hover:bg-[#243d32] transition-colors active:scale-[0.98]"
+                className="w-full flex items-center justify-center gap-2 bg-[#777b5b] text-[#f5e8ca] text-sm font-bold px-6 py-4 rounded-2xl shadow-lg hover:bg-[#63674a] transition-colors active:scale-[0.98]"
               >
                 <Coffee size={18} />
                 Ver Menú Completo
@@ -716,7 +716,7 @@ function MenuContent() {
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="text-[#a39a7f] hover:text-[#1a3028] p-1"
+                  className="text-[#a39a7f] hover:text-[#4b4e38] p-1"
                   aria-label="Limpiar búsqueda"
                 >
                   <X size={16} />
@@ -789,7 +789,7 @@ function MenuContent() {
                     setSearchQuery("");
                     setSelectedCategory("all");
                   }}
-                  className="mt-3 text-xs font-bold text-[#1a3028] underline underline-offset-4"
+                  className="mt-3 text-xs font-bold text-[#4b4e38] underline underline-offset-4"
                 >
                   Ver todos los productos
                 </button>
@@ -862,17 +862,17 @@ function MenuContent() {
                       <button
                         onClick={() => setModalQuantity((q) => Math.max(1, q - 1))}
                         disabled={modalQuantity <= 1}
-                        className="p-1 rounded-full text-[#1a3028] disabled:opacity-30"
+                        className="p-1 rounded-full text-[#4b4e38] disabled:opacity-30"
                         aria-label="Disminuir cantidad"
                       >
                         <Minus size={16} />
                       </button>
-                      <span className="font-bold text-sm min-w-[20px] text-center text-[#1a3028]">
+                      <span className="font-bold text-sm min-w-[20px] text-center text-[#4b4e38]">
                         {modalQuantity}
                       </span>
                       <button
                         onClick={() => setModalQuantity((q) => q + 1)}
-                        className="p-1 rounded-full text-[#1a3028]"
+                        className="p-1 rounded-full text-[#4b4e38]"
                         aria-label="Aumentar cantidad"
                       >
                         <Plus size={16} />
@@ -917,10 +917,10 @@ function MenuContent() {
             >
               <div className="p-5 border-b border-[#c4b896]/25 flex items-center justify-between bg-white">
                 <div className="flex items-center gap-2">
-                  <ShoppingBag size={22} className="text-[#1a3028]" />
-                  <h2 className="font-extrabold text-lg text-[#1a3028]">Tu Pedido</h2>
+                  <ShoppingBag size={22} className="text-[#4b4e38]" />
+                  <h2 className="font-extrabold text-lg text-[#4b4e38]">Tu Pedido</h2>
                   {tableLabel && (
-                    <span className="text-[10px] bg-[#1a3028] text-[#f5e8ca] font-bold px-2.5 py-0.5 rounded-full">
+                    <span className="text-[10px] bg-[#777b5b] text-[#f5e8ca] font-bold px-2.5 py-0.5 rounded-full">
                       {tableLabel}
                     </span>
                   )}
@@ -937,7 +937,7 @@ function MenuContent() {
               {orderSuccess ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
                   <CheckCircle2 size={64} className="text-[#10b981] mb-4 animate-bounce" />
-                  <h3 className="font-extrabold text-2xl text-[#1a3028] mb-2">¡Pedido Confirmado!</h3>
+                  <h3 className="font-extrabold text-2xl text-[#4b4e38] mb-2">¡Pedido Confirmado!</h3>
                   <p className="text-sm text-[#5f5c46] max-w-xs leading-relaxed">
                     {orderModality === 'mesa' 
                       ? `Tu pedido fue recibido con éxito para la Mesa ${selectedTableNum || 1}. En breve te lo alcanzamos a tu mesa.`
@@ -951,13 +951,13 @@ function MenuContent() {
                   <div className="w-16 h-16 rounded-full bg-[#f2f0e6] flex items-center justify-center text-[#7a765a] mb-4">
                     <ShoppingBag size={28} />
                   </div>
-                  <h3 className="font-bold text-base text-[#1a3028] mb-1">El pedido está vacío</h3>
+                  <h3 className="font-bold text-base text-[#4b4e38] mb-1">El pedido está vacío</h3>
                   <p className="text-xs text-[#7a765a] max-w-xs mb-6">
                     Explora nuestra carta y selecciona lo que más te guste para disfrutar.
                   </p>
                   <button
                     onClick={() => setIsCartOpen(false)}
-                    className="text-xs font-bold bg-[#1a3028] text-[#f5e8ca] px-5 py-2.5 rounded-full shadow-md hover:bg-[#243d32] transition-colors"
+                    className="text-xs font-bold bg-[#777b5b] text-[#f5e8ca] px-5 py-2.5 rounded-full shadow-md hover:bg-[#63674a] transition-colors"
                   >
                     Ver Menú
                   </button>
@@ -971,7 +971,7 @@ function MenuContent() {
                         className="bg-white p-3.5 rounded-2xl border border-[#c4b896]/25 flex items-center justify-between gap-3 shadow-sm"
                       >
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-sm text-[#1a3028] truncate">{item.name}</h4>
+                          <h4 className="font-bold text-sm text-[#4b4e38] truncate">{item.name}</h4>
                           <span className="text-xs font-semibold text-[#7a765a]">
                             {formatCurrency(item.price)} c/u
                           </span>
@@ -980,24 +980,24 @@ function MenuContent() {
                         <div className="flex items-center gap-2 bg-[#f2f0e6] px-2 py-1 rounded-full">
                           <button
                             onClick={() => updateQuantity(item.id, -1)}
-                            className="p-1 text-[#1a3028] hover:text-black"
+                            className="p-1 text-[#4b4e38] hover:text-black"
                             aria-label="Restar 1"
                           >
                             {item.quantity === 1 ? <Trash2 size={13} /> : <Minus size={13} />}
                           </button>
-                          <span className="font-bold text-xs min-w-[16px] text-center text-[#1a3028]">
+                          <span className="font-bold text-xs min-w-[16px] text-center text-[#4b4e38]">
                             {item.quantity}
                           </span>
                           <button
                             onClick={() => updateQuantity(item.id, 1)}
-                            className="p-1 text-[#1a3028] hover:text-black"
+                            className="p-1 text-[#4b4e38] hover:text-black"
                             aria-label="Sumar 1"
                           >
                             <Plus size={13} />
                           </button>
                         </div>
 
-                        <span className="font-extrabold text-sm text-[#1a3028] min-w-[65px] text-right">
+                        <span className="font-extrabold text-sm text-[#4b4e38] min-w-[65px] text-right">
                           {formatCurrency(item.price * item.quantity)}
                         </span>
                       </div>
@@ -1006,7 +1006,7 @@ function MenuContent() {
                     {/* Selector de Modalidad — 2 opciones grandes (DENTRO del scroll para que siempre sea visible) */}
                     <div className="mt-4 pt-4 border-t border-[#c4b896]/30 space-y-3">
                       <div className="space-y-2">
-                        <label className="text-xs font-black tracking-wider uppercase text-[#1a3028] block">
+                        <label className="text-xs font-black tracking-wider uppercase text-[#4b4e38] block">
                           ¿Cómo querés tu pedido? *
                         </label>
                         <div className="grid grid-cols-2 gap-2">
@@ -1016,8 +1016,8 @@ function MenuContent() {
                             onClick={() => setOrderModality("mesa")}
                             className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-3 rounded-2xl border-2 transition-all font-black text-sm ${
                               orderModality === "mesa"
-                                ? "border-[#1a3028] bg-[#1a3028] text-[#f5e8ca] shadow-lg scale-[1.01]"
-                                : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#1a3028]/40"
+                                ? "border-[#777b5b] bg-[#777b5b] text-[#f5e8ca] shadow-lg scale-[1.01]"
+                                : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#777b5b]/40"
                             }`}
                           >
                             <span className="text-2xl">🍽️</span>
@@ -1033,8 +1033,8 @@ function MenuContent() {
                             onClick={() => setOrderModality("retiro")}
                             className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-3 rounded-2xl border-2 transition-all font-black text-sm ${
                               orderModality === "retiro"
-                                ? "border-[#1a3028] bg-[#1a3028] text-[#f5e8ca] shadow-lg scale-[1.01]"
-                                : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#1a3028]/40"
+                                ? "border-[#777b5b] bg-[#777b5b] text-[#f5e8ca] shadow-lg scale-[1.01]"
+                                : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#777b5b]/40"
                             }`}
                           >
                             <span className="text-2xl">🏃</span>
@@ -1063,7 +1063,7 @@ function MenuContent() {
                                   value={selectedTableNum}
                                   onChange={(e) => setSelectedTableNum(e.target.value)}
                                   placeholder="Ej: 3"
-                                  className="w-full text-xs font-extrabold px-3 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028] focus:ring-1 focus:ring-[#1a3028]"
+                                  className="w-full text-xs font-extrabold px-3 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#777b5b] focus:ring-1 focus:ring-[#777b5b]"
                                 />
                                 <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#7a765a]">
                                   1-40
@@ -1079,7 +1079,7 @@ function MenuContent() {
                                 value={customerName}
                                 onChange={(e) => setCustomerName(e.target.value)}
                                 placeholder="Ej: Sofía"
-                                className="w-full text-xs px-3 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                                className="w-full text-xs px-3 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#777b5b]"
                               />
                             </div>
                           </div>
@@ -1099,7 +1099,7 @@ function MenuContent() {
                                 value={customerName}
                                 onChange={(e) => setCustomerName(e.target.value)}
                                 placeholder="Ej: Juan"
-                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#777b5b]"
                               />
                             </div>
                             <div>
@@ -1111,7 +1111,7 @@ function MenuContent() {
                                 value={customerPhone}
                                 onChange={(e) => setCustomerPhone(e.target.value)}
                                 placeholder="223 555-1234"
-                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#777b5b]"
                               />
                             </div>
                           </div>
@@ -1125,7 +1125,7 @@ function MenuContent() {
                           placeholder="Aclaraciones (ej: sin hielo, edulcorante)"
                           value={orderNotes}
                           onChange={(e) => setOrderNotes(e.target.value)}
-                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/30 bg-[#f9f8f3] outline-none focus:border-[#1a3028]"
+                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/30 bg-[#f9f8f3] outline-none focus:border-[#777b5b]"
                         />
                       </div>
                     </div>
@@ -1137,7 +1137,7 @@ function MenuContent() {
                       <span>Subtotal</span>
                       <span>{formatCurrency(cartTotal)}</span>
                     </div>
-                    <div className="flex items-center justify-between text-lg font-black text-[#1a3028] pt-1.5 border-t border-dashed border-[#c4b896]/30">
+                    <div className="flex items-center justify-between text-lg font-black text-[#4b4e38] pt-1.5 border-t border-dashed border-[#c4b896]/30">
                       <span>Total</span>
                       <span>{formatCurrency(cartTotal)}</span>
                     </div>
@@ -1232,7 +1232,7 @@ export default function MenuPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-[#f7f5ef]">
-          <div className="w-10 h-10 border-4 border-[#c4b896] border-t-[#1a3028] rounded-full animate-spin" />
+          <div className="w-10 h-10 border-4 border-[#c4b896] border-t-[#777b5b] rounded-full animate-spin" />
         </div>
       }
     >

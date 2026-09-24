@@ -76,22 +76,22 @@ export default function PlatoDelDiaSlider({
                   (e.target as HTMLImageElement).src = FALLBACK_IMAGE;
                 }}
               />
-              <span className="absolute top-3 left-3 bg-[#1a3028] text-[#f5e8ca] text-[11px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-full shadow">
+              <span className="absolute top-3 left-3 bg-[#777b5b] text-[#f5e8ca] text-[11px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-full shadow">
                 ⭐ Plato del día
               </span>
             </div>
             <div className="p-4 pb-5">
-              <h3 className="font-extrabold text-lg text-[#1a3028] leading-snug">{item.name}</h3>
+              <h3 className="font-extrabold text-lg text-[#4b4e38] leading-snug">{item.name}</h3>
               {item.description && (
                 <p className="text-[13px] text-[#6b6756] mt-1.5 leading-relaxed line-clamp-2">
                   {item.description}
                 </p>
               )}
               <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#c4b896]/20">
-                <span className="font-extrabold text-xl text-[#1a3028]">
+                <span className="font-extrabold text-xl text-[#4b4e38]">
                   {item.price ? formatCurrency(Number(item.price)) : "Consultar"}
                 </span>
-                <span className="bg-[#1a3028] text-[#f5e8ca] text-xs font-bold px-4 py-2 rounded-full shadow-sm">
+                <span className="bg-[#777b5b] text-[#f5e8ca] text-xs font-bold px-4 py-2 rounded-full shadow-sm">
                   Ver detalle →
                 </span>
               </div>
@@ -109,7 +109,7 @@ export default function PlatoDelDiaSlider({
               onClick={() => scrollToIndex(i)}
               aria-label={`Ver plato ${i + 1}`}
               className={`h-2 rounded-full transition-all duration-300 ${
-                i === active ? "w-6 bg-[#1a3028]" : "w-2 bg-[#c4b896]"
+                i === active ? "w-6 bg-[#777b5b]" : "w-2 bg-[#c4b896]"
               }`}
             />
           ))}

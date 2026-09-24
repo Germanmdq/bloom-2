@@ -17,7 +17,7 @@ export default function InstallPrompt() {
       aria-label="Instalar aplicación"
       className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-md z-[90] animate-in fade-in slide-in-from-bottom-5 duration-300"
     >
-      <div className="bg-[#1a3028] text-[#fffdf8] border border-[#c4b896]/35 rounded-[24px] p-4 sm:p-5 shadow-2xl backdrop-blur-xl">
+      <div className="bg-[#777b5b] text-[#fffdf8] border border-[#c4b896]/35 rounded-[24px] p-4 sm:p-5 shadow-2xl backdrop-blur-xl">
         <div className="flex items-start gap-3.5">
           <div className="relative w-12 h-12 rounded-2xl overflow-hidden shrink-0 border border-[#c4b896]/40 bg-[#12221c] shadow-md">
             <Image
@@ -38,7 +38,7 @@ export default function InstallPrompt() {
                 App
               </span>
             </div>
-            <p className="text-xs text-[#a8c9b8] leading-snug mt-1">
+            <p className="text-xs text-[#ebe8d6] leading-snug mt-1">
               Accedé al menú más rápido, pedí sin demoras y usala sin conexión.
             </p>
 
@@ -55,7 +55,7 @@ export default function InstallPrompt() {
 
           <button
             onClick={dismissBanner}
-            className="text-[#a8c9b8] hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+            className="text-[#ebe8d6] hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
             aria-label="Cerrar aviso de instalación"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -94,14 +94,14 @@ export default function InstallPrompt() {
           <div className="mt-3.5 flex items-center justify-end gap-2 pt-2.5 border-t border-[#c4b896]/20">
             <button
               onClick={dismissBanner}
-              className="text-xs text-[#a8c9b8] hover:text-white px-3 py-1.5 rounded-xl transition-colors font-medium"
+              className="text-xs text-[#ebe8d6] hover:text-white px-3 py-1.5 rounded-xl transition-colors font-medium"
             >
               Ahora no
             </button>
             {isIOS ? (
               <button
                 onClick={() => setShowIosGuide(true)}
-                className="text-xs font-bold bg-[#c4b896] hover:bg-[#f5e8ca] text-[#1a3028] px-4 py-2 rounded-xl transition-all shadow-md active:scale-95"
+                className="text-xs font-bold bg-[#c4b896] hover:bg-[#f5e8ca] text-[#4b4e38] px-4 py-2 rounded-xl transition-all shadow-md active:scale-95"
               >
                 ¿Cómo instalar?
               </button>
@@ -109,7 +109,7 @@ export default function InstallPrompt() {
               <button
                 onClick={promptInstall}
                 disabled={!isInstallable}
-                className="text-xs font-bold bg-[#c4b896] hover:bg-[#f5e8ca] text-[#1a3028] px-4 py-2 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50"
+                className="text-xs font-bold bg-[#c4b896] hover:bg-[#f5e8ca] text-[#4b4e38] px-4 py-2 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50"
               >
                 Instalar App
               </button>

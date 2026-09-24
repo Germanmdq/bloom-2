@@ -6,7 +6,7 @@
   min-height: 100vh;
   min-height: 100dvh;
   background-color: #f7f5ef;
-  color: #1a3028;
+  color: #4b4e38;
 }
 
 .page-content {
@@ -39,7 +39,7 @@
 
   font: inherit;
   background: transparent;
-  color: #1a3028;
+  color: #4b4e38;
 }
 
 .search-box input::placeholder {
@@ -85,14 +85,14 @@
 
 .filter-chip:hover {
   background: #f2f0e6;
-  color: #1a3028;
+  color: #4b4e38;
 }
 
 .filter-chip.active {
-  background: #1a3028;
+  background: #777b5b;
   color: #f5e8ca;
-  border-color: #1a3028;
-  box-shadow: 0 2px 8px rgba(26, 48, 40, 0.2);
+  border-color: #777b5b;
+  box-shadow: 0 2px 8px rgba(119, 123, 91, 0.2);
 }
 
 /* ================================
@@ -148,7 +148,7 @@
 .category-card-info h3 {
   font-size: 14px;
   font-weight: 700;
-  color: #1a3028;
+  color: #4b4e38;
   margin: 0;
 }
 
@@ -254,7 +254,7 @@
   font-size: 15px;
   line-height: 1.2;
   font-weight: 700;
-  color: #1a3028;
+  color: #4b4e38;
 }
 
 .product-info p {
@@ -276,7 +276,7 @@
 
   font-size: 17px;
   font-weight: 700;
-  color: #1a3028;
+  color: #4b4e38;
 }
 
 /* ================================
@@ -321,7 +321,7 @@
   font-size: 26px;
   line-height: 1.15;
   font-weight: 800;
-  color: #1a3028;
+  color: #4b4e38;
 }
 
 .product-detail-content p {
@@ -337,7 +337,7 @@
 
   font-size: 25px;
   font-weight: 800;
-  color: #1a3028;
+  color: #4b4e38;
 }
 
 /* ================================
@@ -358,18 +358,18 @@
   font-weight: 650;
 
   cursor: pointer;
-  background: #1a3028;
+  background: #777b5b;
   color: #f5e8ca;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  box-shadow: 0 4px 15px rgba(26, 48, 40, 0.25);
+  box-shadow: 0 4px 15px rgba(119, 123, 91, 0.25);
   transition: all 0.2s ease;
 }
 
 .primary-action:hover {
-  background: #243d32;
+  background: #63674a;
   transform: translateY(-1px);
 }
 
@@ -405,7 +405,7 @@
   padding: 7px 8px;
 
   border-radius: 26px;
-  background: rgba(26, 48, 40, 0.92);
+  background: rgba(119, 123, 91, 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(196, 184, 150, 0.25);
@@ -434,7 +434,7 @@
 
   font-size: 10px;
   font-weight: 500;
-  color: #a8c9b8;
+  color: #ebe8d6;
 
   cursor: pointer;
   transition: color 0.15s ease;
@@ -454,7 +454,7 @@
   top: -4px;
   right: -8px;
   background: #c4b896;
-  color: #1a3028;
+  color: #4b4e38;
   font-size: 9px;
   font-weight: 800;
   min-width: 17px;

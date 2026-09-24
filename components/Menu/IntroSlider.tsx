@@ -50,7 +50,7 @@ export default function IntroSlider({ onFinish }: { onFinish: () => void }) {
 
   return (
     <motion.div
-      className="fixed inset-0 z-[200] bg-[#1a3028] overflow-hidden"
+      className="fixed inset-0 z-[200] bg-[#777b5b] overflow-hidden"
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.35 }}
@@ -75,14 +75,14 @@ export default function IntroSlider({ onFinish }: { onFinish: () => void }) {
             draggable={false}
             className="absolute inset-0 w-full h-full object-cover select-none"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#1a3028] via-[#1a3028]/70 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#777b5b] via-[#777b5b]/70 to-transparent" />
 
           <div className="absolute inset-x-0 bottom-0 px-6 pb-40 max-w-md mx-auto text-center">
             <div className="w-20 h-20 mx-auto mb-5 rounded-3xl bg-[#f5e8ca]/10 border border-[#f5e8ca]/25 backdrop-blur-md flex items-center justify-center text-[#f5e8ca]">
               <Icon size={46} />
             </div>
             <h2 className="text-3xl font-extrabold text-[#f5e8ca] tracking-tight">{slide.title}</h2>
-            <p className="text-sm text-[#a8c9b8] mt-3 leading-relaxed">{slide.text}</p>
+            <p className="text-sm text-[#ebe8d6] mt-3 leading-relaxed">{slide.text}</p>
           </div>
         </motion.div>
       </AnimatePresence>
@@ -114,7 +114,7 @@ export default function IntroSlider({ onFinish }: { onFinish: () => void }) {
         <button
           type="button"
           onClick={() => (isLast ? onFinish() : goTo(index + 1))}
-          className="w-full flex items-center justify-center gap-2 bg-[#c4b896] text-[#1a3028] text-sm font-extrabold py-4 rounded-2xl shadow-lg active:scale-[0.98] transition-transform"
+          className="w-full flex items-center justify-center gap-2 bg-[#c4b896] text-[#4b4e38] text-sm font-extrabold py-4 rounded-2xl shadow-lg active:scale-[0.98] transition-transform"
         >
           {isLast ? "Comenzar" : "Siguiente"}
           <ChevronRight size={18} />
