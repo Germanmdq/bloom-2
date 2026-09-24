@@ -113,40 +113,6 @@ const FALLBACK_PRODUCTS = [
   },
 ];
 
-// Emojis e íconos por nombre de categoría (funciona con cualquier ID de Supabase)
-const CATEGORY_EMOJIS: Record<string, React.ReactNode> = {
-  "menú del día": "🍛",
-  "cafetería": "☕",
-  "platos": "🍽️",
-  "ofertas": "🏷️",
-  "cafetería delivery": "🛵",
-  "pastelería": "🧁",
-  "desayunos y meriendas": "🥞",
-  "jugos y licuados": "🍹",
-  "bebidas": "🥤",
-  "sandwiches": "🥪",
-  "hamburguesas": "🍔",
-  "pizzas": "🍕",
-  "pastas": "🍝",
-  "milanesas": (
-    <img
-      src="/icons/milanesa.png"
-      alt="Milanesa"
-      className="w-10 h-10 object-contain drop-shadow-sm inline-block"
-    />
-  ),
-  "ensaladas": "🥗",
-  "empanadas": "🥟",
-  "tartas individuales": "🥧",
-  "panificados": "🥖",
-  "postres": "🍰",
-  "tortillas": "🫓",
-  "promociones": "🏷️",
-};
-
-// Categorías que NO deben mostrarse en la grilla de inicio (se manejan aparte)
-const HIDDEN_CATEGORIES = ["plato del día", "platos diarios"];
-
 // Categorías cuyos productos se muestran en el slider del Plato del Día
 const PLATO_DIA_CATEGORIES = ["plato del día", "platos diarios", "menú del día"];
 
@@ -648,38 +614,6 @@ function MenuContent() {
                 }}
               />
             </div>
-
-            {/* ========== CATEGORÍAS CON EMOJIS ========== */}
-            <div className="px-4 md:px-0 mb-3">
-              <h3 className="text-base font-extrabold text-[#4b4e38] tracking-tight">
-                Nuestras Categorías
-              </h3>
-            </div>
-            <section className="category-grid mb-6" aria-label="Categorías">
-              {categories
-                .filter((cat) => !HIDDEN_CATEGORIES.includes(cat.name.toLowerCase()))
-                .map((cat) => {
-                const emoji = CATEGORY_EMOJIS[cat.name.toLowerCase()] || "🍴";
-                const productCount = products.filter((p) => p.category_id === cat.id).length;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => {
-                      setSelectedCategory(cat.id);
-                      setActiveTab("menu");
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                    className="category-card-emoji"
-                  >
-                    <span className="text-4xl h-10 flex items-center justify-center mb-2">{emoji}</span>
-                    <h3 className="font-bold text-sm text-[#4b4e38] leading-tight">{cat.name}</h3>
-                    <small className="text-[11px] text-[#7a765a] font-medium mt-1 block">
-                      {productCount} {productCount === 1 ? "producto" : "productos"}
-                    </small>
-                  </button>
-                );
-              })}
-            </section>
 
             {/* CTA FINAL */}
             <div className="px-4 md:px-0 mb-8">
