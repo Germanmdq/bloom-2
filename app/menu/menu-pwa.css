@@ -514,19 +514,6 @@
 
 
 /* ================================
-   SLIDER PLATO DEL DÍA
-================================ */
-
-.plato-slider {
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.plato-slider::-webkit-scrollbar {
-  display: none;
-}
-
-/* ================================
    ÍCONOS ANIMADOS (minimalistas)
 ================================ */
 

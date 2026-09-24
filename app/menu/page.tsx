@@ -14,19 +14,16 @@ import {
   Home, 
   Coffee, 
   User, 
-  ArrowLeft, 
-  Send,
   Trash2,
   CheckCircle2,
   Phone,
-  ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { saveOfflineOrder } from "@/lib/offline/order-queue";
 import IntroSlider from "@/components/Menu/IntroSlider";
-import PlatoDelDiaSlider from "@/components/Menu/PlatoDelDiaSlider";
 import { TakeAwayIcon, SalonIcon } from "@/components/Menu/AnimatedIcons";
+import { buildCatalog, type MenuVariant } from "@/lib/menu/catalog";
 import "./menu-pwa.css";
 
 // Formato de moneda argentina
@@ -36,6 +33,9 @@ const formatCurrency = (val: number) =>
     currency: "ARS",
     maximumFractionDigits: 0,
   }).format(val);
+
+const FALLBACK_PRODUCT_IMAGE =
+  "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop";
 
 // Fallback inicial para carga instantánea
 const FALLBACK_CATEGORIES = [
@@ -113,18 +113,6 @@ const FALLBACK_PRODUCTS = [
   },
 ];
 
-// Categorías cuyos productos se muestran en el slider del Plato del Día
-const PLATO_DIA_CATEGORIES = ["plato del día", "platos diarios", "menú del día"];
-
-// Slide de muestra cuando todavía no hay plato del día cargado
-const PLATO_DIA_PLACEHOLDER = {
-  id: "plato-dia-placeholder",
-  name: "Menú del día",
-  description: "Cada día una receta distinta, recién hecha por nuestra cocina. Consultá el plato de hoy.",
-  price: 0,
-  image_url: "/images/categories/platos-diarios.png",
-};
-
 // El slider de bienvenida se muestra una vez por cada apertura de la app
 const INTRO_SEEN_KEY = "bloom_intro_seen";
 
@@ -134,6 +122,7 @@ const MENU_CACHE_VERSION = "v2-four-categories";
 const menuCacheKey = (name: string) => `bloom_${MENU_CACHE_VERSION}_${name}`;
 
 interface CartItem {
+  key: string; // producto + variante elegida
   id: string;
   name: string;
   price: number;
@@ -191,6 +180,7 @@ function MenuContent() {
   // Producto seleccionado para el modal de detalle
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [modalQuantity, setModalQuantity] = useState(1);
+  const [selectedVariant, setSelectedVariant] = useState<MenuVariant | null>(null);
 
   // Carrito
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -274,36 +264,22 @@ function MenuContent() {
     loadData();
   }, [supabase]);
 
+  // Catálogo a mostrar: combos dentro de Promos y Café/Té agrupados
+  const catalog = useMemo(() => buildCatalog(categories, products), [categories, products]);
+
   // Filtrado reactivo de productos
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
-      const matchCategory =
-        selectedCategory === "all" ||
-        p.category_id === selectedCategory ||
-        p.category_name?.toLowerCase() === selectedCategory.toLowerCase();
-
-      const q = searchQuery.toLowerCase().trim();
+    const q = searchQuery.toLowerCase().trim();
+    return catalog.items.filter((p) => {
+      const matchCategory = selectedCategory === "all" || p.category_id === selectedCategory;
       const matchSearch =
         !q ||
         p.name?.toLowerCase().includes(q) ||
-        p.description?.toLowerCase().includes(q);
-
+        p.description?.toLowerCase().includes(q) ||
+        p.variants?.some((v: MenuVariant) => v.label.toLowerCase().includes(q));
       return matchCategory && matchSearch;
     });
-  }, [products, selectedCategory, searchQuery]);
-
-  // Slides del Plato del Día: el configurado en el dashboard primero, luego
-  // los productos de las categorías de platos diarios.
-  const platoDiaSlides = useMemo(() => {
-    const catIds = new Set(
-      categories
-        .filter((c) => PLATO_DIA_CATEGORIES.includes(c.name?.toLowerCase()))
-        .map((c) => c.id)
-    );
-    const daily = products.filter((p) => catIds.has(p.category_id));
-    const slides = platoDia ? [platoDia, ...daily.filter((p) => p.id !== platoDia.id)] : daily;
-    return slides.length > 0 ? slides.slice(0, 8) : [PLATO_DIA_PLACEHOLDER];
-  }, [categories, products, platoDia]);
+  }, [catalog, selectedCategory, searchQuery]);
 
   const startOrder = (modality: "retiro" | "mesa") => {
     setOrderModality(modality);
@@ -325,43 +301,50 @@ function MenuContent() {
 
   const handleOpenProduct = (p: any) => {
     setSelectedProduct(p);
+    setSelectedVariant(p.variants?.[0] ?? null);
     setModalQuantity(1);
   };
 
-  const handleAddToCart = () => {
-    if (!selectedProduct) return;
-    setCart((prev) => {
-      const existing = prev.find((item) => item.id === selectedProduct.id);
-      if (existing) {
-        return prev.map((item) =>
-          item.id === selectedProduct.id
-            ? { ...item, quantity: item.quantity + modalQuantity }
-            : item
-        );
-      }
-      return [
-        ...prev,
-        {
+  // Lo que se agrega al pedido: la variante elegida o el producto suelto
+  const modalItem = selectedProduct
+    ? selectedVariant
+      ? {
+          id: selectedVariant.productId,
+          name: selectedVariant.label,
+          price: selectedVariant.price,
+          image_url: selectedVariant.image_url,
+        }
+      : {
           id: selectedProduct.id,
           name: selectedProduct.name,
           price: Number(selectedProduct.price) || 0,
-          quantity: modalQuantity,
           image_url: selectedProduct.image_url,
-        },
-      ];
+        }
+    : null;
+
+  const handleAddToCart = () => {
+    if (!modalItem) return;
+    const key = `${modalItem.id}::${modalItem.name}`;
+    setCart((prev) => {
+      if (prev.some((item) => item.key === key)) {
+        return prev.map((item) =>
+          item.key === key ? { ...item, quantity: item.quantity + modalQuantity } : item
+        );
+      }
+      return [...prev, { key, ...modalItem, quantity: modalQuantity }];
     });
 
     toast.success(`Agregado al pedido (${modalQuantity})`, {
-      description: selectedProduct.name,
+      description: modalItem.name,
     });
     setSelectedProduct(null);
   };
 
-  const updateQuantity = (id: string, delta: number) => {
+  const updateQuantity = (key: string, delta: number) => {
     setCart((prev) =>
       prev
         .map((item) => {
-          if (item.id === id) {
+          if (item.key === key) {
             const next = item.quantity + delta;
             return next > 0 ? { ...item, quantity: next } : null;
           }
@@ -595,41 +578,55 @@ function MenuContent() {
               </button>
             </div>
 
-            {/* ========== PLATO DEL DÍA (slider a todo el ancho) ========== */}
-            <div className="px-4 md:px-0 mb-3">
-              <h2 className="text-xl font-extrabold text-[#4b4e38] tracking-tight">
-                🍽️ Plato del Día
-              </h2>
-              <p className="text-xs text-[#7a765a] mt-0.5">
-                Nuestra recomendación especial de hoy
-              </p>
-            </div>
-            <div className="px-4 md:px-0 mb-6">
-              <PlatoDelDiaSlider
-                items={platoDiaSlides}
-                onSelect={(item) => {
-                  if (item.id !== PLATO_DIA_PLACEHOLDER.id) return handleOpenProduct(item);
-                  setActiveTab("menu");
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-              />
-            </div>
-
-            {/* CTA FINAL */}
-            <div className="px-4 md:px-0 mb-8">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab("menu");
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="w-full flex items-center justify-center gap-2 bg-[#777b5b] text-[#f5e8ca] text-sm font-bold px-6 py-4 rounded-2xl shadow-lg hover:bg-[#63674a] transition-colors active:scale-[0.98]"
-              >
-                <Coffee size={18} />
-                Ver Menú Completo
-                <ChevronRight size={16} />
-              </button>
-            </div>
+            {/* ========== PLATO DEL DÍA (el elegido en el panel de administración) ========== */}
+            {platoDia && (
+              <>
+                <div className="px-4 md:px-0 mb-3">
+                  <h2 className="text-xl font-extrabold text-[#4b4e38] tracking-tight">
+                    🍽️ Plato del Día
+                  </h2>
+                  <p className="text-xs text-[#7a765a] mt-0.5">
+                    Nuestra recomendación especial de hoy
+                  </p>
+                </div>
+                <div className="px-4 md:px-0 mb-8">
+                  <article
+                    onClick={() => handleOpenProduct(platoDia)}
+                    className="w-full bg-white rounded-[22px] border border-[#c4b896]/25 overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow"
+                  >
+                    <div className="w-full h-[210px] sm:h-[280px] relative bg-[#edeae0] overflow-hidden">
+                      <img
+                        src={platoDia.image_url || FALLBACK_PRODUCT_IMAGE}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = FALLBACK_PRODUCT_IMAGE;
+                        }}
+                      />
+                      <span className="absolute top-3 left-3 bg-[#777b5b] text-[#f5e8ca] text-[11px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-full shadow">
+                        ⭐ Plato del día
+                      </span>
+                    </div>
+                    <div className="p-4 pb-5">
+                      <h3 className="font-extrabold text-lg text-[#4b4e38] leading-snug">{platoDia.name}</h3>
+                      {platoDia.description && (
+                        <p className="text-[13px] text-[#6b6756] mt-1.5 leading-relaxed line-clamp-2">
+                          {platoDia.description}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#c4b896]/20">
+                        <span className="font-extrabold text-xl text-[#4b4e38]">
+                          {formatCurrency(platoDia.price)}
+                        </span>
+                        <span className="bg-[#777b5b] text-[#f5e8ca] text-xs font-bold px-4 py-2 rounded-full shadow-sm">
+                          Ver detalle →
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -666,7 +663,7 @@ function MenuContent() {
               >
                 Todos
               </button>
-              {categories.map((cat) => (
+              {catalog.displayCategories.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
@@ -680,11 +677,9 @@ function MenuContent() {
             {/* GRILLA DE PRODUCTOS */}
             <section className="products-grid" aria-label="Catálogo de productos">
               {filteredProducts.map((p) => {
-                const catObj = categories.find((c) => c.id === p.category_id);
+                const catObj = catalog.displayCategories.find((c) => c.id === p.category_id);
                 const catName = catObj?.name || "Café & Delicias";
-                const imageUrl =
-                  p.image_url ||
-                  "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=600&auto=format&fit=crop";
+                const imageUrl = p.image_url || FALLBACK_PRODUCT_IMAGE;
 
                 return (
                   <article
@@ -706,7 +701,7 @@ function MenuContent() {
                       <small>{catName}</small>
                       <h3>{p.name}</h3>
                       {p.description && <p>{p.description}</p>}
-                      <span className="product-price">{formatCurrency(p.price)}</span>
+                      <span className="product-price">{p.variants ? `Desde ${formatCurrency(p.price)}` : formatCurrency(p.price)}</span>
                     </div>
                   </article>
                 );
@@ -763,10 +758,7 @@ function MenuContent() {
               <div className="overflow-y-auto product-detail">
                 <div className="product-detail-image">
                   <Image
-                    src={
-                      selectedProduct.image_url ||
-                      "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop"
-                    }
+                    src={modalItem?.image_url || selectedProduct.image_url || FALLBACK_PRODUCT_IMAGE}
                     alt={selectedProduct.name}
                     width={600}
                     height={600}
@@ -776,15 +768,36 @@ function MenuContent() {
 
                 <div className="product-detail-content">
                   <small>
-                    {categories.find((c) => c.id === selectedProduct.category_id)?.name ||
+                    {catalog.displayCategories.find((c) => c.id === selectedProduct.category_id)?.name ||
                       "Bloom Selección"}
                   </small>
                   <h1>{selectedProduct.name}</h1>
                   {selectedProduct.description && (
                     <p>{selectedProduct.description}</p>
                   )}
+                  {selectedProduct.variants && (
+                    <label className="block mt-5">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#7a765a] block mb-2">
+                        Elegí la opción:
+                      </span>
+                      <select
+                        value={selectedProduct.variants.indexOf(selectedVariant)}
+                        onChange={(e) =>
+                          setSelectedVariant(selectedProduct.variants[Number(e.target.value)])
+                        }
+                        className="w-full text-sm font-semibold text-[#4b4e38] px-4 py-3 rounded-2xl border border-[#c4b896]/50 bg-[#fdfbf7] outline-none focus:border-[#777b5b]"
+                      >
+                        {selectedProduct.variants.map((v: MenuVariant, i: number) => (
+                          <option key={`${v.productId}-${v.label}`} value={i}>
+                            {v.label} — {formatCurrency(v.price)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+
                   <span className="product-detail-price">
-                    {formatCurrency(selectedProduct.price * modalQuantity)}
+                    {formatCurrency((modalItem?.price ?? 0) * modalQuantity)}
                   </span>
 
                   {/* Selector de cantidad */}
@@ -820,7 +833,7 @@ function MenuContent() {
                   >
                     <ShoppingBag size={20} />
                     <span>
-                      Agregar al pedido · {formatCurrency(selectedProduct.price * modalQuantity)}
+                      Agregar al pedido · {formatCurrency((modalItem?.price ?? 0) * modalQuantity)}
                     </span>
                   </button>
                 </div>
@@ -901,7 +914,7 @@ function MenuContent() {
                   <div className="flex-1 overflow-y-auto p-5 space-y-3">
                     {cart.map((item) => (
                       <div
-                        key={item.id}
+                        key={item.key}
                         className="bg-white p-3.5 rounded-2xl border border-[#c4b896]/25 flex items-center justify-between gap-3 shadow-sm"
                       >
                         <div className="flex-1 min-w-0">
@@ -913,7 +926,7 @@ function MenuContent() {
 
                         <div className="flex items-center gap-2 bg-[#f2f0e6] px-2 py-1 rounded-full">
                           <button
-                            onClick={() => updateQuantity(item.id, -1)}
+                            onClick={() => updateQuantity(item.key, -1)}
                             className="p-1 text-[#4b4e38] hover:text-black"
                             aria-label="Restar 1"
                           >
@@ -923,7 +936,7 @@ function MenuContent() {
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() => updateQuantity(item.id, 1)}
+                            onClick={() => updateQuantity(item.key, 1)}
                             className="p-1 text-[#4b4e38] hover:text-black"
                             aria-label="Sumar 1"
                           >
