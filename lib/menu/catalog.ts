@@ -52,6 +52,10 @@ export interface MenuItem {
 }
 
 export const PROMO_CATEGORY_NAMES = ["promos", "ofertas", "promociones"];
+// "Menú del día" no es una categoría del menú: el único Plato del Día es el
+// elegido en el dashboard (se muestra en el inicio). Sus platos van a Platos.
+export const DAILY_CATEGORY_NAMES = ["menú del día", "menu del dia", "plato del día", "platos diarios"];
+export const VIRTUAL_PLATOS_CATEGORY_ID = "cat-platos";
 export const VIRTUAL_PROMO_CATEGORY_ID = "cat-promos";
 
 const FACTURAS = [
@@ -294,6 +298,12 @@ export const isCombo = (p: { name?: string; description?: string | null }) =>
 export const isPromoCategory = (cat: { name?: string }) =>
   PROMO_CATEGORY_NAMES.includes((cat.name ?? "").trim().toLowerCase());
 
+const isDailyCategory = (cat: { name?: string }) =>
+  DAILY_CATEGORY_NAMES.includes((cat.name ?? "").trim().toLowerCase());
+
+// El producto genérico "Menú del día" se reemplaza por el Plato del Día del dashboard
+const isGenericDailyMenu = (p: any) => /^men[uú] del d[ií]a$/i.test((p.name ?? "").trim());
+
 // "Té / Saborizado / Mate Cocido" → ["Té", "Té saborizado", "Mate Cocido"]
 // "Café c/ Leche - Lágrima Doble"  → ["Café c/ Leche", "Lágrima Doble"]
 export function splitVariantNames(name: string): string[] {
@@ -361,10 +371,15 @@ function singleItem(p: any, categoryId: string, def?: GroupDef): MenuItem {
 export function buildCatalog(categories: any[], products: any[], modality: Modality) {
   const promoCat = categories.find(isPromoCategory);
   const promoCategoryId: string = promoCat?.id ?? VIRTUAL_PROMO_CATEGORY_ID;
+  const dailyCategoryIds = new Set(categories.filter(isDailyCategory).map((c) => c.id));
+  const platosCat = categories.find((c) => (c.name ?? "").trim().toLowerCase() === "platos");
+  const platosCategoryId: string = platosCat?.id ?? VIRTUAL_PLATOS_CATEGORY_ID;
 
   // Los productos con precio 0 son opciones internas (p. ej. candidatos a
   // Plato del Día); no se venden sueltos.
-  const sellable = filterByModality(products, modality).filter((p) => Number(p.price) > 0);
+  const sellable = filterByModality(products, modality)
+    .filter((p) => Number(p.price) > 0 && !isGenericDailyMenu(p))
+    .map((p) => (dailyCategoryIds.has(p.category_id) ? { ...p, category_id: platosCategoryId } : p));
 
   const items: MenuItem[] = [];
   const groups = new Map<string, MenuItem>();
@@ -433,7 +448,8 @@ export function buildCatalog(categories: any[], products: any[], modality: Modal
   for (const group of groups.values()) group.variants.sort((a, b) => a.price - b.price);
 
   const displayCategories = categories
-    .filter((c) => !isPromoCategory(c))
+    .filter((c) => !isPromoCategory(c) && !isDailyCategory(c))
+    .concat(platosCat ? [] : [{ id: platosCategoryId, name: "Platos" }])
     .concat([{ id: promoCategoryId, name: "Promos" }])
     .filter((c) => items.some((it) => it.category_id === c.id));
 

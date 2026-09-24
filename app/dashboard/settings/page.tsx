@@ -60,17 +60,17 @@ export default function SettingsPage() {
             if (savedF1) setF1Action(savedF1);
             if (savedF2) setF2Action(savedF2);
 
-            // Load Platos Diarios products
+            // Load Platos Diarios products (la categoría puede llamarse
+            // "Platos Diarios", "Plato del Día" o "Menú del día")
             const { data: catData } = await supabase
                 .from('categories')
                 .select('id')
-                .ilike('name', '%plato%diario%')
-                .single();
-            if (catData) {
+                .or('name.ilike.%plato%d_a%,name.ilike.%men_%d_a%');
+            if (catData && catData.length > 0) {
                 const { data: prods } = await supabase
                     .from('products')
                     .select('id, name, image_url, kind')
-                    .eq('category_id', catData.id)
+                    .in('category_id', catData.map((c: any) => c.id))
                     .eq('active', true)
                     .order('name');
                 if (prods) {

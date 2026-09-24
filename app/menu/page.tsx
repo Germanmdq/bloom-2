@@ -117,7 +117,6 @@ const FALLBACK_PRODUCTS = [
 
 // Íconos de las tarjetas de categorías del menú
 const CATEGORY_ICONS: Record<string, string> = {
-  "menú del día": "⭐",
   "cafetería": "☕",
   "platos": "🍽️",
   "promos": "🏷️",
