@@ -351,7 +351,6 @@ function MenuContent() {
     setSelectedCategory("all");
     setActiveTab("menu");
     window.scrollTo({ top: 0, behavior: "smooth" });
-    toast.success(modality === "mesa" ? "Pedido en el salón ☕" : modality === "delivery" ? "Pedido para delivery 🛵" : "Pedido para retirar 🛍️");
   };
 
   const startCoffeeGame = () => {
