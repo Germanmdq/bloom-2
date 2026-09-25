@@ -447,13 +447,43 @@ export function buildCatalog(categories: any[], products: any[], modality: Modal
   // Variantes ordenadas por precio (más barata primero)
   for (const group of groups.values()) group.variants.sort((a, b) => a.price - b.price);
 
-  const displayCategories = categories
-    .filter((c) => !isPromoCategory(c) && !isDailyCategory(c))
-    .concat(platosCat ? [] : [{ id: platosCategoryId, name: "Platos" }])
-    .concat([{ id: promoCategoryId, name: "Promos" }])
-    .filter((c) => items.some((it) => it.category_id === c.id));
+  // Estas tarjetas respetan la organización de la carta original entregada:
+  // 8 de Cafetería para Take Away y las 6 secciones principales de Salón.
+  // Los ítems y sus precios continúan siendo los que llegan desde la base.
+  const itemText = (item: MenuItem) => `${item.id} ${item.name} ${item.description}`.toLocaleLowerCase();
+  const makeCards = (definitions: Array<{ id: string; name: string; matches: (text: string) => boolean }>) => {
+    const categoryItemIds: Record<string, string[]> = {};
+    const displayCategories = definitions.map((definition) => {
+      categoryItemIds[definition.id] = items
+        .filter((item) => definition.matches(itemText(item)))
+        .map((item) => item.id);
+      return { id: definition.id, name: definition.name };
+    });
+    return { displayCategories, categoryItemIds };
+  };
 
-  return { items, displayCategories, promoCategoryId };
+  const takeawayCards = makeCards([
+    { id: "takeaway-cafe", name: "Café para llevar", matches: (t) => t.includes("group-cafe-llevar") },
+    { id: "takeaway-te", name: "Té, Capuchino y Submarino", matches: (t) => /group-te|capuchino|submarino/.test(t) },
+    { id: "takeaway-facturas", name: "Facturas", matches: (t) => /factura|medialuna|vigilante/.test(t) },
+    { id: "takeaway-jugos", name: "Jugos exprimidos", matches: (t) => /exprimido|jugo/.test(t) },
+    { id: "takeaway-licuados", name: "Licuados", matches: (t) => /licuado/.test(t) },
+    { id: "takeaway-tostados", name: "Tostados", matches: (t) => /tostado/.test(t) },
+    { id: "takeaway-yogur", name: "Yogur", matches: (t) => /yogur/.test(t) },
+    { id: "takeaway-tostadas", name: "Tostadas", matches: (t) => /tostada/.test(t) },
+  ]);
+
+  const salonCards = makeCards([
+    { id: "salon-menu-dia", name: "Menú del Día", matches: (t) => /menú del día|plato del día/.test(t) },
+    { id: "salon-cafeteria", name: "Cafetería", matches: (t) => /café|cafe|té|te |capuchino|submarino|factura|medialuna|vigilante|panificado|licuado|exprimido|promo/.test(t) },
+    { id: "salon-minutas", name: "Minutas", matches: (t) => /milanesa|hamburguesa|tortilla|pizza|empanada|sándwich de milanesa|sandwich de milanesa/.test(t) },
+    { id: "salon-saludables", name: "Opciones Saludables", matches: (t) => /wrap|sándwich de pollo|sandwich de pollo|tarta|ensalada/.test(t) },
+    { id: "salon-pastas", name: "Pastas y Platos Diarios", matches: (t) => /pasta|spaghetti|ñoqui|raviol|sorrentino|canel[oó]n|plato/.test(t) },
+    { id: "salon-bebidas", name: "Bebidas y Postres", matches: (t) => /bebida|gaseosa|agua|aquarius|cerveza|vino|postre|torta|alfajor|brownie|flan/.test(t) },
+  ]);
+
+  const cards = modality === "takeaway" ? takeawayCards : salonCards;
+  return { items, ...cards, promoCategoryId };
 }
 
 /** Un producto suelto (ej. el Plato del Día) como ítem para la hoja inferior */

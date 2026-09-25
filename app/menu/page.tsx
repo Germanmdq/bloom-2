@@ -319,7 +319,7 @@ function MenuContent() {
           p.options.some((o) => o.choices.some((c) => c.toLowerCase().includes(q)))
       );
     }
-    return catalog.items.filter((p) => p.category_id === selectedCategory);
+    return catalog.items.filter((p) => catalog.categoryItemIds[selectedCategory]?.includes(p.id));
   }, [catalog, selectedCategory, searchQuery]);
 
   const openCategory = catalog.displayCategories.find((c) => c.id === selectedCategory);
@@ -718,7 +718,7 @@ function MenuContent() {
             {!searchQuery.trim() && !openCategory && (
               <section className="menu-category-grid" aria-label="Categorías">
                 {catalog.displayCategories.map((cat) => {
-                  const catItems = catalog.items.filter((it) => it.category_id === cat.id);
+                  const catItems = catalog.items.filter((it) => catalog.categoryItemIds[cat.id]?.includes(it.id));
                   return (
                     <button
                       key={cat.id}
