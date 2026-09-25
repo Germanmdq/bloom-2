@@ -324,12 +324,12 @@ function MenuContent() {
 
   const openCategory = catalog.displayCategories.find((c) => c.id === selectedCategory);
 
-  const startOrder = (modality: "retiro" | "mesa") => {
+  const startOrder = (modality: "retiro" | "delivery" | "mesa") => {
     setOrderModality(modality);
     setSelectedCategory("all");
     setActiveTab("menu");
     window.scrollTo({ top: 0, behavior: "smooth" });
-    toast.success(modality === "retiro" ? "Pedido para llevar 🛍️" : "Pedido en el salón ☕");
+    toast.success(modality === "mesa" ? "Pedido en el salón ☕" : modality === "delivery" ? "Pedido para delivery 🛵" : "Pedido para retirar 🛍️");
   };
 
   // Carrito helpers
@@ -586,18 +586,18 @@ function MenuContent() {
               <button
                 type="button"
                 onClick={() => startOrder("retiro")}
-                className="flex flex-col items-center justify-center gap-2 py-6 rounded-[22px] bg-[#777b5b] text-[#f5e8ca] shadow-md active:scale-[0.97] transition-transform"
+                className="flex flex-col items-center justify-center gap-1.5 py-5 rounded-[22px] bg-[#777b5b] text-[#f5e8ca] shadow-md active:scale-[0.97] transition-transform"
               >
-                <TakeAwayIcon size={48} />
+                <TakeAwayIcon size={44} />
                 <span className="text-base font-extrabold tracking-wide">TAKE AWAY</span>
                 <span className="text-[11px] text-[#ebe8d6] font-semibold">Para llevar</span>
               </button>
               <button
                 type="button"
                 onClick={() => startOrder("mesa")}
-                className="flex flex-col items-center justify-center gap-2 py-6 rounded-[22px] bg-[#c4b896] text-[#4b4e38] shadow-md active:scale-[0.97] transition-transform"
+                className="flex flex-col items-center justify-center gap-1.5 py-5 rounded-[22px] bg-[#c4b896] text-[#4b4e38] shadow-md active:scale-[0.97] transition-transform"
               >
-                <SalonIcon size={48} />
+                <SalonIcon size={44} />
                 <span className="text-base font-extrabold tracking-wide">SALÓN</span>
                 <span className="text-[11px] text-[#4b4e38]/70 font-semibold">Comer en el local</span>
               </button>
@@ -634,7 +634,7 @@ function MenuContent() {
                     onClick={() => handleOpenProduct(toMenuItem(platoDia))}
                     className="w-full bg-white rounded-[22px] border border-[#c4b896]/25 overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow"
                   >
-                    <div className="w-full h-[210px] sm:h-[280px] relative bg-[#edeae0] overflow-hidden">
+                    <div className="w-full h-[190px] sm:h-[255px] relative bg-[#edeae0] overflow-hidden">
                       <img
                         src={platoDia.image_url || FALLBACK_PRODUCT_IMAGE}
                         alt=""
@@ -887,6 +887,11 @@ function MenuContent() {
                       ? `Tu pedido fue recibido con éxito. ¡Ya lo estamos preparando para el envío!`
                       : `Tu pedido fue recibido con éxito. Te avisaremos cuando esté listo en el mostrador.`}
                   </p>
+                  <div className="grid grid-cols-3 gap-2 w-full max-w-sm mt-6">
+                    <button type="button" onClick={() => startOrder("delivery")} className="rounded-xl bg-[#f2f0e6] px-2 py-2.5 text-[11px] font-black text-[#4b4e38]">🛵 Delivery</button>
+                    <button type="button" onClick={() => startOrder("retiro")} className="rounded-xl bg-[#f2f0e6] px-2 py-2.5 text-[11px] font-black text-[#4b4e38]">🏃 Retirar</button>
+                    <button type="button" onClick={() => startOrder("mesa")} className="rounded-xl bg-[#777b5b] px-2 py-2.5 text-[11px] font-black text-[#f5e8ca]">🍽️ En el local</button>
+                  </div>
                 </div>
               ) : cart.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
@@ -927,7 +932,7 @@ function MenuContent() {
                           >
                             {item.quantity === 1 ? <Trash2 size={13} /> : <Minus size={13} />}
                           </button>
-                          <span className="font-bold text-xs min-w-[16px] text-center text-[#4b4e38]">
+                          <span className="min-w-[28px] px-2 py-0.5 rounded-full bg-white border border-[#c4b896]/35 font-bold text-sm text-center text-[#4b4e38]">
                             {item.quantity}
                           </span>
                           <button
@@ -951,7 +956,7 @@ function MenuContent() {
                         <label className="text-xs font-black tracking-wider uppercase text-[#4b4e38] block">
                           ¿Cómo querés tu pedido? *
                         </label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           {/* Comer en el local */}
                           <button
                             type="button"
@@ -967,6 +972,11 @@ function MenuContent() {
                             {orderModality === "mesa" && (
                               <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />
                             )}
+                          </button>
+
+                          <button type="button" onClick={() => setOrderModality("delivery")} className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-2xl border-2 transition-all font-black text-xs ${orderModality === "delivery" ? "border-[#777b5b] bg-[#777b5b] text-[#f5e8ca] shadow-lg scale-[1.01]" : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#777b5b]/40"}`}>
+                            <span className="text-2xl">🛵</span><span className="text-center leading-tight">Delivery</span>
+                            {orderModality === "delivery" && <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />}
                           </button>
 
                           {/* Retirar */}
