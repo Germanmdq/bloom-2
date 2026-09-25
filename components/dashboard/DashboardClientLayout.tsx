@@ -5,8 +5,6 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
 import { IconLock, IconBackspace } from "@tabler/icons-react";
 import { SalesComparisonPanel, ComparisonType } from "@/components/dashboard/SalesComparisonPanel";
-import { OrderNotificationListener } from "./OrderNotificationListener";
-import { GlobalOrderNotification } from "./GlobalOrderNotification";
 import { LowStockBanner } from "./LowStockBanner";
 import "@/app/dashboard/dashboard.css";
 
@@ -61,8 +59,6 @@ export function DashboardClientLayout({
       {comparisonPanel && (
         <SalesComparisonPanel comparisonType={comparisonPanel} onClose={() => setComparisonPanel(null)} />
       )}
-      <OrderNotificationListener />
-      <GlobalOrderNotification />
     </div>
   );
 }

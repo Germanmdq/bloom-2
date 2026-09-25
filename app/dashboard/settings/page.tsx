@@ -19,9 +19,9 @@ export default function SettingsPage() {
 
     // Ofertas del Día States
     const [dailyOffers, setDailyOffers] = useState<any[]>([
-        { id: null, name: '', price: '', send_notification: false },
-        { id: null, name: '', price: '', send_notification: false },
-        { id: null, name: '', price: '', send_notification: false }
+        { id: null, name: '', price: '' },
+        { id: null, name: '', price: '' },
+        { id: null, name: '', price: '' }
     ]);
     const [isSavingOffers, setIsSavingOffers] = useState(false);
 
@@ -87,9 +87,9 @@ export default function SettingsPage() {
                 .order('created_at', { ascending: true });
             
             if (offersData && offersData.length > 0) {
-                const newOffers = [{ id: null, name: '', price: '', send_notification: false }, { id: null, name: '', price: '', send_notification: false }, { id: null, name: '', price: '', send_notification: false }];
+                const newOffers = [{ id: null, name: '', price: '' }, { id: null, name: '', price: '' }, { id: null, name: '', price: '' }];
                 offersData.slice(0, 3).forEach((off, idx) => {
-                    newOffers[idx] = { id: off.id, name: off.name, price: off.price || '', send_notification: !!off.send_notification };
+                    newOffers[idx] = { id: off.id, name: off.name, price: off.price || '' };
                 });
                 setDailyOffers(newOffers);
             }
@@ -135,7 +135,7 @@ export default function SettingsPage() {
                     name: offer.name || '',
                     price: Number(offer.price) || 0,
                     active: !!offer.name,
-                    send_notification: !!offer.send_notification
+                    send_notification: false
                 };
 
                 if (offer.id) {
@@ -152,13 +152,11 @@ export default function SettingsPage() {
                 .order('created_at', { ascending: true });
             
             if (offersData) {
-                const refreshed = [{ id: null, name: '', price: '', send_notification: false }, { id: null, name: '', price: '', send_notification: false }, { id: null, name: '', price: '', send_notification: false }];
+                const refreshed = [{ id: null, name: '', price: '' }, { id: null, name: '', price: '' }, { id: null, name: '', price: '' }];
                 offersData.slice(0, 3).forEach((off, idx) => {
-                    refreshed[idx] = { id: off.id, name: off.name, price: off.price || '', send_notification: !!off.send_notification };
+                    refreshed[idx] = { id: off.id, name: off.name, price: off.price || '' };
                 });
                 setDailyOffers(refreshed);
-                const selected = offersData.filter((off: any) => off.active && off.send_notification && off.name);
-                if (selected.length) await supabase.from('menu_notifications').insert(selected.map((off: any) => ({ title: 'Promoción del día', body: off.price ? `${off.name} · $${Number(off.price).toLocaleString('es-AR')}` : off.name, type: 'promotion', reference_id: off.id })));
             }
             alert("¡Ofertas guardadas en la base de datos de promociones!");
         } catch (e: any) {
@@ -198,8 +196,6 @@ export default function SettingsPage() {
             await supabase.from('products').update({ kind: 'plato_del_dia' }).eq('id', productId);
             console.error('app_settings error:', error.message);
         }
-        const product = platoDiaProducts.find((item: any) => item.id === productId);
-        if (product) await supabase.from('menu_notifications').insert({ title: 'Plato del día', body: `${product.name} ya está disponible en Bloom`, type: 'plato_del_dia', reference_id: productId });
         setSavingPlatoDia(false);
     };
 
@@ -503,10 +499,6 @@ export default function SettingsPage() {
                                         className="w-full h-12 px-4 rounded-xl bg-white border-transparent focus:ring-2 ring-amber-500 font-bold outline-none placeholder:text-gray-200"
                                     />
                                 </div>
-                                <label className="flex items-center gap-2 self-end h-12 px-3 rounded-xl bg-white text-xs font-bold text-gray-600 cursor-pointer whitespace-nowrap">
-                                    <input type="checkbox" checked={!!offer.send_notification} onChange={(e) => { const newOffers = [...dailyOffers]; newOffers[idx].send_notification = e.target.checked; setDailyOffers(newOffers); }} className="accent-amber-500 w-4 h-4" />
-                                    Enviar aviso
-                                </label>
                                 <div className="flex items-end pb-1">
                                     <button 
                                         onClick={() => handleDeleteOffer(offer.id, idx)}
