@@ -118,9 +118,24 @@ const FALLBACK_PRODUCTS = [
 
 // Íconos de las tarjetas de categorías del menú
 const CATEGORY_ICONS: Record<string, string> = {
+  "café para llevar": "☕",
+  "té, capuchino y submarino": "🫖",
+  "facturas": "🥐",
+  "jugos exprimidos": "🍊",
+  "licuados": "🥤",
+  "tostados": "🥪",
+  "yogur": "🥣",
+  "tostadas": "🍞",
+  "menú del día": "🍽️",
   "cafetería": "☕",
-  "platos": "🍽️",
-  "promos": "🏷️",
+  "minutas": "🍔",
+  "opciones saludables": "🥗",
+  "pastas y platos diarios": "🍝",
+  "bebidas y postres": "🍮",
+  "promociones": "🏷️",
+  "desayunos y meriendas": "🍳",
+  "panificados": "🥖",
+  "jugos y licuados": "🍹",
 };
 
 // El slider de bienvenida se muestra una vez por cada apertura de la app
@@ -717,7 +732,7 @@ function MenuContent() {
             {/* CATEGORÍAS DE LA MODALIDAD (tarjetas) */}
             {!searchQuery.trim() && !openCategory && (
               <section className="menu-category-grid" aria-label="Categorías">
-                {catalog.displayCategories.map((cat) => {
+                {catalog.displayCategories.map((cat, index) => {
                   const catItems = catalog.items.filter((it) => catalog.categoryItemIds[cat.id]?.includes(it.id));
                   return (
                     <button
@@ -729,7 +744,11 @@ function MenuContent() {
                       }}
                       className="menu-category-card"
                     >
-                      <span className="text-4xl leading-none">
+                      <span
+                        className="menu-category-emoji"
+                        style={{ animationDelay: `${index * 90}ms` }}
+                        aria-hidden="true"
+                      >
                         {CATEGORY_ICONS[cat.name.toLowerCase()] ?? "🍴"}
                       </span>
                       <span className="font-extrabold text-base text-[#4b4e38] mt-1">{cat.name}</span>
