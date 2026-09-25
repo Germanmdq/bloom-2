@@ -18,12 +18,10 @@ import {
   CheckCircle2,
   Phone,
   ChevronLeft,
-  BellRing,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { saveOfflineOrder } from "@/lib/offline/order-queue";
-import IntroSlider from "@/components/Menu/IntroSlider";
 import { TakeAwayIcon, SalonIcon } from "@/components/Menu/AnimatedIcons";
 import { buildCatalog, toMenuItem, type MenuItem } from "@/lib/menu/catalog";
 import OptionSheet, { type SheetLine } from "@/components/Menu/OptionSheet";
@@ -157,8 +155,8 @@ const COFFEE_GAME_RESULTS: Record<CoffeePersonality, { emoji: string; title: str
   equilibrado: { emoji: "🤎", title: "Sos un Capuchino Equilibrado", description: "Tenés el balance justo: energía, calma y ganas de compartir." },
 };
 
-// El slider de bienvenida se muestra una vez por cada apertura de la app
-const INTRO_SEEN_KEY = "bloom_intro_seen";
+// El video de apertura se muestra una vez por cada apertura de la app.
+const OPENING_VIDEO_SEEN_KEY = "bloom_opening_coffee_video_seen_v1";
 
 // Cambiar esta versión cuando cambia la estructura del catálogo. Así no se
 // hidratan categorías/productos de una versión anterior desde localStorage.
@@ -194,19 +192,19 @@ function MenuContent() {
 
   // Montaje en cliente (evita hydration mismatch)
   const [mounted, setMounted] = useState(false);
-  const [showIntro, setShowIntro] = useState(false);
+  const [showOpeningVideo, setShowOpeningVideo] = useState(false);
   useEffect(() => {
     setMounted(true);
     try {
-      if (!sessionStorage.getItem(INTRO_SEEN_KEY)) setShowIntro(true);
+      if (!sessionStorage.getItem(OPENING_VIDEO_SEEN_KEY)) setShowOpeningVideo(true);
     } catch {
-      setShowIntro(true);
+      setShowOpeningVideo(true);
     }
   }, []);
 
-  const finishIntro = () => {
-    setShowIntro(false);
-    try { sessionStorage.setItem(INTRO_SEEN_KEY, "1"); } catch {}
+  const finishOpeningVideo = () => {
+    setShowOpeningVideo(false);
+    try { sessionStorage.setItem(OPENING_VIDEO_SEEN_KEY, "1"); } catch {}
   };
 
   // Pestaña activa: 'inicio' | 'menu'
@@ -216,7 +214,6 @@ function MenuContent() {
   const [categories, setCategories] = useState<any[]>(FALLBACK_CATEGORIES);
   const [products, setProducts] = useState<any[]>(FALLBACK_PRODUCTS);
   const [whatsappNumber, setWhatsappNumber] = useState("5492231234567");
-  const [latestNotification, setLatestNotification] = useState<any | null>(null);
 
   // Filtros y búsqueda
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -322,31 +319,6 @@ function MenuContent() {
     }
     loadData();
   }, [supabase]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const loadNotification = async () => {
-      const { data } = await supabase.from("menu_notifications")
-        .select("id, title, body").order("created_at", { ascending: false }).limit(1).maybeSingle();
-      if (!data || cancelled) return;
-      setLatestNotification(data);
-      if ("Notification" in window && Notification.permission === "granted" && localStorage.getItem("bloom_last_notification") !== data.id) {
-        new Notification(data.title, { body: data.body });
-        localStorage.setItem("bloom_last_notification", data.id);
-      }
-    };
-    loadNotification();
-    const timer = window.setInterval(loadNotification, 60000);
-    return () => { cancelled = true; window.clearInterval(timer); };
-  }, [supabase]);
-
-  const enableNotifications = async () => {
-    if (!("Notification" in window)) return toast.error("Este navegador no permite avisos.");
-    const permission = await Notification.requestPermission();
-    permission === "granted"
-      ? toast.success("Avisos de Bloom activados.")
-      : toast.message("Podés activar los avisos desde el navegador cuando quieras.");
-  };
 
   // Modalidad del menú: Take Away (retiro/delivery) o Salón
   const menuModality = orderModality === "mesa" ? "salon" : "takeaway";
@@ -595,7 +567,33 @@ function MenuContent() {
   return (
     <div className="app-shell" suppressHydrationWarning>
       <AnimatePresence>
-        {showIntro && <IntroSlider onFinish={finishIntro} />}
+        {showOpeningVideo && (
+          <motion.section
+            className="fixed inset-0 z-[200] overflow-hidden bg-[#4b4e38]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            aria-label="Video de bienvenida Bloom"
+          >
+            <video
+              className="h-full w-full object-cover"
+              src="/videos/coffee-opening.mp4"
+              autoPlay
+              muted
+              playsInline
+              onEnded={finishOpeningVideo}
+            />
+            <div className="absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/55 to-transparent px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-20">
+              <button
+                type="button"
+                onClick={finishOpeningVideo}
+                className="rounded-full border border-white/60 bg-white/90 px-5 py-2 text-sm font-extrabold text-[#4b4e38] shadow-lg transition-transform active:scale-95"
+              >
+                Entrar al menú
+              </button>
+            </div>
+          </motion.section>
+        )}
       </AnimatePresence>
 
       {/* HEADER SUPERIOR */}
@@ -633,10 +631,6 @@ function MenuContent() {
                 {tableLabel}
               </span>
             )}
-            <button type="button" onClick={enableNotifications} title="Recibir novedades" aria-label="Recibir novedades" className="relative p-2 rounded-xl bg-white border border-[#c4b896]/30 text-[#4b4e38] shadow-sm hover:bg-[#f2f0e6] transition-colors">
-              <BellRing size={19} />
-              {latestNotification && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white" />}
-            </button>
             <button
               onClick={() => setIsCartOpen(true)}
               className="relative p-2 rounded-xl bg-white border border-[#c4b896]/30 text-[#4b4e38] shadow-sm hover:bg-[#f2f0e6] transition-colors"
@@ -686,15 +680,6 @@ function MenuContent() {
                 <video className="w-full h-full object-cover" src="/videos/yogurt-pouring.mp4" autoPlay muted loop playsInline aria-label="Preparación de yogurt Bloom" />
               </div>
             </div>
-
-            {latestNotification && (
-              <div className="px-4 md:px-0 mb-5">
-                <button type="button" onClick={enableNotifications} className="w-full text-left flex gap-3 items-center rounded-2xl border border-[#c4b896]/40 bg-[#fffaf0] px-4 py-3 shadow-sm">
-                  <BellRing size={20} className="text-amber-600 shrink-0" />
-                  <span><strong className="block text-xs text-[#4b4e38]">{latestNotification.title}</strong><span className="text-[11px] text-[#6b6756]">{latestNotification.body}</span></span>
-                </button>
-              </div>
-            )}
 
             {/* ========== PLATO DEL DÍA (el elegido en el panel de administración) ========== */}
             {platoDia && (
