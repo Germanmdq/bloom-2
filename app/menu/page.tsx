@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Phone,
   ChevronLeft,
+  BellRing,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -181,6 +182,7 @@ function MenuContent() {
   const [categories, setCategories] = useState<any[]>(FALLBACK_CATEGORIES);
   const [products, setProducts] = useState<any[]>(FALLBACK_PRODUCTS);
   const [whatsappNumber, setWhatsappNumber] = useState("5492231234567");
+  const [latestNotification, setLatestNotification] = useState<any | null>(null);
 
   // Filtros y búsqueda
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -270,6 +272,31 @@ function MenuContent() {
     }
     loadData();
   }, [supabase]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadNotification = async () => {
+      const { data } = await supabase.from("menu_notifications")
+        .select("id, title, body").order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (!data || cancelled) return;
+      setLatestNotification(data);
+      if ("Notification" in window && Notification.permission === "granted" && localStorage.getItem("bloom_last_notification") !== data.id) {
+        new Notification(data.title, { body: data.body });
+        localStorage.setItem("bloom_last_notification", data.id);
+      }
+    };
+    loadNotification();
+    const timer = window.setInterval(loadNotification, 60000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [supabase]);
+
+  const enableNotifications = async () => {
+    if (!("Notification" in window)) return toast.error("Este navegador no permite avisos.");
+    const permission = await Notification.requestPermission();
+    permission === "granted"
+      ? toast.success("Avisos de Bloom activados.")
+      : toast.message("Podés activar los avisos desde el navegador cuando quieras.");
+  };
 
   // Modalidad del menú: Take Away (retiro/delivery) o Salón
   const menuModality = orderModality === "mesa" ? "salon" : "takeaway";
@@ -528,6 +555,10 @@ function MenuContent() {
                 {tableLabel}
               </span>
             )}
+            <button type="button" onClick={enableNotifications} title="Recibir novedades" aria-label="Recibir novedades" className="relative p-2 rounded-xl bg-white border border-[#c4b896]/30 text-[#4b4e38] shadow-sm hover:bg-[#f2f0e6] transition-colors">
+              <BellRing size={19} />
+              {latestNotification && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white" />}
+            </button>
             <button
               onClick={() => setIsCartOpen(true)}
               className="relative p-2 rounded-xl bg-white border border-[#c4b896]/30 text-[#4b4e38] shadow-sm hover:bg-[#f2f0e6] transition-colors"
@@ -571,6 +602,21 @@ function MenuContent() {
                 <span className="text-[11px] text-[#4b4e38]/70 font-semibold">Comer en el local</span>
               </button>
             </div>
+
+            <div className="px-4 md:px-0 mb-6">
+              <div className="home-feature-video rounded-[24px] overflow-hidden bg-[#777b5b] shadow-md">
+                <video className="w-full h-full object-cover" src="/videos/yogurt-pouring.mp4" autoPlay muted loop playsInline aria-label="Preparación de yogurt Bloom" />
+              </div>
+            </div>
+
+            {latestNotification && (
+              <div className="px-4 md:px-0 mb-5">
+                <button type="button" onClick={enableNotifications} className="w-full text-left flex gap-3 items-center rounded-2xl border border-[#c4b896]/40 bg-[#fffaf0] px-4 py-3 shadow-sm">
+                  <BellRing size={20} className="text-amber-600 shrink-0" />
+                  <span><strong className="block text-xs text-[#4b4e38]">{latestNotification.title}</strong><span className="text-[11px] text-[#6b6756]">{latestNotification.body}</span></span>
+                </button>
+              </div>
+            )}
 
             {/* ========== PLATO DEL DÍA (el elegido en el panel de administración) ========== */}
             {platoDia && (
@@ -642,9 +688,9 @@ function MenuContent() {
                   setSearchQuery("");
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className="text-xs font-bold text-[#777b5b] underline underline-offset-4"
+                className="flex items-center gap-1 text-xs font-bold text-[#777b5b] underline underline-offset-4"
               >
-                Cambiar
+                <ChevronLeft size={15} /> Volver
               </button>
             </div>
 
@@ -831,6 +877,9 @@ function MenuContent() {
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
                   <CheckCircle2 size={64} className="text-[#10b981] mb-4 animate-bounce" />
                   <h3 className="font-extrabold text-2xl text-[#4b4e38] mb-2">¡Pedido Confirmado!</h3>
+                  <div className="mb-4 rounded-full bg-[#777b5b] text-[#f5e8ca] px-4 py-2 text-xs font-black shadow-sm">
+                    {orderModality === "mesa" ? `🍽️ Para consumir en el local · Mesa ${selectedTableNum || 1}` : orderModality === "retiro" ? "🏃 Para retirar en el local" : "🛵 Envío a domicilio"}
+                  </div>
                   <p className="text-sm text-[#5f5c46] max-w-xs leading-relaxed">
                     {orderModality === 'mesa' 
                       ? `Tu pedido fue recibido con éxito para la Mesa ${selectedTableNum || 1}. En breve te lo alcanzamos a tu mesa.`
