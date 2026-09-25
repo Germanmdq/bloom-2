@@ -974,28 +974,11 @@ function MenuContent() {
 
                     {/* Selector de Modalidad — 2 opciones grandes (DENTRO del scroll para que siempre sea visible) */}
                     <div className="mt-4 pt-4 border-t border-[#c4b896]/30 space-y-3">
-                      <div className="space-y-2">
+                      {orderModality !== "mesa" && <div className="space-y-2">
                         <label className="text-xs font-black tracking-wider uppercase text-[#4b4e38] block">
                           ¿Cómo querés tu pedido? *
                         </label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {/* Comer en el local */}
-                          <button
-                            type="button"
-                            onClick={() => setOrderModality("mesa")}
-                            className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-3 rounded-2xl border-2 transition-all font-black text-sm ${
-                              orderModality === "mesa"
-                                ? "border-[#777b5b] bg-[#777b5b] text-[#f5e8ca] shadow-lg scale-[1.01]"
-                                : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#777b5b]/40"
-                            }`}
-                          >
-                            <span className="text-2xl">🍽️</span>
-                            <span className="text-center leading-tight">Comer en<br/>el local</span>
-                            {orderModality === "mesa" && (
-                              <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />
-                            )}
-                          </button>
-
+                        <div className="grid grid-cols-2 gap-2">
                           <button type="button" onClick={() => setOrderModality("delivery")} className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-2xl border-2 transition-all font-black text-xs ${orderModality === "delivery" ? "border-[#777b5b] bg-[#777b5b] text-[#f5e8ca] shadow-lg scale-[1.01]" : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#777b5b]/40"}`}>
                             <span className="text-2xl">🛵</span><span className="text-center leading-tight">Delivery</span>
                             {orderModality === "delivery" && <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />}
@@ -1018,7 +1001,7 @@ function MenuContent() {
                             )}
                           </button>
                         </div>
-                      </div>
+                      </div>}
 
                       {/* Campos según la modalidad */}
                       {orderModality === "mesa" && (
