@@ -754,10 +754,11 @@ function MenuContent() {
         {activeTab === "menu" && (
           <>
             {/* MODALIDAD ELEGIDA */}
-            <div className="flex items-center justify-between px-[18px] md:px-0 pt-3">
-              <span className="text-xs font-extrabold uppercase tracking-wider text-[#4b4e38]">
-                {menuModality === "salon" ? "🍽️ Salón" : "🛍️ Take Away"}
-              </span>
+            <div className="flex items-center justify-between gap-2 px-[18px] md:px-0 pt-3">
+              <div className="flex items-center gap-1 rounded-full bg-white border border-[#c4b896]/35 p-1 shadow-sm">
+                <button type="button" onClick={() => startOrder("retiro")} className={`rounded-full px-3 py-1.5 text-[11px] font-black transition-colors ${menuModality === "takeaway" ? "bg-[#777b5b] text-[#f5e8ca]" : "text-[#777b5b]"}`}>🛍️ Take Away</button>
+                <button type="button" onClick={() => startOrder("mesa")} className={`rounded-full px-3 py-1.5 text-[11px] font-black transition-colors ${menuModality === "salon" ? "bg-[#777b5b] text-[#f5e8ca]" : "text-[#777b5b]"}`}>🍽️ Salón</button>
+              </div>
               <button
                 type="button"
                 onClick={() => {
@@ -766,7 +767,7 @@ function MenuContent() {
                   setSearchQuery("");
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className="flex items-center gap-1 text-xs font-bold text-[#777b5b] underline underline-offset-4"
+                className="shrink-0 flex items-center gap-1 text-xs font-bold bg-white border border-[#c4b896]/40 text-[#4b4e38] px-3 py-2 rounded-full shadow-sm"
               >
                 <ChevronLeft size={15} /> Volver
               </button>
