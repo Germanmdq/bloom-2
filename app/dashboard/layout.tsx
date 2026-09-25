@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { DashboardClientLayout } from "@/components/dashboard/DashboardClientLayout";
 
+// El panel depende de la sesión actual; no debe generarse como página estática.
+export const dynamic = "force-dynamic";
+
 export default async function DashboardLayout({
   children,
 }: Readonly<{

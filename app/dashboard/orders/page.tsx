@@ -1,5 +1,7 @@
 import { OrderList } from "@/components/dashboard/OrderList";
 
+export const dynamic = "force-dynamic";
+
 export default function OrdersPage() {
     return (
         <div className="min-h-full">

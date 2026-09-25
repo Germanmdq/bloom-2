@@ -3,6 +3,10 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 
+// La aplicación usa sesión y datos en tiempo real; evita prerenderizar el
+// manejador global de errores sin un contexto de petición.
+export const dynamic = "force-dynamic";
+
 /** Single UI stack site-wide (same as homepage `font-sans`). */
 const inter = Inter({
   subsets: ["latin"],

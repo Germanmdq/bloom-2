@@ -906,11 +906,14 @@ function MenuContent() {
                       ? `Tu pedido fue recibido con éxito. ¡Ya lo estamos preparando para el envío!`
                       : `Tu pedido fue recibido con éxito. Te avisaremos cuando esté listo en el mostrador.`}
                   </p>
-                  <div className="grid grid-cols-3 gap-2 w-full max-w-sm mt-6">
-                    <button type="button" onClick={() => startOrder("delivery")} className="rounded-xl bg-[#f2f0e6] px-2 py-2.5 text-[11px] font-black text-[#4b4e38]">🛵 Delivery</button>
-                    <button type="button" onClick={() => startOrder("retiro")} className="rounded-xl bg-[#f2f0e6] px-2 py-2.5 text-[11px] font-black text-[#4b4e38]">🏃 Retirar</button>
-                    <button type="button" onClick={() => startOrder("mesa")} className="rounded-xl bg-[#777b5b] px-2 py-2.5 text-[11px] font-black text-[#f5e8ca]">🍽️ En el local</button>
-                  </div>
+                  {orderModality === "mesa" ? (
+                    <button type="button" onClick={() => startOrder("mesa")} className="mt-6 rounded-xl bg-[#777b5b] px-5 py-2.5 text-[11px] font-black text-[#f5e8ca]">🍽️ Volver al Salón</button>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 w-full max-w-sm mt-6">
+                      <button type="button" onClick={() => startOrder("delivery")} className="rounded-xl bg-[#f2f0e6] px-2 py-2.5 text-[11px] font-black text-[#4b4e38]">🛵 Delivery</button>
+                      <button type="button" onClick={() => startOrder("retiro")} className="rounded-xl bg-[#f2f0e6] px-2 py-2.5 text-[11px] font-black text-[#4b4e38]">🏃 Retirar</button>
+                    </div>
+                  )}
                 </div>
               ) : cart.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">

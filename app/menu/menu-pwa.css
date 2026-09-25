@@ -37,12 +37,12 @@
 .home-feature-video {
   width: 100%;
   max-width: 620px;
-  height: 156px;
+  height: 190px;
   margin: 0 auto;
 }
 
 @media (min-width: 640px) {
-  .home-feature-video { height: 186px; }
+  .home-feature-video { height: 220px; }
 }
 
 .search-box input {
