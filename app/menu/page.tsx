@@ -138,6 +138,25 @@ const CATEGORY_ICONS: Record<string, string> = {
   "jugos y licuados": "🍹",
 };
 
+type CoffeePersonality = "intenso" | "suave" | "equilibrado";
+
+const COFFEE_GAME_QUESTIONS: Array<{
+  question: string;
+  answers: Array<{ label: string; type: CoffeePersonality }>;
+}> = [
+  { question: "¿Cómo empezás el día?", answers: [{ label: "Con toda la energía", type: "intenso" }, { label: "De a poquito y sin apuro", type: "suave" }, { label: "Con calma, pero enfocado", type: "equilibrado" }] },
+  { question: "Elegí tu rincón ideal", answers: [{ label: "Una mesa junto a la barra", type: "intenso" }, { label: "Un sillón cómodo", type: "suave" }, { label: "Una mesa al sol", type: "equilibrado" }] },
+  { question: "¿Qué plan te representa más?", answers: [{ label: "Salir y hacer mil cosas", type: "intenso" }, { label: "Una charla larga", type: "suave" }, { label: "Un paseo tranquilo", type: "equilibrado" }] },
+  { question: "Cuando elegís un sabor, preferís…", answers: [{ label: "Que sea bien marcado", type: "intenso" }, { label: "Algo suave y cremoso", type: "suave" }, { label: "El punto justo", type: "equilibrado" }] },
+  { question: "Tu momento Bloom ideal es…", answers: [{ label: "Una pausa rápida que despierta", type: "intenso" }, { label: "Quedarme a disfrutar sin reloj", type: "suave" }, { label: "Compartir algo rico", type: "equilibrado" }] },
+];
+
+const COFFEE_GAME_RESULTS: Record<CoffeePersonality, { emoji: string; title: string; description: string }> = {
+  intenso: { emoji: "☕", title: "Sos un Espresso Intenso", description: "Directo, decidido y con energía para encarar el día." },
+  suave: { emoji: "🥛", title: "Sos un Latte Suave", description: "Cálido, tranquilo y de disfrutar cada momento sin apuro." },
+  equilibrado: { emoji: "🤎", title: "Sos un Capuchino Equilibrado", description: "Tenés el balance justo: energía, calma y ganas de compartir." },
+};
+
 // El slider de bienvenida se muestra una vez por cada apertura de la app
 const INTRO_SEEN_KEY = "bloom_intro_seen";
 
@@ -211,6 +230,9 @@ function MenuContent() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [showCoffeeGame, setShowCoffeeGame] = useState(false);
+  const [coffeeGameStep, setCoffeeGameStep] = useState(0);
+  const [coffeeGameScores, setCoffeeGameScores] = useState<Record<CoffeePersonality, number>>({ intenso: 0, suave: 0, equilibrado: 0 });
   const [customerName, setCustomerName] = useState("");
   const [orderNotes, setOrderNotes] = useState("");
 
@@ -347,6 +369,26 @@ function MenuContent() {
     toast.success(modality === "mesa" ? "Pedido en el salón ☕" : modality === "delivery" ? "Pedido para delivery 🛵" : "Pedido para retirar 🛍️");
   };
 
+  const startCoffeeGame = () => {
+    setCoffeeGameStep(0);
+    setCoffeeGameScores({ intenso: 0, suave: 0, equilibrado: 0 });
+    setShowCoffeeGame(true);
+  };
+
+  const answerCoffeeGame = (type: CoffeePersonality) => {
+    setCoffeeGameScores((scores) => ({ ...scores, [type]: scores[type] + 1 }));
+    setCoffeeGameStep((step) => step + 1);
+  };
+
+  const returnToWaiting = () => {
+    setShowCoffeeGame(false);
+    setCoffeeGameStep(0);
+    setCoffeeGameScores({ intenso: 0, suave: 0, equilibrado: 0 });
+  };
+
+  const coffeeGameResult = (Object.keys(coffeeGameScores) as CoffeePersonality[])
+    .reduce((best, type) => coffeeGameScores[type] > coffeeGameScores[best] ? type : best, "equilibrado" as CoffeePersonality);
+
   // Carrito helpers
   const cartTotal = useMemo(
     () => cart.reduce((acc, item) => acc + item.price * item.quantity, 0),
@@ -461,10 +503,6 @@ function MenuContent() {
         description: "Se enviará automáticamente en cuanto recuperes señal.",
         duration: 5000,
       });
-      setTimeout(() => {
-        setOrderSuccess(false);
-        setIsCartOpen(false);
-      }, 3500);
       setIsSending(false);
       return;
     }
@@ -495,10 +533,6 @@ function MenuContent() {
           ? "¡Pedido para Delivery registrado! 🛵"
           : "¡Pedido para Retiro registrado! 🏃"
       );
-      setTimeout(() => {
-        setOrderSuccess(false);
-        setIsCartOpen(false);
-      }, 3000);
     } catch (err: any) {
       // Si la llamada falló por pérdida repentina de red, resguardar en cola offline
       saveOfflineOrder(orderPayload);
@@ -512,10 +546,6 @@ function MenuContent() {
         description: "Se enviará automáticamente al local en cuanto se restablezca la conexión.",
         duration: 5000,
       });
-      setTimeout(() => {
-        setOrderSuccess(false);
-        setIsCartOpen(false);
-      }, 3500);
     } finally {
       setIsSending(false);
     }
@@ -894,25 +924,59 @@ function MenuContent() {
 
               {orderSuccess ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                  <CheckCircle2 size={64} className="text-[#10b981] mb-4 animate-bounce" />
-                  <h3 className="font-extrabold text-2xl text-[#4b4e38] mb-2">¡Pedido Confirmado!</h3>
-                  <div className="mb-4 rounded-full bg-[#777b5b] text-[#f5e8ca] px-4 py-2 text-xs font-black shadow-sm">
-                    {orderModality === "mesa" ? `🍽️ Para consumir en el local · Mesa ${selectedTableNum || 1}` : orderModality === "retiro" ? "🏃 Para retirar en el local" : "🛵 Envío a domicilio"}
-                  </div>
-                  <p className="text-sm text-[#5f5c46] max-w-xs leading-relaxed">
-                    {orderModality === 'mesa' 
-                      ? `Tu pedido fue recibido con éxito para la Mesa ${selectedTableNum || 1}. En breve te lo alcanzamos a tu mesa.`
-                      : orderModality === 'delivery'
-                      ? `Tu pedido fue recibido con éxito. ¡Ya lo estamos preparando para el envío!`
-                      : `Tu pedido fue recibido con éxito. Te avisaremos cuando esté listo en el mostrador.`}
-                  </p>
-                  {orderModality === "mesa" ? (
-                    <button type="button" onClick={() => startOrder("mesa")} className="mt-6 rounded-xl bg-[#777b5b] px-5 py-2.5 text-[11px] font-black text-[#f5e8ca]">🍽️ Volver al Salón</button>
+                  {showCoffeeGame ? (
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={coffeeGameStep}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.18 }}
+                        className="w-full max-w-sm"
+                      >
+                        {coffeeGameStep < COFFEE_GAME_QUESTIONS.length ? (
+                          <>
+                            <div className="flex items-center justify-between mb-5">
+                              <button type="button" onClick={returnToWaiting} className="text-xs font-bold text-[#777b5b]">← Volver a la espera</button>
+                              <span className="text-xs font-black text-[#7a765a]">{coffeeGameStep + 1} / {COFFEE_GAME_QUESTIONS.length}</span>
+                            </div>
+                            <Coffee size={46} className="mx-auto text-[#777b5b] mb-4" />
+                            <h3 className="font-extrabold text-2xl text-[#4b4e38] mb-6">{COFFEE_GAME_QUESTIONS[coffeeGameStep].question}</h3>
+                            <div className="space-y-3">
+                              {COFFEE_GAME_QUESTIONS[coffeeGameStep].answers.map((answer) => (
+                                <button key={answer.label} type="button" onClick={() => answerCoffeeGame(answer.type)} className="w-full rounded-2xl border border-[#c4b896]/45 bg-white px-4 py-4 text-left text-sm font-bold text-[#4b4e38] shadow-sm transition active:scale-[0.98] hover:border-[#777b5b]">
+                                  {answer.label}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-5xl block mb-4">{COFFEE_GAME_RESULTS[coffeeGameResult].emoji}</span>
+                            <p className="text-xs font-black uppercase tracking-wider text-[#777b5b] mb-2">Tu resultado</p>
+                            <h3 className="font-extrabold text-2xl text-[#4b4e38] mb-3">{COFFEE_GAME_RESULTS[coffeeGameResult].title}</h3>
+                            <p className="text-sm text-[#5f5c46] leading-relaxed mb-7">{COFFEE_GAME_RESULTS[coffeeGameResult].description}</p>
+                            <button type="button" onClick={returnToWaiting} className="w-full rounded-2xl bg-[#777b5b] px-5 py-3.5 text-sm font-black text-[#f5e8ca] shadow-md">Volver a la espera</button>
+                          </>
+                        )}
+                      </motion.div>
+                    </AnimatePresence>
                   ) : (
-                    <div className="grid grid-cols-2 gap-2 w-full max-w-sm mt-6">
-                      <button type="button" onClick={() => startOrder("delivery")} className="rounded-xl bg-[#f2f0e6] px-2 py-2.5 text-[11px] font-black text-[#4b4e38]">🛵 Delivery</button>
-                      <button type="button" onClick={() => startOrder("retiro")} className="rounded-xl bg-[#f2f0e6] px-2 py-2.5 text-[11px] font-black text-[#4b4e38]">🏃 Retirar</button>
-                    </div>
+                    <>
+                      <CheckCircle2 size={64} className="text-[#10b981] mb-4 animate-bounce" />
+                      <h3 className="font-extrabold text-2xl text-[#4b4e38] mb-2">¡Pedido Confirmado!</h3>
+                      <div className="mb-4 rounded-full bg-[#777b5b] text-[#f5e8ca] px-4 py-2 text-xs font-black shadow-sm">
+                        {orderModality === "mesa" ? `🍽️ Para consumir en el local · Mesa ${selectedTableNum || 1}` : orderModality === "retiro" ? "🏃 Para retirar en el local" : "🛵 Envío a domicilio"}
+                      </div>
+                      <p className="text-sm text-[#5f5c46] max-w-xs leading-relaxed">
+                        {orderModality === "mesa" ? `Tu pedido fue recibido con éxito para la Mesa ${selectedTableNum || 1}. En breve te lo alcanzamos a tu mesa.` : orderModality === "delivery" ? "Tu pedido fue recibido con éxito. ¡Ya lo estamos preparando para el envío!" : "Tu pedido fue recibido con éxito. Te avisaremos cuando esté listo en el mostrador."}
+                      </p>
+                      <button type="button" onClick={startCoffeeGame} className="mt-6 w-full max-w-sm rounded-2xl border border-[#c4b896]/45 bg-[#f2f0e6] px-5 py-4 text-left shadow-sm transition active:scale-[0.98]">
+                        <span className="block text-lg mb-1">☕</span>
+                        <span className="block font-extrabold text-[#4b4e38]">¿Qué tipo de café sos?</span>
+                        <span className="block text-xs text-[#7a765a] mt-1">Jugá mientras preparamos tu pedido</span>
+                      </button>
+                    </>
                   )}
                 </div>
               ) : cart.length === 0 ? (
