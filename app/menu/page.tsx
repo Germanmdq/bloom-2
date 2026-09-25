@@ -225,6 +225,19 @@ function MenuContent() {
   // Producto seleccionado para el modal de detalle
   const [selectedProduct, setSelectedProduct] = useState<MenuItem | null>(null);
 
+  useEffect(() => {
+    window.history.replaceState({ ...window.history.state, bloomMenu: { kind: "categories" } }, "");
+    const handlePopState = (event: PopStateEvent) => {
+      const view = event.state?.bloomMenu;
+      if (!view) return;
+      setSelectedProduct(null);
+      setSearchQuery("");
+      setSelectedCategory(view.categoryId ?? "all");
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   // Carrito
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -399,7 +412,27 @@ function MenuContent() {
     [cart]
   );
 
-  const handleOpenProduct = (item: MenuItem) => setSelectedProduct(item);
+  const selectMenuCategory = (categoryId: string) => {
+    window.history.pushState({ bloomMenu: { kind: "category", categoryId } }, "");
+    setSearchQuery("");
+    setSelectedCategory(categoryId);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const returnToCategories = () => {
+    if (window.history.state?.bloomMenu?.kind === "category") window.history.back();
+    else setSelectedCategory("all");
+  };
+
+  const handleOpenProduct = (item: MenuItem) => {
+    window.history.pushState({ bloomMenu: { kind: "product", categoryId: selectedCategory } }, "");
+    setSelectedProduct(item);
+  };
+
+  const closeProductSheet = () => {
+    if (window.history.state?.bloomMenu?.kind === "product") window.history.back();
+    else setSelectedProduct(null);
+  };
 
   const handleAddToCart = (line: SheetLine, quantity: number) => {
     const key = `${line.id}::${line.name}`;
@@ -415,7 +448,7 @@ function MenuContent() {
     toast.success(`Agregado al pedido (${quantity})`, {
       description: line.name,
     });
-    setSelectedProduct(null);
+    closeProductSheet();
   };
 
   const updateQuantity = (key: string, delta: number) => {
@@ -769,8 +802,7 @@ function MenuContent() {
                       key={cat.id}
                       type="button"
                       onClick={() => {
-                        setSelectedCategory(cat.id);
-                        window.scrollTo({ top: 0, behavior: "smooth" });
+                        selectMenuCategory(cat.id);
                       }}
                       className="menu-category-card"
                     >
@@ -798,7 +830,7 @@ function MenuContent() {
                   <div className="flex items-center gap-3 px-[18px] md:px-0 mb-4">
                     <button
                       type="button"
-                      onClick={() => setSelectedCategory("all")}
+                      onClick={returnToCategories}
                       className="flex items-center gap-1 text-xs font-bold bg-white border border-[#c4b896]/40 text-[#4b4e38] px-3.5 py-2 rounded-full shadow-sm"
                     >
                       <ChevronLeft size={15} /> Categorías
@@ -878,7 +910,7 @@ function MenuContent() {
             categoryName={
               catalog.displayCategories.find((c) => c.id === selectedProduct.category_id)?.name
             }
-            onClose={() => setSelectedProduct(null)}
+            onClose={closeProductSheet}
             onAdd={handleAddToCart}
           />
         )}

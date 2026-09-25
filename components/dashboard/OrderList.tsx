@@ -558,6 +558,9 @@ export function OrderList() {
                                                 </span>
                                                 <div className={`shrink-0 ${paid ? "text-gray-400" : "text-red-500"}`}>{typeIcon}</div>
                                                 <div className="flex-1 min-w-0">
+                                                    <p className="text-[11px] font-black uppercase tracking-widest text-red-600 mb-0.5">
+                                                        Pedido #{String(o.id).slice(-6).toUpperCase()}
+                                                    </p>
                                                     <p className="font-black text-gray-950 text-base truncate">
                                                         {o.customer_name || `Mesa ${o.table_id}`}
                                                     </p>
@@ -643,7 +646,7 @@ export function OrderList() {
                         <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
                             className={`bg-white w-full sm:max-w-md max-h-[85vh] rounded-t-[2rem] sm:rounded-[2rem] overflow-hidden shadow-2xl relative flex flex-col border-2 border-gray-200 ${CHANNEL_LEFT[getOrderChannel(selectedOrder)]}`}
                         >
-                            <div className="px-5 pt-5 pb-4 border-b border-gray-100 flex items-start justify-between shrink-0">
+                            <div className="px-5 pt-7 pb-4 border-b border-gray-100 flex items-start justify-between shrink-0">
                                 <div>
                                     <span
                                         className={`inline-flex rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wide mb-2 ${CHANNEL_BADGE[getOrderChannel(selectedOrder)]}`}
@@ -651,6 +654,9 @@ export function OrderList() {
                                         {CHANNEL_LABEL[getOrderChannel(selectedOrder)]}
                                     </span>
                                     <p className="font-black text-gray-900 text-lg">{selectedOrder.customer_name || `Mesa ${selectedOrder.table_id}`}</p>
+                                    <p className="text-[11px] font-black uppercase tracking-widest text-red-600 mt-1">
+                                        Pedido #{String(selectedOrder.id).slice(-6).toUpperCase()}
+                                    </p>
                                     {selectedOrder.customer_phone && (
                                         <a href={`tel:${selectedOrder.customer_phone}`} className="text-sm text-bloom-600 font-bold">{selectedOrder.customer_phone}</a>
                                     )}
