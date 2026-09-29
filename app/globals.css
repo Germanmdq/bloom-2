@@ -1,0 +1,272 @@
+@import "tailwindcss";
+
+@theme {
+  /* Bloom logo — oliva (#7A765A) + crema (#F2F0E6) */
+  --color-bloom-50: #f8f7f3;
+  --color-bloom-100: #eceae0;
+  --color-bloom-200: #ddd8c8;
+  --color-bloom-300: #c4c0aa;
+  --color-bloom-400: #a39a7f;
+  --color-bloom-500: #8a8368;
+  --color-bloom-600: #7a765a;
+  --color-bloom-700: #5f5c46;
+  --color-bloom-800: #4a4838;
+  --color-bloom-900: #3d3b2f;
+
+  --color-bloom-cream: #f2f0e6;
+  --color-bloom-page: #f7f5ef;
+
+  /* Acento cálido (reemplaza amarillo/naranja puro) */
+  --color-bloom-gold: #c4b896;
+  --color-bloom-gold-dark: #a89868;
+
+  /* Local — verde inglés (fachada / identidad del salón) */
+  --color-english-50: #eef4f0;
+  --color-english-100: #d4e4dc;
+  --color-english-200: #a8c9b8;
+  --color-english-300: #7aab92;
+  --color-english-400: #528a6f;
+  --color-english-500: #3d6b52;
+  --color-english-600: #2d4a3e;
+  --color-english-700: #243d32;
+  --color-english-800: #1a3028;
+  --color-english-900: #142620;
+
+  /* Compat: nombres usados en POS / legacy */
+  --color-bloom-50-legacy: var(--color-bloom-50);
+  --color-bloom-600-primary: var(--color-bloom-600);
+
+  /* Estados */
+  --color-success: #10b981;
+  --color-warning: #a89868;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
+
+  /* Apple-inspired neutrals (ink scale) */
+  --color-ink-0:   #ffffff;
+  --color-ink-50:  #fbfbfd;
+  --color-ink-100: #f5f5f7;
+  --color-ink-200: #e8e8ed;
+  --color-ink-300: #d2d2d7;
+  --color-ink-400: #aeaeb2;
+  --color-ink-500: #86868b;
+  --color-ink-600: #6e6e73;
+  --color-ink-700: #424245;
+  --color-ink-800: #1d1d1f;
+  --color-ink-900: #0b0b0d;
+
+  --color-dark-50: #f9fafb;
+  --color-dark-100: #f3f4f6;
+  --color-dark-200: #e5e7eb;
+  --color-dark-300: #d1d5db;
+  --color-dark-400: #9ca3af;
+  --color-dark-500: #6b7280;
+  --color-dark-600: #4b5563;
+  --color-dark-700: #374151;
+  --color-dark-800: #1f2937;
+  --color-dark-900: #111827;
+
+  --color-chocolate: #4a4838;
+  --color-piedra: #2c2a24;
+  --color-crema: #f2f0e6;
+  --color-gris: #7a736e;
+
+  /* Loaded once in app/layout.tsx (next/font Inter → --font-inter on <html>) */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Registro / Club Bloom landing */
+  @keyframes registro-field-up {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes registro-cta-pulse {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 0 rgba(45, 74, 62, 0.45),
+        0 10px 40px -10px rgba(0, 0, 0, 0.35);
+    }
+
+    50% {
+      box-shadow:
+        0 0 0 14px rgba(45, 74, 62, 0),
+        0 14px 48px -10px rgba(0, 0, 0, 0.4);
+    }
+  }
+
+  @keyframes registro-cup-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.5);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes registro-cup-glow {
+    0%,
+    100% {
+      filter: drop-shadow(0 0 4px rgba(201, 168, 76, 0.85));
+    }
+
+    50% {
+      filter: drop-shadow(0 0 14px rgba(255, 230, 180, 0.95));
+    }
+  }
+
+  @keyframes registro-bar-fill {
+    from {
+      transform: scaleX(0);
+    }
+
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  @keyframes registro-step-out-left {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    to {
+      opacity: 0;
+      transform: translateX(-24px);
+    }
+  }
+
+  @keyframes registro-step-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(28px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes registro-coffee-bounce {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-14px);
+    }
+  }
+}
+
+.registro-field-anim {
+  animation: registro-field-up 0.58s cubic-bezier(0.21, 0.47, 0.32, 0.98) both;
+}
+
+.registro-cta-pulse {
+  animation: registro-cta-pulse 2.5s ease-in-out infinite;
+}
+
+.registro-cup {
+  animation: registro-cup-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.registro-cup--final {
+  animation:
+    registro-cup-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    registro-cup-glow 2.2s ease-in-out infinite 0.45s;
+}
+
+.registro-bar-fill {
+  transform-origin: left;
+  animation: registro-bar-fill 1.05s cubic-bezier(0.21, 0.47, 0.32, 0.98) 0.35s both;
+}
+
+.registro-step-panel-out {
+  animation: registro-step-out-left 0.3s ease-in forwards;
+}
+
+.registro-step-panel-in {
+  animation: registro-step-in-right 0.3s cubic-bezier(0.21, 0.47, 0.32, 0.98) both;
+}
+
+.registro-celebrate-coffee {
+  animation: registro-coffee-bounce 0.85s ease-in-out infinite;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bloom-page);
+  color: var(--color-piedra);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar for clean look */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-gris);
+  border-radius: 4px;
+  opacity: 0.5;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-chocolate);
+}
+
+/* Utility Class for Glass Effect */
+.glass {
+  background-color: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* PWA Standalone & Mobile Touch Optimizations */
+@media all and (display-mode: standalone) {
+  body {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    overscroll-behavior-y: contain;
+  }
+
+  /* Safe areas for notched mobile devices */
+  header, nav[role="navigation"] {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  footer, .pwa-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}

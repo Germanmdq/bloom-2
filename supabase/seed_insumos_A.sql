@@ -1,0 +1,15 @@
+INSERT INTO public.insumos (nombre,unidad,stock_actual,stock_minimo,categoria,proveedor_id) VALUES
+('Cafe en Grano','kg',0,10,'Cafeteria',(SELECT id FROM proveedores WHERE nombre='Cabrales' LIMIT 1)),
+('Azucar','kg',0,20,'Cafeteria',(SELECT id FROM proveedores WHERE nombre='Cabrales' LIMIT 1)),
+('Edulcorante','un',0,50,'Cafeteria',(SELECT id FROM proveedores WHERE nombre='Cabrales' LIMIT 1)),
+('Submarino','kg',0,5,'Cafeteria',(SELECT id FROM proveedores WHERE nombre='Cabrales' LIMIT 1)),
+('Rapiditas','un',0,50,'Panificados',(SELECT id FROM proveedores WHERE nombre='Bimbo' LIMIT 1)),
+('Pan Lactal','un',0,20,'Panificados',(SELECT id FROM proveedores WHERE nombre='Bimbo' LIMIT 1)),
+('Pan de Miga','un',0,20,'Panificados',(SELECT id FROM proveedores WHERE nombre='Los Pinos' LIMIT 1)),
+('Medialuna Manteca','un',0,100,'Panificados',(SELECT id FROM proveedores WHERE nombre='Los Pinos' LIMIT 1)),
+('Pan Burger Brioche','un',0,80,'Panificados',(SELECT id FROM proveedores WHERE nombre='Los Pinos' LIMIT 1)),
+('Lomo Limpio','kg',0,5,'Carniceria',(SELECT id FROM proveedores WHERE nombre='Carniceria' LIMIT 1)),
+('Bife de Chorizo','kg',0,10,'Carniceria',(SELECT id FROM proveedores WHERE nombre='Carniceria' LIMIT 1)),
+('Carne Picada','kg',0,15,'Carniceria',(SELECT id FROM proveedores WHERE nombre='Carniceria' LIMIT 1)),
+('Bondiola de Cerdo','kg',0,8,'Carniceria',(SELECT id FROM proveedores WHERE nombre='Carniceria' LIMIT 1)),
+('Panceta','kg',0,5,'Carniceria',(SELECT id FROM proveedores WHERE nombre='Carniceria' LIMIT 1));
