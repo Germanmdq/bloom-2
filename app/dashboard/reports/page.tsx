@@ -111,11 +111,15 @@ export default function ReportsPage() {
                 supabase.from('products').select('name, categories(name)')
             ]);
 
+            // Las ventas son imprescindibles; compras y gastos se activan cuando
+            // esos módulos estén configurados en la base. No deben bloquear el
+            // reporte diario de un local nuevo.
             if (salesRes.error) throw salesRes.error;
-            if (comprasRes.error) throw comprasRes.error;
-            if (gastosFijosRes.error) throw gastosFijosRes.error;
+            const purchases = comprasRes.error ? [] : (comprasRes.data || []);
+            const fixedExpenses = gastosFijosRes.error ? [] : (gastosFijosRes.data || []);
+            const products = productsRes.error ? [] : (productsRes.data || []);
 
-            const productMappings = (productsRes.data || []).reduce((acc, p) => {
+            const productMappings = products.reduce((acc, p) => {
                 acc[p.name] = (p.categories as any)?.name || "Otros";
                 return acc;
             }, {} as Record<string, string>);
@@ -140,13 +144,13 @@ export default function ReportsPage() {
             }, { cash: 0, card: 0, mercadoPago: 0, santanderRio: 0, totalSales: 0, salesCount: 0 });
 
             // Procesar Compras (Mercadería)
-            const totalPurchases = (comprasRes.data || []).reduce((sum, c) => sum + Number(c.total), 0);
+            const totalPurchases = purchases.reduce((sum, c) => sum + Number(c.total), 0);
 
             // Procesar Gastos Fijos (Pagos realizados en el periodo)
             let totalFixedExpenses = 0;
             const expByCat: Record<string, number> = {};
             
-            (gastosFijosRes.data || []).forEach(g => {
+            fixedExpenses.forEach(g => {
                 const historial = Array.isArray(g.historial_pagos) ? g.historial_pagos : [];
                 if (historial.length > 0) {
                     // Paid via partial payments — count each payment within the period
