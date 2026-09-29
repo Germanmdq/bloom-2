@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useInsumosByProveedor, useRegistrarCompra, useCreateInsumo } from "@/lib/hooks/use-compras-stock";
 import { IconShoppingCart, IconFileInvoice, IconCash, IconCreditCard, IconPlus, IconX, IconCheck, IconSearch, IconBuildingStore } from "@tabler/icons-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { InvoiceCaptureQr } from "@/components/dashboard/InvoiceCaptureQr";
 
 interface Proveedor {
     id: string;
@@ -121,10 +122,8 @@ export function FormularioCompra({ proveedores }: { proveedores: Proveedor[] }) 
     return (
         <section className="mb-10">
             {!open ? (
-                <button
-                    onClick={() => setOpen(true)}
-                    className="w-full p-8 rounded-[2rem] border-2 border-dashed border-gray-200 hover:border-black hover:bg-black hover:text-white transition-all group flex items-center justify-center gap-4"
-                >
+                <div className="flex flex-col gap-3 sm:flex-row">
+                <button onClick={() => setOpen(true)} className="flex-1 p-8 rounded-[2rem] border-2 border-dashed border-gray-200 hover:border-black hover:bg-black hover:text-white transition-all group flex items-center justify-center gap-4">
                     <div className="w-14 h-14 rounded-2xl bg-gray-100 group-hover:bg-white/20 flex items-center justify-center transition-all">
                         <IconShoppingCart size={28} className="text-gray-400 group-hover:text-white" />
                     </div>
@@ -133,6 +132,8 @@ export function FormularioCompra({ proveedores }: { proveedores: Proveedor[] }) 
                         <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">Cargar factura de proveedor</p>
                     </div>
                 </button>
+                <div className="flex items-center justify-center"><InvoiceCaptureQr /></div>
+                </div>
             ) : (
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -144,9 +145,7 @@ export function FormularioCompra({ proveedores }: { proveedores: Proveedor[] }) 
                             <h2 className="text-2xl font-black uppercase tracking-tight">Nueva Compra</h2>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Formulario transaccional</p>
                         </div>
-                        <button onClick={() => setOpen(false)} className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all">
-                            <IconX size={18} />
-                        </button>
+                        <div className="flex items-center gap-2"><InvoiceCaptureQr /><button onClick={() => setOpen(false)} className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all"><IconX size={18} /></button></div>
                     </div>
 
                     {/* Cabecera */}
