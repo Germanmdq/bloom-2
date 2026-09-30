@@ -316,7 +316,7 @@ function MenuContent() {
     setRepeatOrderLoaded(true);
     try {
       const raw = sessionStorage.getItem(REPEAT_ORDER_KEY);
-      const previous = raw ? JSON.parse(raw) as Array<{ id: string; name: string; quantity: number }> : [];
+      const previous = raw ? JSON.parse(raw) as Array<{ id?: string; name: string; quantity: number }> : [];
       const restored = previous.map((item) => {
         const product = products.find((p: any) => p.id === item.id || p.name === item.name);
         return product ? { id: product.id, name: product.name, price: Number(product.price) || 0, quantity: item.quantity, image_url: product.image_url } : null;

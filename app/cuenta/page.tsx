@@ -696,7 +696,8 @@ export default function CuentaPage() {
         name: String(item?.name || ""),
         quantity: Math.max(1, Number(item?.quantity || 1)),
       }))
-      .filter((item) => item.id && item.name);
+      // Los pedidos antiguos pueden no tener el ID del producto, pero sí el nombre.
+      .filter((item) => item.name);
     if (!repeatItems.length) {
       toast.error("Este pedido no tiene productos que se puedan repetir.");
       return;
