@@ -13,7 +13,10 @@
     "upload:fachada": "node scripts/upload-fachada-to-supabase.mjs",
     "upload:menu-category": "node scripts/upload-menu-category-image.mjs",
     "upload:menu-categories-batch": "node scripts/upload-category-images-batch.mjs",
-    "deploy": "node scripts/push-to-github.mjs"
+    "deploy": "node scripts/push-to-github.mjs",
+    "test:vet": "node --test --import ./tests/vet/register.mjs tests/vet/*.test.ts",
+    "vet:import": "node scripts/vet-import-catalog.mjs",
+    "vet:pwa-assets": "node scripts/vet-generate-pwa-assets.mjs"
   },
   "dependencies": {
     "@afipsdk/afip.js": "^1.2.3",

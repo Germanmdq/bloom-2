@@ -270,3 +270,54 @@ body {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
+
+/* ── Módulo Veterinaria (Vida de Perros) ──────────────────────────────
+   Los valores reales vienen de la configuración del negocio: el layout de
+   /veterinaria define --vet-* (editable desde el panel sin tocar código). */
+@theme inline {
+  --color-vet-primary: var(--vet-primary, #147a7f);
+  --color-vet-primary-dark: var(--vet-primary-dark, #0d5b5f);
+  --color-vet-accent: var(--vet-accent, #c93a63);
+  --color-vet-warm: var(--vet-warm, #b98a5e);
+  --color-vet-surface: var(--vet-surface, #fbf7f0);
+  --color-vet-ink: var(--vet-ink, #1c1b1f);
+  --color-vet-tint: color-mix(in oklab, var(--vet-primary, #147a7f) 9%, white);
+  --color-vet-tint-strong: color-mix(in oklab, var(--vet-primary, #147a7f) 18%, white);
+  --color-vet-sand: color-mix(in oklab, var(--vet-warm, #b98a5e) 14%, white);
+  --font-vet-display: var(--font-vet-display), var(--font-inter), system-ui, sans-serif;
+}
+
+.vet-app {
+  -webkit-tap-highlight-color: transparent;
+  font-feature-settings: "cv11", "ss01";
+}
+.vet-app :focus-visible {
+  outline: 2px solid var(--vet-primary, #147a7f);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+.vet-scroll-x {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.vet-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+@keyframes vet-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes vet-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.vet-rise { animation: vet-rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.vet-pop { animation: vet-pop 0.35s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .vet-app *, .vet-app *::before, .vet-app *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+.vet-safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0px); }

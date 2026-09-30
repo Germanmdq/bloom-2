@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#147a7f">
+<title>Sin conexión | Vida de Perros</title>
+<style>
+  :root { --p: #147a7f; --ink: #1c1b1f; --bg: #fbf7f0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100dvh; display: grid; place-items: center; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 24px; }
+  main { max-width: 380px; text-align: center; }
+  img { width: 96px; height: 96px; }
+  h1 { font-size: 1.4rem; margin: 16px 0 8px; }
+  p { color: #555; margin: 0 0 20px; }
+  a, button { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 20px; border-radius: 16px; font-weight: 600; text-decoration: none; border: 0; cursor: pointer; font-size: 15px; }
+  button { background: var(--p); color: #fff; width: 100%; }
+  a { color: var(--p); margin-top: 10px; width: 100%; background: #fff; border: 1px solid #0001; }
+</style>
+</head>
+<body>
+<main>
+  <img src="/veterinaria/brand/mark.svg" alt="Vida de Perros">
+  <h1>Estás sin conexión</h1>
+  <p>No pudimos cargar esta página. Revisá tu conexión e intentá de nuevo. Las páginas que ya visitaste siguen disponibles.</p>
+  <button type="button" onclick="location.reload()">Reintentar</button>
+  <a href="/veterinaria">Ir al inicio</a>
+</main>
+</body>
+</html>

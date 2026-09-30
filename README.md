@@ -77,3 +77,11 @@ El sistema sigue una estética **Premium Dark/Yellow**, inspirada en los sistema
 ---
 
 Desarrollado con ❤️ para **Bloom**.
+
+---
+
+## 🐾 Módulo Veterinaria + Pet Shop — Vida de Perros
+
+Plataforma independiente dentro de este proyecto (tienda online, turnos, clientes, mascotas, promociones, fidelización, stock, estadísticas y panel de administración mobile-first), en `/veterinaria` y `/veterinaria/admin`. No modifica la operación de la cafetería.
+
+Guía completa: [`docs/veterinaria/GUIA.md`](docs/veterinaria/GUIA.md).
