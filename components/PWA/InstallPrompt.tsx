@@ -2,16 +2,12 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
 import { usePWA } from "./PWAProvider";
 
 export default function InstallPrompt() {
   const { isInstallable, isInstalled, isIOS, showBanner, promptInstall, dismissBanner } = usePWA();
   const [showIosGuide, setShowIosGuide] = useState(false);
-  const pathname = usePathname();
 
-  // La veterinaria tiene su propio aviso de instalación.
-  if (pathname?.startsWith("/veterinaria")) return null;
   // Si ya está instalada o no hay evento, no mostrar
   if (isInstalled) return null;
   if (!showBanner && !showIosGuide) return null;

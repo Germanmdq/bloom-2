@@ -46,10 +46,6 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
   const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
-    // El módulo /veterinaria es otra PWA (manifest, service worker e instalación propios):
-    // no registrar acá el service worker ni los avisos de la cafetería.
-    if (window.location.pathname.startsWith("/veterinaria")) return;
-
     // 0. Online status
     if (typeof window !== "undefined") {
       setIsOnline(navigator.onLine);

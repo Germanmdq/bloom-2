@@ -33,7 +33,6 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
-!.env.veterinaria.example
 
 # vercel
 .vercel
@@ -44,7 +43,3 @@ next-env.d.ts
 services/whatsapp/.wwebjs_auth
 bloom-desktop/dist/
 /certs
-
-# Veterinaria: datos internos del catálogo (costos, proveedores). Repo público.
-/supabase/private/
-*.xlsx
