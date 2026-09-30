@@ -53,6 +53,7 @@ export function PaymentModal({
     const [results, setResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [clienteStamps, setClienteStamps] = useState<number | null>(null);
+    const [freeCoffeeRewards, setFreeCoffeeRewards] = useState(0);
 
     const handleSearch = async (val: string) => {
         setQ(val);
@@ -61,7 +62,7 @@ export function PaymentModal({
         const isPhone = /^\d+$/.test(val.replace(/\s/g, ''));
         const { data } = await supabase
             .from('profiles')
-            .select('id, full_name, balance, coffee_stamps, phone')
+            .select('id, full_name, balance, coffee_stamps, free_coffee_rewards, phone')
             .or(isPhone
                 ? `phone.ilike.%${val.replace(/\s/g, '')}%`
                 : `full_name.ilike.%${val}%,phone.ilike.%${val}%`)
@@ -71,9 +72,9 @@ export function PaymentModal({
     };
 
     useEffect(() => {
-        if (!selectedCustomerId) { setClienteStamps(null); return; }
-        supabase.from('profiles').select('coffee_stamps').eq('id', selectedCustomerId).maybeSingle()
-            .then(({ data }) => setClienteStamps(data?.coffee_stamps ?? null));
+        if (!selectedCustomerId) { setClienteStamps(null); setFreeCoffeeRewards(0); return; }
+        supabase.from('profiles').select('coffee_stamps, free_coffee_rewards').eq('id', selectedCustomerId).maybeSingle()
+            .then(({ data }) => { setClienteStamps(data?.coffee_stamps ?? null); setFreeCoffeeRewards(Number(data?.free_coffee_rewards || 0)); });
     }, [selectedCustomerId]);
 
     const coffeeCountInCart = cart.reduce((acc, item) => {
@@ -85,7 +86,7 @@ export function PaymentModal({
     }, 0);
 
     const stampsConCarrito = (clienteStamps ?? 0) + coffeeCountInCart;
-    const cafeGratisDisponible = clienteStamps !== null && stampsConCarrito >= 10;
+    const cafeGratisDisponible = freeCoffeeRewards > 0 && coffeeCountInCart > 0;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-12">
@@ -175,7 +176,7 @@ export function PaymentModal({
                                                     <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{cust.phone || 'Sin teléfono'}</p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    {Number(cust.coffee_stamps || 0) >= 10 && (
+                                                    {Number(cust.free_coffee_rewards || 0) > 0 && (
                                                         <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200">☕ CAFÉ GRATIS</span>
                                                     )}
                                                     {Number(cust.balance || 0) > 0 && (
@@ -197,7 +198,7 @@ export function PaymentModal({
                                         <div>
                                             <p className="text-sm font-black text-white leading-none">{customerName}</p>
                                             <p className="text-[10px] font-bold text-white/40 mt-1 uppercase tracking-wider">
-                                                {clienteStamps !== null ? `${Math.min(stampsConCarrito, 10)}/10 cafés` : 'Cliente Vinculado'}
+                                                {clienteStamps !== null ? `${stampsConCarrito}/10 cafés · ${freeCoffeeRewards} gratis` : 'Cliente Vinculado'}
                                             </p>
                                         </div>
                                     </div>
@@ -216,7 +217,7 @@ export function PaymentModal({
                                 {cafeGratisDisponible && (
                                     <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-500 text-white font-black text-sm animate-pulse">
                                         <span className="text-xl">☕</span>
-                                        <span>¡CAFÉ GRATIS! Descontá 1 café del total antes de cobrar.</span>
+                                        <span>¡CAFÉ GRATIS DISPONIBLE! Aplicalo al cobrar.</span>
                                     </div>
                                 )}
                             </div>

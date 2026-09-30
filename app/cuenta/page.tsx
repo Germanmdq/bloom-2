@@ -166,7 +166,7 @@ export default function CuentaPage() {
   const [sessionPending, setSessionPending] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<OrderRow[]>([]);
-  const [profile, setProfile] = useState<{ coffee_stamps: number; balance: number; birthday?: string; full_name?: string; customer_number?: string } | null>(null);
+  const [profile, setProfile] = useState<{ coffee_stamps: number; free_coffee_rewards?: number; balance: number; birthday?: string; full_name?: string; customer_number?: string } | null>(null);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [section, setSection] = useState<SectionId>("inicio");
   const [orderFilter, setOrderFilter] = useState<OrderFilter>("todos");
@@ -196,7 +196,7 @@ export default function CuentaPage() {
           .order("created_at", { ascending: false }),
         supabase
           .from("profiles")
-          .select("coffee_stamps, balance, birthday, full_name, customer_number")
+          .select("coffee_stamps, free_coffee_rewards, balance, birthday, full_name, customer_number")
           .eq("id", uid)
           // Un perfil puede crearse unos instantes después de la sesión.
           // `maybeSingle` evita que ese estado transitorio rompa la pantalla.
@@ -686,6 +686,7 @@ export default function CuentaPage() {
   };
 
   const currentStamps = profile?.coffee_stamps || 0;
+  const freeCoffeeRewards = profile?.free_coffee_rewards || 0;
 
   const SectionInicio = () => (
     <div className="space-y-6">
@@ -742,15 +743,15 @@ export default function CuentaPage() {
             <p className="text-sm text-neutral-600">
                 {currentStamps} / {COFFEE_GOAL} cafés acumulados
             </p>
-            {currentStamps === COFFEE_GOAL && (
-                <span className="text-[10px] font-black uppercase bg-amber-100 text-amber-600 px-2 py-1 rounded-md animate-pulse">¡PRÓXIMO GRATIS!</span>
+            {freeCoffeeRewards > 0 && (
+                <span className="text-[10px] font-black uppercase bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md animate-pulse">☕ {freeCoffeeRewards} CAFÉ GRATIS</span>
             )}
         </div>
         <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-neutral-200">
           <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, (currentStamps / COFFEE_GOAL) * 100)}%`, backgroundColor: GREEN }} />
         </div>
         <p className="mt-3 text-[10px] text-neutral-400 font-bold uppercase tracking-wider">
-            Cada 10 cafés, el 11º va sin cargo. Válido para Café, Café con leche y promos con facturas.
+            Cada 10 cafés acumulás 1 café gratis. Válido para Café, Café con leche y promos con facturas.
         </p>
       </div>
 

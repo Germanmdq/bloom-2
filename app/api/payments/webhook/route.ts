@@ -32,6 +32,32 @@ function parseNotificationPayload(raw: string, url: URL) {
   return { topic: topic?.toLowerCase() ?? "", resourceId };
 }
 
+function coffeeUnits(items: unknown): number {
+  if (!Array.isArray(items)) return 0;
+  return items.reduce((total, item: any) => {
+    const name = String(item?.name || "").toLowerCase();
+    const isCoffee = name.includes("café") || name.includes("cafe") || name.includes("capuccino") || name.includes("submarino") || name.includes("chocolatada") || name.includes("lágrima") || name.includes("lagrima");
+    return total + (isCoffee ? Number(item?.quantity || 1) : 0);
+  }, 0);
+}
+
+async function awardCoffeeRewards(supabase: any, customerId: string | null, items: unknown) {
+  const cups = coffeeUnits(items);
+  if (!customerId || cups <= 0) return;
+  const { data: profile, error: readError } = await supabase
+    .from("profiles")
+    .select("coffee_stamps, free_coffee_rewards")
+    .eq("id", customerId)
+    .maybeSingle();
+  if (readError || !profile) return;
+  const total = Number(profile.coffee_stamps || 0) + cups;
+  const { error: updateError } = await supabase.from("profiles").update({
+    coffee_stamps: total % 10,
+    free_coffee_rewards: Number(profile.free_coffee_rewards || 0) + Math.floor(total / 10),
+  }).eq("id", customerId);
+  if (updateError) console.error("[payments/webhook] coffee rewards", updateError);
+}
+
 async function markOrderPaid(orderId: string) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!serviceKey) {
@@ -43,7 +69,7 @@ async function markOrderPaid(orderId: string) {
   // Leer el pedido para ver si tiene productos vinculados a stock e insumos
   const { data: orderData } = await supabase
     .from("orders")
-    .select("customer_id, debt_payment_amount, items")
+    .select("customer_id, debt_payment_amount, items, loyalty_awarded")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -59,6 +85,12 @@ async function markOrderPaid(orderId: string) {
   if (error) {
     console.error("[payments/webhook] update", error);
     return false;
+  }
+
+  // Mercado Pago puede reenviar el webhook: cada pedido acredita fidelidad una sola vez.
+  if (!orderData?.loyalty_awarded) {
+    await awardCoffeeRewards(supabase, orderData?.customer_id as string | null, orderData?.items);
+    await supabase.from("orders").update({ loyalty_awarded: true }).eq("id", orderId);
   }
 
   // --- LÓGICA DE DESCUENTO DE STOCK ---

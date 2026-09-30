@@ -901,10 +901,11 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                                     ? acc + item.quantity : acc;
                             }, 0);
                             const { data: prof } = await supabase.from('profiles')
-                                .select('coffee_stamps, balance').eq('id', customerIdForDb).single();
-                            const stamps = Number(prof?.coffee_stamps || 0) + coffeeCount;
+                                .select('coffee_stamps, free_coffee_rewards, balance').eq('id', customerIdForDb).single();
+                            const stampTotal = Number(prof?.coffee_stamps || 0) + coffeeCount;
                             await supabase.from('profiles').update({
-                                coffee_stamps: stamps >= 10 ? stamps - 10 : stamps,
+                                coffee_stamps: stampTotal % 10,
+                                free_coffee_rewards: Number(prof?.free_coffee_rewards || 0) + Math.floor(stampTotal / 10),
                                 balance: Number(prof?.balance || 0) + capturedTotal,
                             }).eq('id', customerIdForDb);
                         }
@@ -972,10 +973,11 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                                     ? acc + item.quantity : acc;
                             }, 0);
                             const { data: prof } = await supabase.from('profiles')
-                                .select('coffee_stamps, balance').eq('id', customerIdForDb).single();
-                            const stamps = Number(prof?.coffee_stamps || 0) + coffeeCount;
+                                .select('coffee_stamps, free_coffee_rewards, balance').eq('id', customerIdForDb).single();
+                            const stampTotal = Number(prof?.coffee_stamps || 0) + coffeeCount;
                             await supabase.from('profiles').update({
-                                coffee_stamps: stamps >= 10 ? stamps - 10 : stamps,
+                                coffee_stamps: stampTotal % 10,
+                                free_coffee_rewards: Number(prof?.free_coffee_rewards || 0) + Math.floor(stampTotal / 10),
                                 balance: Number(prof?.balance || 0) + capturedTotal,
                             }).eq('id', customerIdForDb);
                         }
@@ -1044,19 +1046,18 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                     // 2. Actualizar stamps y saldo
                     const { data: prof } = await supabase
                         .from('profiles')
-                        .select('full_name, coffee_stamps, balance')
+                        .select('full_name, coffee_stamps, free_coffee_rewards, balance')
                         .eq('id', customerIdForDb)
                         .single();
 
                     const stampsActuales = Number(prof?.coffee_stamps || 0);
                     const stampsNuevos = stampsActuales + coffeeCount;
-                    // Al llegar a 10 se usa el café gratis → guardar el resto (ej: 11 → 1)
-                    const stampsFinales = stampsNuevos >= 10 ? stampsNuevos - 10 : stampsNuevos;
 
                     const newBalance = Number(prof?.balance || 0);
 
                     await supabase.from('profiles').update({
-                        coffee_stamps: stampsFinales,
+                        coffee_stamps: stampsNuevos % 10,
+                        free_coffee_rewards: Number(prof?.free_coffee_rewards || 0) + Math.floor(stampsNuevos / 10),
                         balance: newBalance
                     }).eq('id', customerIdForDb);
                 } else {
