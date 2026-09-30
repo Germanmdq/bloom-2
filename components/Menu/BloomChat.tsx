@@ -482,7 +482,7 @@ function ProductCard({
                         key={v}
                         onClick={() => setSelectedFlat(v)}
                         className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
-                          selectedFlat === v ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300'
+                          selectedFlat === v ? 'bg-[#1a3028] text-[#fff7e6] border-[#1a3028] shadow-md' : 'bg-[#f4ead3] text-[#1a3028] border-[#c4b896] shadow-sm hover:bg-[#ead9b6] hover:border-[#a89061]'
                         }`}
                       >
                         {v}
@@ -512,7 +512,7 @@ function ProductCard({
                             else toggleMulti(g.name, opt, g.max);
                           }}
                           className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
-                            isSelected ? 'bg-neutral-900 text-white border-neutral-900 shadow-md' : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300'
+                            isSelected ? 'bg-[#1a3028] text-[#fff7e6] border-[#1a3028] shadow-md' : 'bg-[#f4ead3] text-[#1a3028] border-[#c4b896] shadow-sm hover:bg-[#ead9b6] hover:border-[#a89061]'
                           }`}
                         >
                           {opt}

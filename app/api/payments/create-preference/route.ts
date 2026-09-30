@@ -4,7 +4,6 @@ import { createClient } from "@supabase/supabase-js";
 import { getMercadoPagoAccessToken } from "@/lib/mercadopago-access-token";
 import { getSupabaseUrl } from "@/lib/supabase/env";
 
-const NOTIFICATION_URL = "https://www.bloommdp.com/api/payments/webhook";
 const PRODUCTION_SITE = "https://www.bloommdp.com";
 
 type CreatePreferenceBody = {
@@ -36,14 +35,12 @@ function normalizePhoneForPayer(phone: string): { area_code?: string; number?: s
 
 export async function POST(req: Request) {
   try {
-    const accessToken = getMercadoPagoAccessToken();
-    if (!accessToken) {
-      return NextResponse.json({ error: "Falta MERCADOPAGO_ACCESS_TOKEN en el servidor" }, { status: 500 });
-    }
-
     const body = (await req.json()) as any;
     const orderId = body.order_id?.trim();
     const isDebtOnly = body.metadata?.type === 'DEBT_PAYMENT';
+    const simulationEnabled =
+      process.env.PAYMENTS_SIMULATION === "true" ||
+      process.env.NEXT_PUBLIC_PAYMENTS_SIMULATION === "true";
 
     if (!orderId && !isDebtOnly) {
       return NextResponse.json({ error: "order_id requerido" }, { status: 400 });
@@ -55,6 +52,49 @@ export async function POST(req: Request) {
     }
 
     const supabase = createClient(getSupabaseUrl(), serviceKey);
+    const baseUrl = (process.env.NEXT_PUBLIC_URL ?? PRODUCTION_SITE).replace(/\/$/, "");
+
+    // Modo demo: confirma el pedido sin llamar a Mercado Pago ni generar un cobro.
+    if (simulationEnabled && !isDebtOnly) {
+      const { data: order, error: orderErr } = await supabase
+        .from("orders")
+        .select("id,status,paid")
+        .eq("id", orderId)
+        .maybeSingle();
+
+      if (orderErr || !order) {
+        return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+      }
+      if (order.paid || order.status !== "pending_payment") {
+        return NextResponse.json({ error: "El pedido no está disponible para simular el pago" }, { status: 400 });
+      }
+
+      const { error: updateError } = await supabase
+        .from("orders")
+        .update({
+          paid: true,
+          status: "pending",
+          payment_method: "MERCADO_PAGO_SIMULADO",
+          payment_notes: "Pago aprobado en modo simulación",
+        })
+        .eq("id", orderId);
+
+      if (updateError) {
+        console.error("[payments/create-preference] simulation", updateError);
+        return NextResponse.json({ error: "No se pudo simular el pago" }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        init_point: `${baseUrl}/menu?payment=success&simulation=1`,
+        preference_id: `SIMULATED-${orderId}`,
+        simulated: true,
+      });
+    }
+
+    const accessToken = getMercadoPagoAccessToken();
+    if (!accessToken) {
+      return NextResponse.json({ error: "Falta MERCADOPAGO_ACCESS_TOKEN en el servidor" }, { status: 500 });
+    }
 
     let mpItems: any[] = [];
     let payerName = "Cliente";
@@ -132,8 +172,6 @@ export async function POST(req: Request) {
     }
 
     const phoneObj = payerPhoneRaw ? normalizePhoneForPayer(payerPhoneRaw) : undefined;
-    const baseUrl = (process.env.NEXT_PUBLIC_URL ?? PRODUCTION_SITE).replace(/\/$/, "");
-
     const mpConfig = new MercadoPagoConfig({ accessToken, options: { timeout: 10000 } });
     const preference = new Preference(mpConfig);
 
@@ -151,7 +189,7 @@ export async function POST(req: Request) {
         },
         auto_return: "approved",
         external_reference: externalReference,
-        notification_url: NOTIFICATION_URL,
+        notification_url: `${baseUrl}/api/payments/webhook`,
         statement_descriptor: "BLOOM CAFE",
         metadata: body.metadata,
       },

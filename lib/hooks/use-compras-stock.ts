@@ -192,26 +192,28 @@ export function useRegistrarCompra() {
 
             if (detailError) throw detailError;
 
-            // 3. Update stock and price for each insumo
-            for (const item of params.items) {
-                // Get current stock
-                const { data: currentInsumo } = await supabase
-                    .from('insumos')
-                    .select('stock_actual')
-                    .eq('id', item.insumo_id)
-                    .single();
-
-                const newStock = (currentInsumo?.stock_actual || 0) + item.cantidad;
-
-                await supabase
+            // 3. Read all current stocks in one request, then update in parallel.
+            // This avoids waiting for two round trips per line item.
+            const insumoIds = params.items.map(item => item.insumo_id);
+            const { data: currentInsumos, error: stockReadError } = await supabase
+                .from('insumos')
+                .select('id, stock_actual')
+                .in('id', insumoIds);
+            if (stockReadError) throw stockReadError;
+            const stockById = new Map((currentInsumos || []).map(item => [item.id, Number(item.stock_actual) || 0]));
+            const updatedAt = new Date().toISOString();
+            const stockUpdates = await Promise.all(params.items.map(item =>
+                supabase
                     .from('insumos')
                     .update({
-                        stock_actual: newStock,
+                        stock_actual: (stockById.get(item.insumo_id) || 0) + item.cantidad,
                         precio_ultima_compra: item.precio_unitario,
-                        updated_at: new Date().toISOString(),
+                        updated_at: updatedAt,
                     })
-                    .eq('id', item.insumo_id);
-            }
+                    .eq('id', item.insumo_id)
+            ));
+            const stockUpdateError = stockUpdates.find(result => result.error)?.error;
+            if (stockUpdateError) throw stockUpdateError;
 
             // 4. If cuenta corriente, update supplier balance
             if (params.metodo_pago === 'cuenta_corriente') {
@@ -254,7 +256,7 @@ export function useGastosFijos() {
             if (error) throw error;
             return data;
         },
-        staleTime: 0,
+        staleTime: 1000 * 60,
     });
 }
 
@@ -269,7 +271,7 @@ export function useGastosFijosPendientes() {
             if (error) throw error;
             return data;
         },
-        staleTime: 0,
+        staleTime: 1000 * 60,
     });
 }
 

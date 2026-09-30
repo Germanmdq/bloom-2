@@ -21,10 +21,10 @@ export function LowStockBanner() {
     const fetchLowStock = async () => {
         try {
             // 1. Productos con track_stock
-            const { data: prods } = await supabase
-                .from("products")
-                .select("id, name, stock, min_stock, track_stock")
-                .eq("track_stock", true);
+            const [{ data: prods }, { data: insumos }] = await Promise.all([
+                supabase.from("products").select("id, name, stock, min_stock, track_stock").eq("track_stock", true),
+                supabase.from("insumos").select("id, nombre, stock_actual, stock_minimo, activo").eq("activo", true),
+            ]);
 
             const lowProds: LowStockItem[] = (prods || [])
                 .filter((p: any) => Number(p.stock) <= Number(p.min_stock || 0))
@@ -35,12 +35,6 @@ export function LowStockBanner() {
                     min_stock: Number(p.min_stock) || 0,
                     type: "product" as const,
                 }));
-
-            // 2. Insumos con stock_minimo
-            const { data: insumos } = await supabase
-                .from("insumos")
-                .select("id, nombre, stock_actual, stock_minimo, activo")
-                .eq("activo", true);
 
             const lowInsumos: LowStockItem[] = (insumos || [])
                 .filter((i: any) => Number(i.stock_actual) <= Number(i.stock_minimo || 0))

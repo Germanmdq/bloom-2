@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconLayoutGrid, IconCoffee, IconListCheck, IconSettings, IconUsers, IconChartPie, IconReceipt, IconToolsKitchen, IconPackage, IconMessageCircle, IconBriefcase, IconX, IconLogout, IconHome, IconHistory, IconQrcode} from "@tabler/icons-react";
+import { IconLayoutDashboard, IconLayoutGrid, IconCoffee, IconListCheck, IconSettings, IconUsers, IconChartPie, IconToolsKitchen, IconPackage, IconMessageCircle, IconBriefcase, IconX, IconLogout, IconHome, IconQrcode} from "@tabler/icons-react";
 import { useUserRole } from "@/lib/hooks/use-pos-data";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 const links = [
+    { href: "/dashboard",          label: "Resumen",   icon: IconLayoutDashboard },
     { href: "/dashboard/tables",   label: "Mesas",     icon: IconLayoutGrid },
     { href: "/dashboard/orders",   label: "Ventas",    icon: IconListCheck },
     { href: "/dashboard/products", label: "Menú",      icon: IconCoffee },
@@ -64,17 +65,17 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             {/* Sidebar */}
             <div className={`
                 fixed md:relative z-40 top-0 left-0 h-full
-                w-72 flex min-h-0 flex-col p-6 bg-white/80 backdrop-blur-3xl border-r border-white/20
+                w-72 flex min-h-0 flex-col bg-white border-r border-gray-200
                 transition-transform duration-300 ease-in-out
                 ${open ? 'translate-x-0' : '-translate-x-full'}
                 md:translate-x-0 md:w-80
             `}>
-                <div className="mb-6 shrink-0 px-4 flex items-start justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Bloom OS</h1>
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-500">v2.0 Premium</span>
-                            {role === 'ADMIN' && <span className="bg-black text-[#FFD60A] text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Admin</span>}
+                <div className="mb-5 shrink-0 px-5 pt-5 flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#2d4a3e] text-sm font-black text-white">B</div>
+                        <div>
+                            <h1 className="text-sm font-bold tracking-tight text-gray-900">Bloom OS</h1>
+                            <span className="text-xs text-gray-500">Gestión del local</span>
                         </div>
                     </div>
                     {/* Botón cerrar solo en mobile */}
@@ -86,25 +87,20 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     </button>
                 </div>
 
-                <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-                    <Link href="/" onClick={onClose}>
-                        <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-white/40 hover:text-gray-900 transition-all duration-200">
-                           <IconHome size={20} className="stroke-[2.5px] opacity-70" />
-                           <span className="font-medium">Ver sitio público</span>
-                        </div>
-                    </Link>
-                    <div className="h-px bg-gray-100 my-2 mx-4" />
+                <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3">
+                    <p className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Operación</p>
                     {filteredLinks.map((link) => {
-                        const isActive =
-                            pathname.startsWith(link.href);
+                        const isActive = link.href === "/dashboard"
+                            ? pathname === link.href
+                            : pathname.startsWith(link.href);
                         const Icon = link.icon;
                         return (
                             <Link key={link.href} href={link.href} onClick={onClose}>
-                                <div className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                                    ? "bg-white shadow-sm text-gray-900 font-medium"
-                                    : "text-gray-500 hover:bg-white/40 hover:text-gray-900"
+                                <div className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${isActive
+                                    ? "bg-[#eef4f0] text-[#2d4a3e] font-semibold"
+                                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                                 }`}>
-                                    <Icon size={20} className={isActive ? "text-accent" : "opacity-70"} />
+                                    <Icon size={18} className={isActive ? "text-[#2d4a3e]" : "opacity-75"} />
                                     <span>{link.label}</span>
                                 </div>
                             </Link>
@@ -112,21 +108,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     })}
                 </nav>
 
-                <div className="mt-4 shrink-0 border-t border-gray-200/90 pt-4 px-4 space-y-3">
-                    <ul className="space-y-1.5 text-xs text-gray-500">
-                        <li className="flex items-center gap-2">
-                            <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" aria-hidden />
-                            <span>Salón</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                            <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-                            <span>Retiro</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                            <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" aria-hidden />
-                            <span>Delivery</span>
-                        </li>
-                    </ul>
+                <div className="mt-4 shrink-0 border-t border-gray-200 pt-4 px-4 pb-4 space-y-3">
+                    <Link href="/" onClick={onClose} className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-gray-100"><IconHome size={18} /> Ver sitio público</Link>
                     <button
                         onClick={handleSignOut}
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-red-50 hover:text-red-500 transition-all duration-200 text-sm font-medium"

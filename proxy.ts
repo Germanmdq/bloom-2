@@ -36,7 +36,19 @@ export async function proxy(request: NextRequest) {
   }
 
   if (pathname.startsWith("/dashboard")) {
-    if (!user || !isAdminEmail(user.email)) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/auth", request.url));
+    }
+
+    // Además del administrador histórico por email, permitir cualquier
+    // integrante del equipo que tenga un rol operativo en su perfil.
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    const isStaff = isAdminEmail(user.email) || ["ADMIN", "WAITER", "KITCHEN", "MANAGER"].includes(profile?.role ?? "");
+    if (!isStaff) {
       return NextResponse.redirect(new URL("/auth", request.url));
     }
   }

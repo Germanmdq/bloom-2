@@ -45,8 +45,10 @@ export default function ProductsClient({ initialProducts, initialCategories, raw
     }, [isAddingCategory, isEditing, selectedCategory]);
 
     async function fetchData() {
-        const { data: catData } = await supabase.from('categories').select('*');
-        const { data: prodData } = await supabase.from('products').select('*, categories(name)');
+        const [{ data: catData }, { data: prodData }] = await Promise.all([
+            supabase.from('categories').select('*'),
+            supabase.from('products').select('*, categories(name)'),
+        ]);
         if (catData) setCategories(catData);
         if (prodData) setProducts(prodData);
     }

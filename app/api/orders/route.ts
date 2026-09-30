@@ -5,7 +5,7 @@ import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { items, total, customer_name, customer_phone, table_id, notes, delivery_type, delivery_info } = body;
+        const { items, total, customer_name, customer_phone, table_id, notes, delivery_type, delivery_info, payment_method } = body;
 
         if (!items || !items.length) {
             return NextResponse.json({ error: "El pedido no contiene productos" }, { status: 400 });
@@ -67,6 +67,7 @@ export async function POST(request: Request) {
         }
 
         // 1. Crear Orden en tabla 'orders' (aparece en Historial de Órdenes y en el Salón)
+        const isMercadoPago = payment_method === "MERCADO_PAGO";
         const orderPayload = {
             customer_name: displayName,
             customer_phone: customer_phone?.trim() || null,
@@ -76,11 +77,11 @@ export async function POST(request: Request) {
             table_id: numericTableId,
             items,
             total: Number(total) || 0,
-            status: "pending",
+            status: isMercadoPago ? "pending_payment" : "pending",
             paid: false,
             stock_applied: true,
             stock_deducted: true,
-            payment_method: "PENDING",
+            payment_method: isMercadoPago ? "MERCADO_PAGO" : "PENDING",
             payment_notes: notes || null,
             created_at: new Date().toISOString()
         };
