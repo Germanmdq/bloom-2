@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { IconArrowLeft, IconCamera, IconChevronDown, IconChevronUp, IconUserCircle, IconCoffee, IconHome, IconLoader2, IconLock, IconChartPie, IconShoppingBag, IconTag, IconTrendingUp } from "@tabler/icons-react";
+import { IconArrowLeft, IconCamera, IconChevronDown, IconChevronUp, IconUserCircle, IconCoffee, IconHome, IconLoader2, IconLock, IconChartPie, IconShoppingBag, IconTag, IconTrendingUp, IconRefresh } from "@tabler/icons-react";
 import { toast } from "sonner";
 
 const COFFEE_GOAL = 10;
@@ -688,6 +688,23 @@ export default function CuentaPage() {
   const currentStamps = profile?.coffee_stamps || 0;
   const freeCoffeeRewards = profile?.free_coffee_rewards || 0;
 
+  const repeatOrder = (order: OrderRow) => {
+    const items = Array.isArray(order.items) ? order.items : [];
+    const repeatItems = items
+      .map((item: any) => ({
+        id: String(item?.id || ""),
+        name: String(item?.name || ""),
+        quantity: Math.max(1, Number(item?.quantity || 1)),
+      }))
+      .filter((item) => item.id && item.name);
+    if (!repeatItems.length) {
+      toast.error("Este pedido no tiene productos que se puedan repetir.");
+      return;
+    }
+    sessionStorage.setItem("bloom_repeat_order", JSON.stringify(repeatItems));
+    router.push("/menu?repeat=1");
+  };
+
   const SectionInicio = () => (
     <div className="space-y-6">
       {customerNumber && (
@@ -996,15 +1013,10 @@ export default function CuentaPage() {
                           </div>
                         </td>
                         <td className="px-2 py-3">
-                          <button
-                            type="button"
-                            onClick={() => setExpandedOrderId(openQ ? null : o.id)}
-                            className="flex rounded-lg p-1 text-neutral-500 hover:bg-neutral-100"
-                            aria-expanded={openQ}
-                            aria-label={openQ ? "Cerrar detalle" : "Ver detalle"}
-                          >
-                            {openQ ? <IconChevronUp size={18} /> : <IconChevronDown size={18} />}
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button type="button" onClick={() => repeatOrder(o)} className="rounded-lg p-1 text-[#2d4a3e] hover:bg-emerald-50" aria-label="Repetir este pedido" title="Repetir pedido"><IconRefresh size={17} /></button>
+                            <button type="button" onClick={() => setExpandedOrderId(openQ ? null : o.id)} className="flex rounded-lg p-1 text-neutral-500 hover:bg-neutral-100" aria-expanded={openQ} aria-label={openQ ? "Cerrar detalle" : "Ver detalle"}>{openQ ? <IconChevronUp size={18} /> : <IconChevronDown size={18} />}</button>
+                          </div>
                         </td>
                       </tr>
                       {openQ ? (
