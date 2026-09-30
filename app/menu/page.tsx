@@ -162,6 +162,7 @@ const OPENING_VIDEO_SEEN_KEY = "bloom_opening_coffee_video_seen_v1";
 // hidratan categorías/productos de una versión anterior desde localStorage.
 const MENU_CACHE_VERSION = "v2-four-categories";
 const menuCacheKey = (name: string) => `bloom_${MENU_CACHE_VERSION}_${name}`;
+const REPEAT_ORDER_KEY = "bloom_repeat_order";
 
 interface CartItem {
   key: string; // producto + variante elegida
@@ -240,6 +241,7 @@ function MenuContent() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [repeatOrderLoaded, setRepeatOrderLoaded] = useState(false);
   const [showCoffeeGame, setShowCoffeeGame] = useState(false);
   const [coffeeGameStep, setCoffeeGameStep] = useState(0);
   const [coffeeGameScores, setCoffeeGameScores] = useState<Record<CoffeePersonality, number>>({ intenso: 0, suave: 0, equilibrado: 0 });
@@ -319,6 +321,32 @@ function MenuContent() {
     }
     loadData();
   }, [supabase]);
+
+  // Pedido elegido desde la cuenta: se reconstruye con el precio actual.
+  useEffect(() => {
+    if (repeatOrderLoaded || searchParams.get("repeat") !== "1" || products.length === 0) return;
+    setRepeatOrderLoaded(true);
+    try {
+      const raw = sessionStorage.getItem(REPEAT_ORDER_KEY);
+      const previous = raw ? JSON.parse(raw) as Array<{ id: string; name: string; quantity: number }> : [];
+      const restored = previous.map((item) => {
+        const product = products.find((p: any) => p.id === item.id || p.name === item.name);
+        return product ? { key: `repeat-${product.id}`, id: product.id, name: product.name, price: Number(product.price) || 0, quantity: item.quantity, image_url: product.image_url } : null;
+      }).filter(Boolean) as CartItem[];
+      sessionStorage.removeItem(REPEAT_ORDER_KEY);
+      if (restored.length) {
+        setCart(restored);
+        setActiveTab("menu");
+        setIsCartOpen(true);
+        toast.success("Rearmamos tu último pedido", { description: "Podés revisarlo antes de confirmar." });
+      } else {
+        toast.error("No encontramos productos disponibles para repetir.");
+      }
+    } catch {
+      sessionStorage.removeItem(REPEAT_ORDER_KEY);
+      toast.error("No se pudo recuperar el pedido anterior.");
+    }
+  }, [products, repeatOrderLoaded, searchParams]);
 
   // Modalidad del menú: Take Away (retiro/delivery) o Salón
   const menuModality = orderModality === "mesa" ? "salon" : "takeaway";
