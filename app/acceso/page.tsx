@@ -30,9 +30,14 @@ export default function AccesoPage() {
         const isPhone = /^[\d\s\-\+\(\)]+$/.test(raw) && raw.replace(/\D/g, "").length >= 6;
         const phoneClean = raw.replace(/\D/g, "");
 
+        // Los administradores pueden ingresar un alias simple (ej. "admin" o "admin2").
+        const username = raw.trim().toLowerCase();
+        const email = !isPhone && !username.includes("@")
+            ? `${username}@bloom.com`
+            : username;
         const { data, error: authError } = isPhone
             ? await supabase.auth.signInWithPassword({ phone: phoneClean, password: password.trim() })
-            : await supabase.auth.signInWithPassword({ email: raw.toLowerCase(), password: password.trim() });
+            : await supabase.auth.signInWithPassword({ email, password: password.trim() });
 
         if (authError || !data.user) {
             setError("Datos incorrectos. Verificá teléfono/email y contraseña.");

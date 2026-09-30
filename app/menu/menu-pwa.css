@@ -46,6 +46,17 @@
   color: #a39a7f;
 }
 
+/* El buscador y los filtros quedan visibles al recorrer el catálogo. */
+.menu-sticky-controls {
+  position: sticky;
+  top: 65px;
+  z-index: 30;
+  background: rgba(247, 245, 239, 0.96);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(196, 184, 150, 0.14);
+}
+
 /* ================================
    FILTROS HORIZONTALES
 ================================ */
@@ -104,6 +115,50 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   padding: 0 18px;
+}
+
+/* Video de portada: compacto, centrado y sin desplazar el menú de forma brusca. */
+.home-feature-video {
+  width: 100%;
+  max-width: 620px;
+  height: 142px;
+  margin: 0 auto;
+}
+
+.home-categories-heading {
+  margin-top: 6px;
+}
+
+.catalog-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.catalog-mode-switch button {
+  border: 1px solid rgba(196, 184, 150, 0.45);
+  border-radius: 14px;
+  padding: 10px 8px;
+  background: #fff;
+  color: #5f5c46;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.catalog-mode-switch button.active {
+  background: #1a3028;
+  border-color: #1a3028;
+  color: #f5e8ca;
+  box-shadow: 0 3px 10px rgba(26, 48, 40, 0.2);
+}
+
+@media (min-width: 640px) {
+  .home-feature-video {
+    height: 172px;
+  }
 }
 
 .category-card {
@@ -165,7 +220,8 @@
   background: #ffffff;
   border-radius: 20px;
   border: 1px solid rgba(196, 184, 150, 0.25);
-  padding: 20px 14px 16px;
+  min-height: 116px;
+  padding: 18px 12px 14px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
   display: flex;
   flex-direction: column;
@@ -495,9 +551,13 @@
   }
 
   .category-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px;
     padding: 0;
+  }
+
+  .category-card-emoji {
+    min-height: 126px;
   }
 
   .products-grid {

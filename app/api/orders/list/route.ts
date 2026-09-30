@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { isAdminEmail } from "@/lib/auth/admin";
+import { requireDashboardAdmin } from "@/lib/dashboard/require-admin-api";
 
 /**
  * Lista pedidos para el dashboard.
@@ -15,12 +14,8 @@ export async function GET(req: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY?.length
   );
   try {
-    const supabaseSession = await createClient();
-    const {
-      data: { user },
-      error: userErr,
-    } = await supabaseSession.auth.getUser();
-    if (userErr || !user || !isAdminEmail(user.email)) {
+    const adminUser = await requireDashboardAdmin();
+    if (!adminUser) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 

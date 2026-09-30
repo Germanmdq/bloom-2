@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import {
     useProveedores, useInsumos, useInsumosByProveedor,
-    useRegistrarCompra, useGastosFijosPendientes, useGastosFijos,
+    useRegistrarCompra, useGastosFijos,
     useMarcarGastoPagado, useCreateProveedor, useCreateInsumo,
     usePagarSaldoProveedor, useUpdateGastoFijo, useCreateGastoFijo
 } from "@/lib/hooks/use-compras-stock";
@@ -25,10 +25,9 @@ interface Gasto { id: string; nombre: string; monto: number; fecha_vencimiento: 
 export default function ComprasYStockPage() {
     const { data: proveedores = [], isLoading: loadProv } = useProveedores();
     const { data: insumos = [], isLoading: loadIns } = useInsumos();
-    const { data: gastosPendientes = [], isLoading: loadGastos } = useGastosFijosPendientes();
     const { data: gastosFijosTodos = [], isLoading: loadGastosTodos } = useGastosFijos();
 
-    if (loadProv || loadIns || loadGastos || loadGastosTodos) {
+    if (loadProv || loadIns || loadGastosTodos) {
         return (
             <div className="h-full flex items-center justify-center">
                 <IconLoader2 className="animate-spin text-gray-300" size={64} />

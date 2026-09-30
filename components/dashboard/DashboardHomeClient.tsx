@@ -1,288 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { IconLayoutGrid, IconUserCircle, IconArrowRight, IconLoader2, IconClock } from "@tabler/icons-react";
-import type { Order } from "@/lib/types";
-import { CHANNEL_BADGE, CHANNEL_LABEL, CHANNEL_LEFT, getOrderChannel } from "@/lib/dashboard/order-channel";
-import { tableChannelFromId } from "@/lib/dashboard/table-colors";
-import { createClient } from "@/lib/supabase/client";
+import { IconArrowRight, IconCalendar, IconChartBar, IconCurrencyDollar, IconLayoutGrid, IconLoader2, IconPackage, IconShoppingBag, IconTrendingUp, IconUsers } from "@tabler/icons-react";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-type PendingQueueEntry =
-    | { kind: "order"; created_at: string; order: Record<string, unknown> }
-    | {
-          kind: "kitchen_ticket";
-          created_at: string;
-          ticket: {
-              id: string;
-              table_id: number;
-              items: unknown;
-              notes: string | null;
-              created_at: string;
-          };
-      };
-
-function ticketToDisplayChannel(tableId: number): "mesa" | "delivery" | "retiro" {
-    const ch = tableChannelFromId(tableId);
-    if (ch === "local") return "mesa";
-    if (ch === "delivery") return "delivery";
-    return "retiro";
-}
-
-function orderDetailHref(order: Record<string, unknown>): string {
-    const tid = order.table_id;
-    if (tid != null && tid !== "" && Number.isFinite(Number(tid)) && Number(tid) > 0) {
-        return `/dashboard/tables/${Number(tid)}`;
-    }
-    const dt = String(order.delivery_type ?? "").toLowerCase();
-    if (dt === "delivery") return "/dashboard/tables/999";
-    return "/dashboard/tables/998";
-}
-
-function orderTitle(order: Record<string, unknown>): string {
-    const name = String(order.customer_name ?? "").trim();
-    if (name) return name;
-    const tid = order.table_id;
-    if (tid != null && Number(tid) > 0) return `Mesa ${tid}`;
-    return "Pedido web";
-}
+type Order = { id: string; created_at: string; customer_name?: string | null; total?: number | null; status?: string | null; order_type?: string | null; table_id?: number | null };
+const money = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+const terminalStatuses = new Set(["entregado", "cancelado", "delivered", "cancelled", "completed"]);
+const isToday = (value: string) => { const date = new Date(value); const today = new Date(); return date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth() && date.getDate() === today.getDate(); };
+const orderLabel = (order: Order) => order.customer_name?.trim() || (order.table_id ? `Mesa ${order.table_id}` : order.order_type === "DELIVERY" ? "Pedido delivery" : "Pedido sin nombre");
 
 export function DashboardHomeClient() {
-    const [stats, setStats] = useState<{ registered: number; active: number } | null>(null);
-    const [error, setError] = useState("");
-    const [pendingQueue, setPendingQueue] = useState<PendingQueueEntry[] | null>(null);
-    const [pendingError, setPendingError] = useState("");
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-    useEffect(() => {
-        void (async () => {
-            try {
-                const res = await fetch("/api/dashboard/stats");
-                const j = (await res.json()) as {
-                    error?: string;
-                    registeredCustomerCount?: number;
-                    customersWithActiveOrdersCount?: number;
-                };
-                if (!res.ok) {
-                    setError(j.error || "No se pudo cargar el resumen");
-                    return;
-                }
-                setStats({
-                    registered: j.registeredCustomerCount ?? 0,
-                    active: j.customersWithActiveOrdersCount ?? 0,
-                });
-            } catch {
-                setError("Error de red");
-            }
-        })();
-    }, []);
+  useEffect(() => { void (async () => { try { const res = await fetch("/api/orders/list?days=8", { credentials: "include" }); const payload = await res.json() as { data?: Order[]; error?: string }; if (!res.ok) throw new Error(payload.error ?? "No se pudieron cargar las ventas"); setOrders(payload.data ?? []); } catch (err) { setError(err instanceof Error ? err.message : "No se pudieron cargar las ventas"); } finally { setLoading(false); } })(); }, []);
 
-    useEffect(() => {
-        const fetchPending = async () => {
-            try {
-                const res = await fetch("/api/dashboard/pending-queue", { credentials: "include" });
-                const j = (await res.json()) as { error?: string; entries?: PendingQueueEntry[] };
-                if (!res.ok) {
-                    setPendingError(j.error || "No se pudo cargar la cola de pendientes");
-                    setPendingQueue([]);
-                    return;
-                }
-                setPendingQueue(Array.isArray(j.entries) ? j.entries : []);
-                setPendingError("");
-            } catch {
-                setPendingError("Error de red al cargar pendientes");
-                setPendingQueue([]);
-            }
-        };
+  const summary = useMemo(() => { const todayOrders = orders.filter((o) => isToday(o.created_at) && !terminalStatuses.has((o.status ?? "").toLowerCase())); const sales = todayOrders.reduce((sum, o) => sum + Number(o.total ?? 0), 0); return { sales, count: todayOrders.length, active: orders.filter((o) => !terminalStatuses.has((o.status ?? "").toLowerCase())).length, average: todayOrders.length ? sales / todayOrders.length : 0 }; }, [orders]);
+  const chartData = useMemo(() => Array.from({ length: 7 }, (_, index) => { const date = new Date(); date.setHours(0, 0, 0, 0); date.setDate(date.getDate() - (6 - index)); const next = new Date(date); next.setDate(next.getDate() + 1); const ventas = orders.filter((o) => { const created = new Date(o.created_at); return created >= date && created < next && !terminalStatuses.has((o.status ?? "").toLowerCase()); }).reduce((sum, o) => sum + Number(o.total ?? 0), 0); return { label: date.toLocaleDateString("es-AR", { weekday: "short" }).replace(".", ""), ventas }; }), [orders]);
+  const stats = [
+    { label: "Ventas de hoy", value: money.format(summary.sales), detail: `${summary.count} pedidos registrados`, icon: IconCurrencyDollar, accent: "text-emerald-700 bg-emerald-50" },
+    { label: "Ticket promedio", value: money.format(summary.average), detail: "Promedio de la jornada", icon: IconTrendingUp, accent: "text-sky-700 bg-sky-50" },
+    { label: "Pedidos activos", value: String(summary.active), detail: "En salón, retiro o delivery", icon: IconShoppingBag, accent: "text-violet-700 bg-violet-50" },
+    { label: "Operación", value: "Abierta", detail: "Gestioná mesas y cobros", icon: IconLayoutGrid, accent: "text-amber-700 bg-amber-50" },
+  ];
 
-        fetchPending();
-
-        // Subscribe to changes to refresh the list
-        const supabase = createClient();
-        const channel = supabase
-            .channel('dashboard-queue-refresh')
-            .on(
-                'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'orders' },
-                () => { fetchPending(); }
-            )
-            .on(
-                'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'kitchen_tickets' },
-                () => { fetchPending(); }
-            )
-            .on(
-                'postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'orders' },
-                () => { fetchPending(); }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, []);
-
-    return (
-        <div className="mx-auto max-w-5xl space-y-8">
-            <div>
-                <h1 className="text-2xl font-black text-gray-900 md:text-3xl">Bloom OS</h1>
-                <p className="mt-1 text-sm font-medium text-gray-500">Pedidos pendientes — un solo listado por orden de llegada</p>
-            </div>
-
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h2 className="mb-3 text-xs font-black uppercase tracking-widest text-gray-400">Pedidos pendientes</h2>
-                {pendingError ? (
-                    <p className="text-sm font-semibold text-red-600">{pendingError}</p>
-                ) : pendingQueue == null ? (
-                    <div className="flex items-center gap-2 text-gray-500">
-                        <IconLoader2 className="h-5 w-5 animate-spin" aria-hidden />
-                        <span className="text-sm font-medium">Cargando pendientes…</span>
-                    </div>
-                ) : pendingQueue.length === 0 ? (
-                    <p className="text-sm font-semibold text-gray-600">No hay pedidos pendientes en este momento.</p>
-                ) : (
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {pendingQueue.map((entry, idx) => {
-                            if (entry.kind === "order") {
-                                const o = entry.order;
-                                const channel = getOrderChannel(o as Order);
-                                const href = orderDetailHref(o);
-                                const total = Number(o.total ?? 0);
-                                const created = new Date(entry.created_at);
-                                const timeLabel = created.toLocaleString("es-AR", {
-                                    day: "numeric",
-                                    month: "short",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                });
-                                return (
-                                    <Link
-                                        key={`o-${String(o.id)}-${idx}`}
-                                        href={href}
-                                        className={`flex flex-col gap-2 rounded-2xl border border-gray-100 bg-gray-50/80 p-4 shadow-sm transition hover:border-gray-300 hover:shadow-md ${CHANNEL_LEFT[channel]}`}
-                                    >
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <span
-                                                className={`rounded-lg px-2 py-0.5 text-[10px] font-black uppercase ${CHANNEL_BADGE[channel]}`}
-                                            >
-                                                {CHANNEL_LABEL[channel]}
-                                            </span>
-                                            <span className="flex items-center gap-1 text-[11px] font-bold text-gray-500">
-                                                <IconClock size={12} />
-                                                {timeLabel}
-                                            </span>
-                                        </div>
-                                        <p className="font-black text-gray-900 leading-tight">{orderTitle(o)}</p>
-                                        <p className="text-lg font-black text-gray-800">${total.toLocaleString("es-AR")}</p>
-                                    </Link>
-                                );
-                            }
-
-                            const t = entry.ticket;
-                            const channel = ticketToDisplayChannel(t.table_id);
-                            const items = Array.isArray(t.items) ? t.items : [];
-                            const preview = items
-                                .slice(0, 2)
-                                .map((it: unknown) => {
-                                    const row = it as { name?: string; quantity?: number };
-                                    return `${row.quantity ?? 1}× ${row.name ?? "Ítem"}`;
-                                })
-                                .join(" · ");
-                            const created = new Date(entry.created_at);
-                            const timeLabel = created.toLocaleString("es-AR", {
-                                day: "numeric",
-                                month: "short",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                            });
-
-                            return (
-                                <Link
-                                    key={`k-${t.id}-${idx}`}
-                                    href={`/dashboard/tables/${t.table_id}`}
-                                    className={`flex flex-col gap-2 rounded-2xl border border-gray-100 bg-gray-50/80 p-4 shadow-sm transition hover:border-gray-300 hover:shadow-md ${CHANNEL_LEFT[channel]}`}
-                                >
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <span
-                                            className={`rounded-lg px-2 py-0.5 text-[10px] font-black uppercase ${CHANNEL_BADGE[channel]}`}
-                                        >
-                                            {CHANNEL_LABEL[channel]}
-                                        </span>
-                                        <span className="rounded-md bg-black/80 px-2 py-0.5 text-[10px] font-black uppercase text-[#FFD60A]">
-                                            Cocina
-                                        </span>
-                                        <span className="flex items-center gap-1 text-[11px] font-bold text-gray-500">
-                                            <IconClock size={12} />
-                                            {timeLabel}
-                                        </span>
-                                    </div>
-                                    <p className="font-black text-gray-900">Mesa {t.table_id}</p>
-                                    <p className="line-clamp-2 text-xs text-gray-600">{preview || "Ticket en preparación"}</p>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                )}
-                <p className="mt-4 text-[11px] font-medium text-gray-500">
-                    🔴 Mesa / salón · 🟢 Delivery · 🟡 Retiro — orden: más antiguo primero.
-                </p>
-            </div>
-
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                {error ? (
-                    <p className="text-sm font-semibold text-red-600">{error}</p>
-                ) : stats == null ? (
-                    <div className="flex items-center gap-2 text-gray-500">
-                        <IconLoader2 className="h-5 w-5 animate-spin" aria-hidden />
-                        <span className="text-sm font-medium">Cargando clientes…</span>
-                    </div>
-                ) : (
-                    <>
-                        <p className="text-lg font-black leading-snug text-gray-900 md:text-xl">
-                            {stats.registered}{" "}
-                            {stats.registered === 1 ? "cliente registrado" : "clientes registrados"} — {stats.active} con
-                            pedidos activos
-                        </p>
-                        <p className="mt-2 text-xs font-medium text-gray-500">
-                            Pedidos activos: clientes con al menos un pedido que no está entregado ni cancelado.
-                        </p>
-                    </>
-                )}
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-                <Link
-                    href="/dashboard/tables"
-                    className="group flex items-center justify-between rounded-2xl border-2 border-gray-900 bg-[#FFD60A] p-5 text-gray-900 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-black/10">
-                            <IconLayoutGrid size={24} strokeWidth={2.2} />
-                        </div>
-                        <div>
-                            <p className="font-black uppercase tracking-tight">Mesas / POS</p>
-                            <p className="text-xs font-semibold text-gray-800/80">Abrir operación</p>
-                        </div>
-                    </div>
-                    <IconArrowRight className="h-5 w-5 shrink-0 transition group-hover:translate-x-1" />
-                </Link>
-
-                <Link
-                    href="/dashboard/customers"
-                    className="group flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-5 text-gray-900 shadow-sm transition hover:border-gray-300 hover:shadow-md"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100">
-                            <IconUserCircle size={24} strokeWidth={2} className="text-gray-700" />
-                        </div>
-                        <div>
-                            <p className="font-black uppercase tracking-tight">Clientes</p>
-                            <p className="text-xs font-semibold text-gray-500">Cuentas y pedidos web</p>
-                        </div>
-                    </div>
-                    <IconArrowRight className="h-5 w-5 shrink-0 text-gray-400 transition group-hover:translate-x-1" />
-                </Link>
-            </div>
-        </div>
-    );
+  return <div className="space-y-6 pb-6">
+    <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-sm font-medium text-[#3d6b52]">Centro de control</p><h1 className="mt-1 text-2xl font-semibold tracking-tight text-gray-950 md:text-3xl">Buen día, equipo Bloom</h1><p className="mt-1 text-sm text-gray-500">Así está funcionando el local hoy.</p></div><div className="flex items-center gap-2 text-sm text-gray-500"><IconCalendar size={17} /> {new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}</div></section>
+    {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">No fue posible actualizar las métricas: {error}</div>}
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{stats.map(({ label, value, detail, icon: Icon, accent }) => <div key={label} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between"><p className="text-sm font-medium text-gray-500">{label}</p><span className={`grid h-9 w-9 place-items-center rounded-lg ${accent}`}><Icon size={19} /></span></div>{loading ? <IconLoader2 className="mt-5 animate-spin text-gray-400" size={23} /> : <p className="mt-5 text-2xl font-semibold tracking-tight text-gray-950">{value}</p>}<p className="mt-1 text-xs text-gray-500">{detail}</p></div>)}</section>
+    <section className="grid gap-6 xl:grid-cols-5"><div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm xl:col-span-3"><div className="mb-5 flex items-start justify-between"><div><h2 className="font-semibold text-gray-900">Ventas de la semana</h2><p className="mt-1 text-sm text-gray-500">Ingresos diarios de los últimos 7 días.</p></div><IconChartBar className="text-gray-400" size={20} /></div><div className="h-64">{loading ? <div className="grid h-full place-items-center"><IconLoader2 className="animate-spin text-gray-400" /></div> : <ResponsiveContainer width="100%" height="100%"><AreaChart data={chartData} margin={{ top: 10, right: 0, left: -15, bottom: 0 }}><defs><linearGradient id="salesFill" x1="0" x2="0" y1="0" y2="1"><stop offset="5%" stopColor="#3d6b52" stopOpacity={0.25}/><stop offset="95%" stopColor="#3d6b52" stopOpacity={0}/></linearGradient></defs><XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#737373", fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} width={46} tick={{ fill: "#a3a3a3", fontSize: 11 }} tickFormatter={(value) => `$${Math.round(value / 1000)}k`} /><Tooltip formatter={(value) => money.format(Number(value))} labelStyle={{ color: "#404040" }} contentStyle={{ borderRadius: 8, border: "1px solid #e5e5e5" }} /><Area type="monotone" dataKey="ventas" stroke="#3d6b52" strokeWidth={2.5} fill="url(#salesFill)" /></AreaChart></ResponsiveContainer>}</div></div>
+      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm xl:col-span-2"><div className="flex items-center justify-between"><div><h2 className="font-semibold text-gray-900">Pedidos recientes</h2><p className="mt-1 text-sm text-gray-500">Últimas operaciones registradas.</p></div><Link href="/dashboard/orders" className="text-sm font-medium text-[#3d6b52] hover:underline">Ver todos</Link></div><div className="mt-4 divide-y divide-gray-100">{loading ? <div className="grid h-44 place-items-center"><IconLoader2 className="animate-spin text-gray-400" /></div> : orders.length === 0 ? <p className="py-10 text-center text-sm text-gray-500">Todavía no hay pedidos para mostrar.</p> : orders.slice(0, 5).map((order) => <Link href="/dashboard/orders" key={order.id} className="flex items-center gap-3 py-3 transition hover:bg-gray-50"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gray-100 text-xs font-semibold text-gray-600">{orderLabel(order).slice(0, 1).toUpperCase()}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-gray-800">{orderLabel(order)}</span><span className="block text-xs text-gray-500">{new Date(order.created_at).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })} · {order.order_type ?? "Local"}</span></span><span className="text-sm font-semibold text-gray-900">{money.format(Number(order.total ?? 0))}</span></Link>)}</div></div></section>
+    <section className="grid gap-4 md:grid-cols-3"><QuickLink href="/dashboard/tables" icon={IconLayoutGrid} title="Administrar mesas" description="Abrí mesas, cargá consumos y cobrá." /><QuickLink href="/dashboard/compras-y-stock" icon={IconPackage} title="Compras y stock" description="Revisá insumos, movimientos y alertas." /><QuickLink href="/dashboard/clientes" icon={IconUsers} title="Clientes" description="Consultá saldos, pedidos e historial." /></section>
+  </div>;
 }
+
+function QuickLink({ href, icon: Icon, title, description }: { href: string; icon: typeof IconLayoutGrid; title: string; description: string }) { return <Link href={href} className="group flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-[#a8c9b8] hover:shadow-md"><span className="grid h-10 w-10 place-items-center rounded-lg bg-[#eef4f0] text-[#2d4a3e]"><Icon size={20} /></span><span className="min-w-0 flex-1"><span className="block font-medium text-gray-900">{title}</span><span className="mt-0.5 block text-sm text-gray-500">{description}</span></span><IconArrowRight size={18} className="text-gray-400 transition group-hover:translate-x-1 group-hover:text-[#2d4a3e]" /></Link>; }

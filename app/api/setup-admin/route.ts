@@ -9,7 +9,9 @@ export async function GET() {
         );
 
         const email = 'admin@bloom.com';
-        const password = 'Admin123!'; 
+        // Supabase exige una contraseña de al menos 6 caracteres.
+        // Es una credencial temporal para el entorno de demostración.
+        const password = '123123';
 
         // 1. Buscar si el usuario ya existe en Auth
         const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
@@ -32,7 +34,7 @@ export async function GET() {
                 email: email,
                 password: password,
                 email_confirm: true,
-                user_metadata: { full_name: 'Administrador' }
+                user_metadata: { full_name: 'admin' }
             });
             if (createError) throw createError;
             userId = created.user.id;
@@ -43,7 +45,7 @@ export async function GET() {
             .from('profiles')
             .upsert({
                 id: userId,
-                full_name: 'Administrador Principal',
+                full_name: 'admin',
                 role: 'ADMIN',
                 is_customer: false
             });

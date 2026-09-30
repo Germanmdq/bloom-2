@@ -198,11 +198,15 @@ export default function CuentaPage() {
           .from("profiles")
           .select("coffee_stamps, balance, birthday, full_name, customer_number")
           .eq("id", uid)
-          .single()
+          // Un perfil puede crearse unos instantes después de la sesión.
+          // `maybeSingle` evita que ese estado transitorio rompa la pantalla.
+          .maybeSingle()
       ]);
       
       if (listRes.error) console.error(listRes.error);
-      if (profRes.error) console.error(profRes.error);
+      if (profRes.error) {
+        console.warn("No se pudo cargar el perfil de la cuenta.");
+      }
       
       setOrders((listRes.data as OrderRow[]) ?? []);
       setProfile(profRes.data);

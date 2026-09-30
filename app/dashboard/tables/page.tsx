@@ -199,8 +199,8 @@ export default function TablesPage() {
             })
             .subscribe();
 
-        // ── Polling cada 4s para detectar pedidos nuevos y mostrar toast ──
-        // (Realtime con anon key no siempre entrega eventos INSERT por RLS)
+        // Polling liviano de respaldo. La notificación global ya usa Realtime,
+        // por eso este chequeo no necesita repetirse cada pocos segundos.
         const knownIds = new Set<string>();
         let isFirstPoll = true;
 
@@ -244,7 +244,7 @@ export default function TablesPage() {
             });
         };
 
-        const pollInterval = setInterval(pollNewOrders, 4000);
+        const pollInterval = setInterval(pollNewOrders, 12000);
         pollNewOrders(); // primera llamada inmediata
 
         // Listener para refrescar desde la notificación "Ir a gestionar"

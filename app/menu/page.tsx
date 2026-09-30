@@ -19,7 +19,8 @@ import {
   Trash2,
   CheckCircle2,
   Phone,
-  ChevronRight
+  ChevronRight,
+  BellRing,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -33,6 +34,8 @@ const formatCurrency = (val: number) =>
     currency: "ARS",
     maximumFractionDigits: 0,
   }).format(val);
+
+const PAYMENTS_SIMULATION = process.env.NEXT_PUBLIC_PAYMENTS_SIMULATION === "true";
 
 // Fallback inicial para carga instantánea
 const FALLBACK_CATEGORIES = [
@@ -141,8 +144,31 @@ const CATEGORY_EMOJIS: Record<string, React.ReactNode> = {
   "promociones": "🏷️",
 };
 
-// Categorías que NO deben mostrarse en la grilla de inicio (se manejan aparte)
-const HIDDEN_CATEGORIES = ["plato del día", "platos diarios"];
+// Orden pensado para que cada modalidad muestre sólo las categorías útiles.
+// Si una categoría todavía no existe en la base, simplemente no se muestra.
+const LOCAL_CATEGORY_NAMES = [
+  "cafetería",
+  "desayunos y meriendas",
+  "platos diarios",
+  "ensaladas",
+  "hamburguesas",
+  "milanesas",
+  "pastas",
+  "pizzas",
+  "tartas individuales",
+  "promociones",
+];
+
+const TAKEAWAY_CATEGORY_NAMES = [
+  "cafetería delivery",
+  "cafetería",
+  "panificados",
+  "pastelería",
+  "bebidas",
+  "jugos y licuados",
+  "sandwiches",
+  "empanadas",
+];
 
 // Cambiar esta versión cuando cambia la estructura del catálogo. Así no se
 // hidratan categorías/productos de una versión anterior desde localStorage.
@@ -188,10 +214,12 @@ function MenuContent() {
   const [categories, setCategories] = useState<any[]>(FALLBACK_CATEGORIES);
   const [products, setProducts] = useState<any[]>(FALLBACK_PRODUCTS);
   const [whatsappNumber, setWhatsappNumber] = useState("5492231234567");
+  const [latestNotification, setLatestNotification] = useState<any | null>(null);
 
   // Filtros y búsqueda
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [catalogMode, setCatalogMode] = useState<"local" | "takeaway">("local");
 
   // Producto seleccionado para el modal de detalle
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
@@ -209,6 +237,7 @@ function MenuContent() {
   const [orderModality, setOrderModality] = useState<"mesa" | "delivery" | "retiro">(
     "mesa"
   );
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "mercadopago">("cash");
   const [selectedTableNum, setSelectedTableNum] = useState<string>(
     tableId ? String(tableId) : ""
   );
@@ -279,9 +308,73 @@ function MenuContent() {
     loadData();
   }, [supabase]);
 
-  // Filtrado reactivo de productos
+  // Novedades creadas desde Administración. El aviso nativo sólo se usa si la
+  // persona eligió recibirlo desde el botón de la campana.
+  useEffect(() => {
+    let cancelled = false;
+    const loadLatestNotification = async () => {
+      const { data } = await supabase
+        .from("menu_notifications")
+        .select("id, title, body, type, created_at")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!data || cancelled) return;
+      setLatestNotification(data);
+
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        const seenKey = "bloom_last_menu_notification";
+        if (localStorage.getItem(seenKey) !== data.id) {
+          new Notification(data.title, { body: data.body, icon: "/icon-192.png" });
+          localStorage.setItem(seenKey, data.id);
+        }
+      }
+    };
+
+    loadLatestNotification();
+    const timer = window.setInterval(loadLatestNotification, 60000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [supabase]);
+
+  const enableNotifications = async () => {
+    if (!("Notification" in window)) {
+      toast.error("Este navegador no permite avisos.");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      toast.success("Listo, vas a recibir las novedades de Bloom.");
+      if (latestNotification) {
+        new Notification(latestNotification.title, { body: latestNotification.body, icon: "/icon-192.png" });
+        localStorage.setItem("bloom_last_menu_notification", latestNotification.id);
+      }
+    } else {
+      toast.message("Podés activar los avisos cuando quieras desde el navegador.");
+    }
+  };
+
+  const visibleCategories = useMemo(() => {
+    const names = catalogMode === "local" ? LOCAL_CATEGORY_NAMES : TAKEAWAY_CATEGORY_NAMES;
+    return names
+      .map((name) => categories.find((cat) => cat.name?.toLowerCase() === name))
+      .filter(Boolean);
+  }, [categories, catalogMode]);
+
+  const changeCatalogMode = (mode: "local" | "takeaway") => {
+    setCatalogMode(mode);
+    setSelectedCategory("all");
+    setSearchQuery("");
+  };
+
+  // Filtrado reactivo de productos, según la modalidad elegida y la búsqueda.
   const filteredProducts = useMemo(() => {
+    const allowedCategoryIds = new Set(visibleCategories.map((category: any) => category.id));
     return products.filter((p) => {
+      const matchCatalogMode = allowedCategoryIds.has(p.category_id);
       const matchCategory =
         selectedCategory === "all" ||
         p.category_id === selectedCategory ||
@@ -293,9 +386,9 @@ function MenuContent() {
         p.name?.toLowerCase().includes(q) ||
         p.description?.toLowerCase().includes(q);
 
-      return matchCategory && matchSearch;
+      return matchCatalogMode && matchCategory && matchSearch;
     });
-  }, [products, selectedCategory, searchQuery]);
+  }, [products, selectedCategory, searchQuery, visibleCategories]);
 
   // Carrito helpers
   const cartTotal = useMemo(
@@ -411,10 +504,16 @@ function MenuContent() {
         price: i.price,
       })),
       total: cartTotal,
+      payment_method: paymentMethod === "mercadopago" ? "MERCADO_PAGO" : "PENDING",
     };
 
     // 1. Si no hay conexión a internet, guardar de inmediato en la cola offline
     if (typeof navigator !== "undefined" && !navigator.onLine) {
+      if (paymentMethod === "mercadopago") {
+        toast.error("Necesitás conexión a internet para pagar con Mercado Pago.");
+        setIsSending(false);
+        return;
+      }
       saveOfflineOrder(orderPayload);
       setOrderSuccess(true);
       setCart([]);
@@ -447,6 +546,26 @@ function MenuContent() {
         throw new Error(data.error || "No se pudo crear el pedido");
       }
 
+      if (paymentMethod === "mercadopago") {
+        if (!data.orderId) throw new Error("No se pudo preparar el pago");
+
+        const paymentRes = await fetch("/api/payments/create-preference", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            order_id: data.orderId,
+            customer: { name: computedCustomerName, phone: customerPhone.trim() },
+          }),
+        });
+        const paymentData = await paymentRes.json();
+        if (!paymentRes.ok || !paymentData.init_point) {
+          throw new Error(paymentData.error || "No se pudo iniciar Mercado Pago");
+        }
+
+        window.location.assign(paymentData.init_point);
+        return;
+      }
+
       setOrderSuccess(true);
       setCart([]);
       setCustomerName("");
@@ -465,6 +584,10 @@ function MenuContent() {
         setIsCartOpen(false);
       }, 3000);
     } catch (err: any) {
+      if (paymentMethod === "mercadopago") {
+        toast.error(err?.message || "No se pudo iniciar Mercado Pago. Intentá de nuevo.");
+        return;
+      }
       // Si la llamada falló por pérdida repentina de red, resguardar en cola offline
       saveOfflineOrder(orderPayload);
       setOrderSuccess(true);
@@ -500,6 +623,21 @@ function MenuContent() {
       <header className="sticky top-0 z-40 bg-[#fffdf8]/90 backdrop-blur-md border-b border-[#c4b896]/20 px-4 py-3 sm:px-8">
         <div className="max-w-[1180px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
+            {activeTab === "menu" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("inicio");
+                  setSelectedCategory("all");
+                  setSearchQuery("");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="w-9 h-9 rounded-xl bg-white border border-[#c4b896]/30 text-[#1a3028] flex items-center justify-center shadow-sm hover:bg-[#f2f0e6] transition-colors"
+                aria-label="Volver al inicio"
+              >
+                <ArrowLeft size={19} />
+              </button>
+            )}
             <Link
               href="/"
               onClick={(e) => {
@@ -531,6 +669,18 @@ function MenuContent() {
                 {tableLabel}
               </span>
             )}
+            <button
+              type="button"
+              onClick={enableNotifications}
+              className="relative p-2 rounded-xl bg-white border border-[#c4b896]/30 text-[#1a3028] shadow-sm hover:bg-[#f2f0e6] transition-colors"
+              aria-label="Activar avisos de promociones y plato del día"
+              title="Recibir novedades"
+            >
+              <BellRing size={19} />
+              {latestNotification && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#c8852e] border-2 border-white" />
+              )}
+            </button>
             <button
               onClick={() => setIsCartOpen(true)}
               className="relative p-2 rounded-xl bg-white border border-[#c4b896]/30 text-[#1a3028] shadow-sm hover:bg-[#f2f0e6] transition-colors"
@@ -578,7 +728,37 @@ function MenuContent() {
               </div>
             </div>
 
+            {/* Video destacado: mantiene el contenido principal centrado antes de las categorías */}
+            <div className="px-4 md:px-0 mb-7">
+              <div className="home-feature-video rounded-[24px] overflow-hidden bg-[#1a3028] border border-[#c4b896]/25 shadow-md">
+                <video
+                  className="w-full h-full object-cover"
+                  src="/videos/yogurt-pouring.mp4"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  aria-label="Preparación de yogurt Bloom"
+                />
+              </div>
+            </div>
+
             {/* ========== PLATO DEL DÍA ========== */}
+            {latestNotification && (
+              <div className="px-4 md:px-0 mb-4">
+                <button
+                  type="button"
+                  onClick={enableNotifications}
+                  className="w-full text-left flex items-center gap-3 rounded-2xl border border-[#c4b896]/40 bg-[#fffaf0] px-4 py-3 shadow-sm"
+                >
+                  <BellRing size={20} className="text-[#c8852e] shrink-0" />
+                  <span>
+                    <span className="block text-xs font-black text-[#1a3028]">{latestNotification.title}</span>
+                    <span className="block text-[11px] text-[#6b6756] mt-0.5">{latestNotification.body}</span>
+                  </span>
+                </button>
+              </div>
+            )}
             {platoDia && (
               <>
                 <div className="px-4 md:px-0 mb-3">
@@ -641,15 +821,29 @@ function MenuContent() {
             )}
 
             {/* ========== CATEGORÍAS CON EMOJIS ========== */}
-            <div className="px-4 md:px-0 mb-3">
+            <div className="px-4 md:px-0 mb-3 home-categories-heading">
               <h3 className="text-base font-extrabold text-[#1a3028] tracking-tight">
-                Nuestras Categorías
+                Elegí cómo querés pedir
               </h3>
+              <div className="catalog-mode-switch" role="group" aria-label="Modalidad del catálogo">
+                <button
+                  type="button"
+                  onClick={() => changeCatalogMode("local")}
+                  className={catalogMode === "local" ? "active" : ""}
+                >
+                  🍽️ En el local
+                </button>
+                <button
+                  type="button"
+                  onClick={() => changeCatalogMode("takeaway")}
+                  className={catalogMode === "takeaway" ? "active" : ""}
+                >
+                  🛍️ Take Away
+                </button>
+              </div>
             </div>
             <section className="category-grid mb-6" aria-label="Categorías">
-              {categories
-                .filter((cat) => !HIDDEN_CATEGORIES.includes(cat.name.toLowerCase()))
-                .map((cat) => {
+              {visibleCategories.map((cat: any) => {
                 const emoji = CATEGORY_EMOJIS[cat.name.toLowerCase()] || "🍴";
                 const productCount = products.filter((p) => p.category_id === cat.id).length;
                 return (
@@ -695,44 +889,46 @@ function MenuContent() {
         ============================================ */}
         {activeTab === "menu" && (
           <>
-            {/* BUSCADOR */}
-            <section className="search-box" aria-label="Buscador de productos">
-              <Search size={18} className="text-[#a39a7f] shrink-0" />
-              <input
-                type="text"
-                placeholder="Buscar café, tostados, medialunas..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="text-[#a39a7f] hover:text-[#1a3028] p-1"
-                  aria-label="Limpiar búsqueda"
-                >
-                  <X size={16} />
-                </button>
-              )}
-            </section>
+            <div className="menu-sticky-controls">
+              {/* BUSCADOR */}
+              <section className="search-box" aria-label="Buscador de productos">
+                <Search size={18} className="text-[#a39a7f] shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Buscar café, tostados, medialunas..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="text-[#a39a7f] hover:text-[#1a3028] p-1"
+                    aria-label="Limpiar búsqueda"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </section>
 
-            {/* FILTROS HORIZONTALES DE CATEGORÍAS */}
-            <nav className="filter-scroll" aria-label="Categorías de productos">
-              <button
-                onClick={() => setSelectedCategory("all")}
-                className={`filter-chip ${selectedCategory === "all" ? "active" : ""}`}
-              >
-                Todos
-              </button>
-              {categories.map((cat) => (
+              {/* FILTROS HORIZONTALES DE CATEGORÍAS */}
+              <nav className="filter-scroll" aria-label="Categorías de productos">
                 <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`filter-chip ${selectedCategory === cat.id ? "active" : ""}`}
+                  onClick={() => setSelectedCategory("all")}
+                  className={`filter-chip ${selectedCategory === "all" ? "active" : ""}`}
                 >
-                  {cat.name}
+                  Todos
                 </button>
-              ))}
-            </nav>
+                {visibleCategories.map((cat: any) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`filter-chip ${selectedCategory === cat.id ? "active" : ""}`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </nav>
+            </div>
 
             {/* GRILLA DE PRODUCTOS */}
             <section className="products-grid" aria-label="Catálogo de productos">
@@ -811,10 +1007,10 @@ function MenuContent() {
             >
               <button
                 onClick={() => setSelectedProduct(null)}
-                className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/40 text-white backdrop-blur-md flex items-center justify-center hover:bg-black/60 transition-colors"
-                aria-label="Cerrar detalle"
+                className="absolute top-4 left-4 z-20 w-10 h-10 rounded-full bg-black/40 text-white backdrop-blur-md flex items-center justify-center hover:bg-black/60 transition-colors"
+                aria-label="Volver al menú"
               >
-                <X size={20} />
+                <ArrowLeft size={20} />
               </button>
 
               <div className="overflow-y-auto product-detail">
@@ -929,6 +1125,13 @@ function MenuContent() {
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
                   <CheckCircle2 size={64} className="text-[#10b981] mb-4 animate-bounce" />
                   <h3 className="font-extrabold text-2xl text-[#1a3028] mb-2">¡Pedido Confirmado!</h3>
+                  <div className="mb-4 rounded-full bg-[#1a3028] text-[#f5e8ca] px-4 py-2 text-xs font-black shadow-sm">
+                    {orderModality === "mesa"
+                      ? `🍽️ Para consumir en el local · Mesa ${selectedTableNum || 1}`
+                      : orderModality === "retiro"
+                      ? "🏃 Para retirar en el local"
+                      : "🛵 Envío a domicilio"}
+                  </div>
                   <p className="text-sm text-[#5f5c46] max-w-xs leading-relaxed">
                     {orderModality === 'mesa' 
                       ? `Tu pedido fue recibido con éxito para la Mesa ${selectedTableNum || 1}. En breve te lo alcanzamos a tu mesa.`
@@ -1124,6 +1327,33 @@ function MenuContent() {
 
                   {/* FOOTER DEL CARRITO: Solo Subtotal, Total y Botón */}
                   <div className="p-4 sm:p-5 bg-white border-t border-[#c4b896]/25 space-y-2.5">
+                    <div className="space-y-2 pb-1">
+                      <p className="text-xs font-black tracking-wider uppercase text-[#1a3028]">Forma de pago</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod("cash")}
+                          className={`rounded-xl border-2 px-3 py-2.5 text-xs font-black transition-colors ${
+                            paymentMethod === "cash"
+                              ? "border-[#1a3028] bg-[#1a3028] text-[#f5e8ca]"
+                              : "border-[#c4b896]/40 text-[#5f5c46] hover:border-[#1a3028]/40"
+                          }`}
+                        >
+                          Efectivo al retirar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod("mercadopago")}
+                          className={`rounded-xl border-2 px-3 py-2.5 text-xs font-black transition-colors ${
+                            paymentMethod === "mercadopago"
+                              ? "border-[#009ee3] bg-[#e8f7ff] text-[#007eb8]"
+                              : "border-[#c4b896]/40 text-[#5f5c46] hover:border-[#009ee3]/50"
+                          }`}
+                        >
+                          {PAYMENTS_SIMULATION ? "Pago simulado" : "Mercado Pago"}
+                        </button>
+                      </div>
+                    </div>
                     <div className="flex items-center justify-between text-sm font-semibold text-[#5f5c46]">
                       <span>Subtotal</span>
                       <span>{formatCurrency(cartTotal)}</span>
@@ -1146,7 +1376,11 @@ function MenuContent() {
                       ) : (
                         <>
                           <CheckCircle2 size={18} />
-                          <span>Confirmar Pedido · {formatCurrency(cartTotal)}</span>
+                          <span>
+                            {paymentMethod === "mercadopago"
+                              ? PAYMENTS_SIMULATION ? "Confirmar pago simulado" : "Pagar con Mercado Pago"
+                              : "Confirmar Pedido"} · {formatCurrency(cartTotal)}
+                          </span>
                         </>
                       )}
                     </button>
