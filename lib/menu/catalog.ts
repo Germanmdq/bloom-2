@@ -423,6 +423,8 @@ export function buildCatalog(categories: any[], products: any[], modality: Modal
   // Plato del Día); no se venden sueltos.
   const sellable = filterByModality(products, modality)
     .filter((p) => Number(p.price) > 0 && !isGenericDailyMenu(p))
+    // Retirados de la carta pública, sin eliminar los productos ni su historial.
+    .filter((p) => !/lemon\s*pie|brownie/i.test(p.name ?? ""))
     .map((p) => (dailyCategoryIds.has(p.category_id) ? { ...p, category_id: platosCategoryId } : p));
 
   const items: MenuItem[] = [];
