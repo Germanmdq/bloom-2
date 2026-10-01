@@ -392,6 +392,38 @@ function MenuContent() {
       .filter(Boolean);
   }, [categories, catalogMode]);
 
+  // Las facturas suelen ser lo primero que se busca. Las detectamos también
+  // cuando el negocio las llamó "Pastelería" o "Panificados".
+  const facturasCategory = useMemo(
+    () =>
+      categories.find((category) => /factura|medialuna/i.test(category.name || "")) ||
+      categories.find((category) => /pasteler[ií]a|panificados/i.test(category.name || "")),
+    [categories]
+  );
+
+  const openCategory = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    setSearchQuery("");
+    setActiveTab("menu");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const hasFacturas = useMemo(
+    () => products.some((product) => /factura|medialuna/i.test(product.name || "")),
+    [products]
+  );
+
+  const openFacturas = () => {
+    if (facturasCategory) {
+      openCategory(facturasCategory.id);
+      return;
+    }
+    setSelectedCategory("all");
+    setSearchQuery("factura");
+    setActiveTab("menu");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const changeCatalogMode = (mode: "local" | "takeaway") => {
     setCatalogMode(mode);
     setSelectedCategory("all");
@@ -741,7 +773,7 @@ function MenuContent() {
                 <p className="text-xs text-[#a8c9b8] mt-1.5 max-w-sm leading-relaxed">
                   Disfrutá de nuestros cafés tostados de especialidad, pastelería fresca del día y tostados artesanales.
                 </p>
-                <div className="mt-4 flex gap-2">
+                <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -752,6 +784,15 @@ function MenuContent() {
                   >
                     Explorar Menú Completo →
                   </button>
+                  {hasFacturas && (
+                    <button
+                      type="button"
+                      onClick={openFacturas}
+                      className="bg-white/10 border border-[#c4b896]/50 text-[#f5e8ca] text-xs font-bold px-4 py-2.5 rounded-full hover:bg-white/20 transition-transform active:scale-95 cursor-pointer"
+                    >
+                      🥐 Ver facturas
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -877,11 +918,7 @@ function MenuContent() {
                 return (
                   <button
                     key={cat.id}
-                    onClick={() => {
-                      setSelectedCategory(cat.id);
-                      setActiveTab("menu");
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
+                    onClick={() => openCategory(cat.id)}
                     className="category-card-emoji"
                   >
                     <span className="text-4xl h-10 flex items-center justify-center mb-2">{emoji}</span>
@@ -959,7 +996,10 @@ function MenuContent() {
             </div>
 
             {/* GRILLA DE PRODUCTOS */}
-            <section className="products-grid" aria-label="Catálogo de productos">
+            <section
+              className={`products-grid ${/factura|medialuna|pasteler[ií]a|panificados/i.test(`${categories.find((category) => category.id === selectedCategory)?.name || ""} ${searchQuery}`) ? "products-grid-compact" : ""}`}
+              aria-label="Catálogo de productos"
+            >
               {filteredProducts.map((p) => {
                 const catObj = categories.find((c) => c.id === p.category_id);
                 const catName = catObj?.name || "Café & Delicias";
@@ -1031,7 +1071,7 @@ function MenuContent() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 350, damping: 35 }}
-              className="relative w-full max-w-lg bg-[#ffffff] rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col z-[160] pb-6 sm:pb-4"
+              className="product-sheet relative w-full max-w-lg bg-[#ffffff] rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col z-[160]"
             >
               <button
                 onClick={() => setSelectedProduct(null)}
@@ -1068,43 +1108,21 @@ function MenuContent() {
                     {formatCurrency(selectedProduct.price * modalQuantity)}
                   </span>
 
-                  {/* Selector de cantidad */}
-                  <div className="flex items-center gap-4 mt-6">
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#7a765a]">
-                      Cantidad:
-                    </span>
-                    <div className="flex items-center gap-3 bg-[#f2f0e6] px-3 py-1.5 rounded-full border border-[#c4b896]/30">
-                      <button
-                        onClick={() => setModalQuantity((q) => Math.max(1, q - 1))}
-                        disabled={modalQuantity <= 1}
-                        className="p-1 rounded-full text-[#1a3028] disabled:opacity-30"
-                        aria-label="Disminuir cantidad"
-                      >
-                        <Minus size={16} />
-                      </button>
-                      <span className="font-bold text-sm min-w-[20px] text-center text-[#1a3028]">
-                        {modalQuantity}
-                      </span>
-                      <button
-                        onClick={() => setModalQuantity((q) => q + 1)}
-                        className="p-1 rounded-full text-[#1a3028]"
-                        aria-label="Aumentar cantidad"
-                      >
-                        <Plus size={16} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleAddToCart}
-                    className="primary-action"
-                  >
-                    <ShoppingBag size={20} />
-                    <span>
-                      Agregar al pedido · {formatCurrency(selectedProduct.price * modalQuantity)}
-                    </span>
-                  </button>
                 </div>
+              </div>
+              <div className="product-detail-actions">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#7a765a]">Cantidad</span>
+                  <div className="flex items-center gap-3 bg-[#f2f0e6] px-3 py-1.5 rounded-full border border-[#c4b896]/30">
+                    <button onClick={() => setModalQuantity((q) => Math.max(1, q - 1))} disabled={modalQuantity <= 1} className="p-1 rounded-full text-[#1a3028] disabled:opacity-30" aria-label="Disminuir cantidad"><Minus size={16} /></button>
+                    <span className="font-bold text-sm min-w-[20px] text-center text-[#1a3028]">{modalQuantity}</span>
+                    <button onClick={() => setModalQuantity((q) => q + 1)} className="p-1 rounded-full text-[#1a3028]" aria-label="Aumentar cantidad"><Plus size={16} /></button>
+                  </div>
+                </div>
+                <button onClick={handleAddToCart} className="primary-action !mt-3">
+                  <ShoppingBag size={20} />
+                  <span>Agregar al pedido · {formatCurrency(selectedProduct.price * modalQuantity)}</span>
+                </button>
               </div>
             </motion.div>
           </div>

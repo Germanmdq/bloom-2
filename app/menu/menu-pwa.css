@@ -253,6 +253,39 @@
   padding: 0 18px;
 }
 
+/* Las facturas se eligen rápido: más productos visibles sin perder el nombre ni el precio. */
+.products-grid-compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.products-grid-compact .product-card {
+  border-radius: 14px;
+}
+
+.products-grid-compact .product-image {
+  aspect-ratio: 4 / 3;
+}
+
+.products-grid-compact .product-info {
+  padding: 8px;
+}
+
+.products-grid-compact .product-info small,
+.products-grid-compact .product-info p {
+  display: none;
+}
+
+.products-grid-compact .product-info h3 {
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.products-grid-compact .product-price {
+  margin-top: 6px;
+  font-size: 14px;
+}
+
 .product-card {
   background: #ffffff;
   border-radius: 20px;
@@ -340,12 +373,16 @@
 ================================ */
 
 .product-detail {
-  padding-bottom: 110px;
+  overflow-y: auto;
+}
+
+.product-sheet {
+  height: min(670px, calc(100dvh - 16px));
 }
 
 .product-detail-image {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  height: clamp(112px, 22vh, 170px);
 
   overflow: hidden;
   position: relative;
@@ -359,7 +396,7 @@
 }
 
 .product-detail-content {
-  padding: 22px 20px;
+  padding: 16px 20px 18px;
 }
 
 .product-detail-content small {
@@ -372,28 +409,41 @@
 }
 
 .product-detail-content h1 {
-  margin: 6px 0 10px;
+  margin: 4px 0 7px;
 
-  font-size: 26px;
+  font-size: 23px;
   line-height: 1.15;
   font-weight: 800;
   color: #1a3028;
 }
 
 .product-detail-content p {
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 13px;
+  line-height: 1.4;
   color: #4a4838;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .product-detail-price {
   display: block;
 
-  margin-top: 18px;
+  margin-top: 10px;
 
-  font-size: 25px;
+  font-size: 22px;
   font-weight: 800;
   color: #1a3028;
+}
+
+.product-detail-actions {
+  flex: 0 0 auto;
+  padding: 12px 20px max(14px, env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(196, 184, 150, 0.3);
+  background: #ffffff;
+  box-shadow: 0 -8px 20px rgba(26, 48, 40, 0.05);
 }
 
 /* ================================
@@ -564,6 +614,11 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 18px;
     padding: 0;
+  }
+
+  .products-grid-compact {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
   }
 
   .bottom-dock-wrap {
