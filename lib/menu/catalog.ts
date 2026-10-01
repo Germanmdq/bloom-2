@@ -66,6 +66,32 @@ const FACTURAS = [
   "Vigilante con pastelera",
   "Factura con crema pastelera",
 ];
+
+// Fotos incluidas en el sitio para productos sin imagen en la base.
+const GENERATED_PRODUCT_IMAGES: Record<string, string> = {
+  "1-2-docena-empanadas": "media-docena-empanadas.png", "1-2-tostado-de-miga": "medio-tostado-de-miga.png",
+  "arabe-pollo-3-ingredientes": "arabe-pollo-3-ingredientes.png", "arabe-pollo-2-ingredientes": "arabe-pollo-2-ingredientes.png",
+  bloom: "bloom.png", "cafe-c-leche-2-medialunas-jyq": "cafe-con-leche-2-medialunas-jyq.png",
+  "cafe-delivery-1": "cafe-delivery-1.png", "cafe-delivery-2": "cafe-delivery-2.png",
+  "canelones-de-verdura-y-ricota": "canelones-verdura-ricota.png", clasico: "clasico.png", continental: "continental.png",
+  "docena-empanadas": "docena-empanadas.png", "empanada-unidad": "empanada-unidad.png",
+  "hamburguesa-jyq": "hamburguesa-jyq.png", "hamburguesa-sola": "hamburguesa-sola.png",
+  "jarrito-1-factura": "jarrito-1-factura.png", "medialuna-jyq": "medialuna-jyq.png",
+  "menu-del-dia": "menu-del-dia.png", "menu-tribunales": "menu-tribunales.png",
+  "milanesa-completa": "milanesa-completa.png", "milanesa-jyq": "milanesa-jyq.png", "milanesa-napolitana": "milanesa-napolitana.png", "milanesa-sola": "milanesa-sola.png",
+  naranjada: "naranjada.png", "noquis-de-papa": "noquis-de-papa.png",
+  "ravioles-de-calabaza-y-ricota": "ravioles-calabaza-ricota.png", "ravioles-de-verdura": "ravioles-verdura.png",
+  saludable: "saludable.png", "sandwich-de-milanesa": "sandwich-milanesa.png", "sandwich-milanesa-completo-c-fritas": "sandwich-milanesa-completo-fritas.png",
+  "sorrentinos-de-jamon-y-queso": "sorrentinos-jamon-queso.png", "tarta-pascualina": "tarta-pascualina.png", "tarta-pollo": "tarta-pollo.png",
+  "tostado-de-pan-arabe": "tostado-pan-arabe.png", "yogurt-c-fruta-y-granola": "yogurt-fruta-granola.png", "zanahoria-huevo-choclo-y-lentejas": "zanahoria-huevo-choclo-lentejas.png",
+};
+
+const productImage = (product: any) => {
+  if (product.image_url) return product.image_url;
+  const key = String(product.name ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const filename = GENERATED_PRODUCT_IMAGES[key];
+  return filename ? `/images/menu-generadas/${filename}` : undefined;
+};
 const TIPO_MILANESA = ["Ternera", "Pollo"];
 const GUARNICIONES = ["Papas fritas", "Ensalada", "Puré"];
 
@@ -348,16 +374,17 @@ export function filterByModality(products: any[], modality: Modality) {
 
 function singleItem(p: any, categoryId: string, def?: GroupDef): MenuItem {
   const price = Number(p.price) || 0;
+  const imageUrl = productImage(p);
   return {
     id: p.id,
     // En Take Away "Delivery" es redundante: se muestra solo el nombre
     name: tidy(p.name.replace(/\s*delivery\b/i, "")),
     description: p.description ?? "",
     category_id: categoryId,
-    image_url: p.image_url,
+    image_url: imageUrl,
     price,
     variants: [
-      { productId: p.id, productName: p.name, label: p.name, cartName: p.name, price, image_url: p.image_url },
+      { productId: p.id, productName: p.name, label: p.name, cartName: p.name, price, image_url: imageUrl },
     ],
     variantTitle: "",
     options: def?.options ?? [],
@@ -390,6 +417,7 @@ export function buildCatalog(categories: any[], products: any[], modality: Modal
       !matched?.keepCombos && (isCombo(p) || p.category_id === promoCategoryId);
     const categoryId = toPromos ? promoCategoryId : p.category_id;
     const def = toPromos ? undefined : matched;
+    const imageUrl = productImage(p);
 
     if (!def) {
       items.push(singleItem(p, categoryId));
@@ -407,7 +435,7 @@ export function buildCatalog(categories: any[], products: any[], modality: Modal
         name: def.name,
         description: def.description,
         category_id: categoryId,
-        image_url: p.image_url,
+        image_url: imageUrl,
         price: Number(p.price) || 0,
         variants: [],
         variantTitle: def.variantTitle ?? "Opción",
@@ -437,10 +465,10 @@ export function buildCatalog(categories: any[], products: any[], modality: Modal
         label,
         cartName: def.cartUsesLabel ? label : p.name,
         price,
-        image_url: p.image_url,
+        image_url: imageUrl,
       });
     }
-    group.image_url ||= p.image_url;
+    group.image_url ||= imageUrl;
     group.price = Math.min(...group.variants.map((v) => v.price));
   }
 
