@@ -91,7 +91,11 @@ const productImage = (product: any) => {
   const filename = GENERATED_PRODUCT_IMAGES[key];
   // Estas fotos corregidas reemplazan una imagen anterior equivocada; para el
   // resto de los productos se conserva primero la imagen de la base.
-  return filename ? `/images/menu-generadas/${filename}` : product.image_url || undefined;
+  if (filename) return `/images/menu-generadas/${filename}`;
+  if (/^tarta\s/i.test(String(product.name ?? "")) && !/^tarta de coco/i.test(String(product.name ?? ""))) {
+    return "/images/menu-generadas/tarta-pascualina.png";
+  }
+  return product.image_url || undefined;
 };
 const TIPO_MILANESA = ["Ternera", "Pollo"];
 const GUARNICIONES = ["Papas fritas", "Ensalada", "Puré"];
@@ -233,6 +237,10 @@ const GROUPS: GroupDef[] = [
     match: /^wrap/i,
     variantTitle: "Sabor",
     label: (n) => [stripWord(/^wrap/i)(n)],
+    options: [{
+      name: "Sabor",
+      choices: ["Primavera", "Rúcula", "Caesar", "Carne", "Pollo"],
+    }],
   },
   {
     id: "group-pastas",
@@ -514,6 +522,7 @@ export function buildCatalog(categories: any[], products: any[], modality: Modal
     { id: "takeaway-tostados", name: "Tostados", matches: (t) => /tostado/.test(t) },
     { id: "takeaway-yogur", name: "Yogur", matches: (t) => /yogur/.test(t) },
     { id: "takeaway-tostadas", name: "Tostadas", matches: (t) => /tostada/.test(t) },
+    { id: "takeaway-toda-la-carta", name: "Toda la carta", matches: () => true },
   ]);
 
   const salonCards = makeCards([
@@ -527,6 +536,7 @@ export function buildCatalog(categories: any[], products: any[], modality: Modal
     { id: "salon-desayunos", name: "Desayunos y meriendas", matches: (t) => /desayuno|merienda|yogur/.test(t) },
     { id: "salon-panificados", name: "Panificados", matches: (t) => /factura|medialuna|vigilante|tostado|tostada/.test(t) },
     { id: "salon-jugos", name: "Jugos y licuados", matches: (t) => /licuado|exprimido|jugo/.test(t) },
+    { id: "salon-toda-la-carta", name: "Toda la carta", matches: () => true },
   ]);
 
   const cards = modality === "takeaway" ? takeawayCards : salonCards;
