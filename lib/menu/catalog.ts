@@ -87,10 +87,11 @@ const GENERATED_PRODUCT_IMAGES: Record<string, string> = {
 };
 
 const productImage = (product: any) => {
-  if (product.image_url) return product.image_url;
   const key = String(product.name ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const filename = GENERATED_PRODUCT_IMAGES[key];
-  return filename ? `/images/menu-generadas/${filename}` : undefined;
+  // Estas fotos corregidas reemplazan una imagen anterior equivocada; para el
+  // resto de los productos se conserva primero la imagen de la base.
+  return filename ? `/images/menu-generadas/${filename}` : product.image_url || undefined;
 };
 const TIPO_MILANESA = ["Ternera", "Pollo"];
 const GUARNICIONES = ["Papas fritas", "Ensalada", "Puré"];
@@ -224,6 +225,14 @@ const GROUPS: GroupDef[] = [
     match: /^tarta (?!de coco)/i,
     variantTitle: "Variedad",
     label: (n) => [stripWord(/^tarta/i)(n)],
+  },
+  {
+    id: "group-wraps",
+    name: "Wraps",
+    description: "Elegí el sabor.",
+    match: /^wrap/i,
+    variantTitle: "Sabor",
+    label: (n) => [stripWord(/^wrap/i)(n)],
   },
   {
     id: "group-pastas",
@@ -498,6 +507,7 @@ export function buildCatalog(categories: any[], products: any[], modality: Modal
     { id: "takeaway-sandwiches", name: "Sándwiches y tostados", matches: (t) => /sandwich|sándwich|tostado|arabe|árabe/.test(t) },
     { id: "takeaway-pastas", name: "Pastas", matches: (t) => /pasta|spaghetti|ñoqui|raviol|sorrentino|canel[oó]n/.test(t) },
     { id: "takeaway-empanadas", name: "Empanadas", matches: (t) => /empanada/.test(t) },
+    { id: "takeaway-wraps", name: "Wraps", matches: (t) => /wrap/.test(t) },
     { id: "takeaway-platos", name: "Platos y ensaladas", matches: (t) => /menú del día|menu del dia|plato del día|ensalada|tarta/.test(t) },
     { id: "takeaway-jugos", name: "Jugos exprimidos", matches: (t) => /exprimido|jugo/.test(t) },
     { id: "takeaway-licuados", name: "Licuados", matches: (t) => /licuado/.test(t) },
