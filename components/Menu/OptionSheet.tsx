@@ -217,12 +217,21 @@ export default function OptionSheet({
 
           {item.options.map((option, i) => (
             <Section key={option.name} title={option.name}>
-              <WheelPicker
-                label={option.name}
-                items={option.choices}
-                value={optionValues[i]}
-                onChange={(v) => setOptionValues((prev) => prev.map((x, j) => (j === i ? v : x)))}
-              />
+              {/factura/i.test(option.name) ? (
+                <ChoiceButtons
+                  label={option.name}
+                  choices={option.choices}
+                  value={optionValues[i]}
+                  onChange={(v) => setOptionValues((prev) => prev.map((x, j) => (j === i ? v : x)))}
+                />
+              ) : (
+                <WheelPicker
+                  label={option.name}
+                  items={option.choices}
+                  value={optionValues[i]}
+                  onChange={(v) => setOptionValues((prev) => prev.map((x, j) => (j === i ? v : x)))}
+                />
+              )}
             </Section>
           ))}
 
@@ -232,9 +241,9 @@ export default function OptionSheet({
                 key={`repeat-${i}`}
                 title={repeatCount > 1 ? `${item.repeat!.name} ${i + 1}` : item.repeat!.name}
               >
-                <WheelPicker
+                <ChoiceButtons
                   label={`${item.repeat!.name} ${i + 1}`}
-                  items={item.repeat!.choices}
+                  choices={item.repeat!.choices}
                   value={value}
                   onChange={(v) => setRepeatValues((prev) => prev.map((x, j) => (j === i ? v : x)))}
                 />
@@ -309,5 +318,40 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h3 className="text-xs font-black uppercase tracking-wider text-[#4b4e38] mb-2">{title}</h3>
       {children}
     </section>
+  );
+}
+
+function ChoiceButtons({
+  label,
+  choices,
+  value,
+  onChange,
+}: {
+  label: string;
+  choices: string[];
+  value: number | null;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2" role="group" aria-label={label}>
+      {choices.map((choice, index) => {
+        const active = value === index;
+        return (
+          <button
+            key={choice}
+            type="button"
+            onClick={() => onChange(index)}
+            className={`min-h-11 rounded-xl border px-2 py-2 text-left text-xs font-bold leading-tight transition-colors ${
+              active
+                ? "border-[#777b5b] bg-[#777b5b] text-[#f5e8ca] shadow-sm"
+                : "border-[#c4b896]/50 bg-[#fffdf8] text-[#4b4e38] hover:border-[#777b5b]/60"
+            }`}
+            aria-pressed={active}
+          >
+            {choice}
+          </button>
+        );
+      })}
+    </div>
   );
 }
