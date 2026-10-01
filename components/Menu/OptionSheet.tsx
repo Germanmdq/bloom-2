@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { motion, useDragControls, PanInfo } from "framer-motion";
 import { X, Minus, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
-import WheelPicker from "./WheelPicker";
 import type { MenuItem } from "@/lib/menu/catalog";
 
 const FALLBACK_IMAGE =
@@ -206,9 +205,9 @@ export default function OptionSheet({
 
           {item.variants.length > 1 && (
             <Section title={item.variantTitle}>
-              <WheelPicker
+              <ChoiceButtons
                 label={item.variantTitle}
-                items={item.variants.map((v) => `${v.label} · ${formatCurrency(v.price)}`)}
+                choices={item.variants.map((v) => `${v.label} · ${formatCurrency(v.price)}`)}
                 value={variantIdx}
                 onChange={setVariantIdx}
               />
@@ -217,21 +216,12 @@ export default function OptionSheet({
 
           {item.options.map((option, i) => (
             <Section key={option.name} title={option.name}>
-              {/factura/i.test(option.name) ? (
-                <ChoiceButtons
-                  label={option.name}
-                  choices={option.choices}
-                  value={optionValues[i]}
-                  onChange={(v) => setOptionValues((prev) => prev.map((x, j) => (j === i ? v : x)))}
-                />
-              ) : (
-                <WheelPicker
-                  label={option.name}
-                  items={option.choices}
-                  value={optionValues[i]}
-                  onChange={(v) => setOptionValues((prev) => prev.map((x, j) => (j === i ? v : x)))}
-                />
-              )}
+              <ChoiceButtons
+                label={option.name}
+                choices={option.choices}
+                value={optionValues[i]}
+                onChange={(v) => setOptionValues((prev) => prev.map((x, j) => (j === i ? v : x)))}
+              />
             </Section>
           ))}
 
@@ -254,7 +244,7 @@ export default function OptionSheet({
             <Section
               title={`${item.pick.name}${pickCount ? ` (${picked.length}/${pickCount})` : ""}`}
             >
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {item.pick.choices.map((choice) => {
                   const active = picked.includes(choice);
                   return (
@@ -262,10 +252,10 @@ export default function OptionSheet({
                       key={choice}
                       type="button"
                       onClick={() => togglePick(choice)}
-                      className={`py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+                      className={`min-h-11 rounded-xl border-2 px-2.5 py-2.5 text-left text-xs font-bold leading-tight transition-all duration-150 ${
                         active
-                          ? "bg-[#777b5b] text-[#f5e8ca] border-[#777b5b]"
-                          : "bg-white text-[#4b4e38] border-[#c4b896]/50"
+                          ? "border-[#56715e] bg-[#56715e] text-[#f5e8ca] shadow-[0_5px_14px_rgba(86,113,94,0.30)]"
+                          : "border-[#b7c6b9] bg-[#fffdf8] text-[#365342] shadow-[0_2px_7px_rgba(54,83,66,0.10)] hover:border-[#56715e] hover:bg-[#f4f8f4] hover:shadow-[0_4px_10px_rgba(86,113,94,0.18)]"
                       }`}
                     >
                       {choice}
@@ -341,10 +331,10 @@ function ChoiceButtons({
             key={choice}
             type="button"
             onClick={() => onChange(index)}
-            className={`min-h-11 rounded-xl border px-2 py-2 text-left text-xs font-bold leading-tight transition-colors ${
+            className={`min-h-11 rounded-xl border-2 px-2.5 py-2.5 text-left text-xs font-bold leading-tight transition-all duration-150 ${
               active
-                ? "border-[#777b5b] bg-[#777b5b] text-[#f5e8ca] shadow-sm"
-                : "border-[#c4b896]/50 bg-[#fffdf8] text-[#4b4e38] hover:border-[#777b5b]/60"
+                ? "border-[#56715e] bg-[#56715e] text-[#f5e8ca] shadow-[0_5px_14px_rgba(86,113,94,0.30)]"
+                : "border-[#b7c6b9] bg-[#fffdf8] text-[#365342] shadow-[0_2px_7px_rgba(54,83,66,0.10)] hover:border-[#56715e] hover:bg-[#f4f8f4] hover:shadow-[0_4px_10px_rgba(86,113,94,0.18)]"
             }`}
             aria-pressed={active}
           >
