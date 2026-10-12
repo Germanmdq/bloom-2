@@ -1,17 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { getSupabaseUrl } from '@/lib/supabase/env';
 
 export async function GET() {
     try {
         const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            getSupabaseUrl(),
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
 
         const email = 'admin@bloom.com';
         // Supabase exige una contraseña de al menos 6 caracteres.
         // Es una credencial temporal para el entorno de demostración.
-        const password = 'admin123';
+        const password = '123123';
 
         // 1. Buscar si el usuario ya existe en Auth
         const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
@@ -34,7 +35,7 @@ export async function GET() {
                 email: email,
                 password: password,
                 email_confirm: true,
-                user_metadata: { full_name: 'Administrador' }
+                user_metadata: { full_name: 'admin' }
             });
             if (createError) throw createError;
             userId = created.user.id;
@@ -45,7 +46,7 @@ export async function GET() {
             .from('profiles')
             .upsert({
                 id: userId,
-                full_name: 'Administrador Principal',
+                full_name: 'admin',
                 role: 'ADMIN',
                 is_customer: false
             });
