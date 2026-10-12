@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { saveOfflineOrder } from "@/lib/offline/order-queue";
 import { VoiceOrderAssistant } from "@/components/Menu/VoiceOrderAssistant";
+import { SalonIcon, TakeAwayIcon } from "@/components/Menu/AnimatedIcons";
 import "./menu-pwa.css";
 
 // Formato de moneda argentina
@@ -830,6 +831,28 @@ function MenuContent() {
               </div>
             </div>
 
+            {/* ========== TAKE AWAY / SALÓN ========== */}
+            <div className="px-4 md:px-0 mb-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => changeCatalogMode("takeaway")}
+                className="flex flex-col items-center justify-center gap-1.5 py-5 rounded-[22px] bg-[#777b5b] text-[#f5e8ca] shadow-md active:scale-[0.97] transition-transform"
+              >
+                <TakeAwayIcon size={44} />
+                <span className="text-base font-extrabold tracking-wide">TAKE AWAY</span>
+                <span className="text-[11px] text-[#ebe8d6] font-semibold">Para llevar</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => changeCatalogMode("local")}
+                className="flex flex-col items-center justify-center gap-1.5 py-5 rounded-[22px] bg-[#c4b896] text-[#4b4e38] shadow-md active:scale-[0.97] transition-transform"
+              >
+                <SalonIcon size={44} />
+                <span className="text-base font-extrabold tracking-wide">SALÓN</span>
+                <span className="text-[11px] text-[#4b4e38]/70 font-semibold">Comer en el local</span>
+              </button>
+            </div>
+
             {/* Video destacado: mantiene el contenido principal centrado antes de las categorías */}
             <div className="px-4 md:px-0 mb-7">
               <div className="home-feature-video rounded-[24px] overflow-hidden bg-[#1a3028] border border-[#c4b896]/25 shadow-md">
@@ -925,24 +948,8 @@ function MenuContent() {
             {/* ========== CATEGORÍAS CON EMOJIS ========== */}
             <div className="px-4 md:px-0 mb-3 home-categories-heading">
               <h3 className="text-base font-extrabold text-[#1a3028] tracking-tight">
-                Elegí cómo querés pedir
+                Categorías
               </h3>
-              <div className="catalog-mode-switch" role="group" aria-label="Modalidad del catálogo">
-                <button
-                  type="button"
-                  onClick={() => changeCatalogMode("local")}
-                  className={catalogMode === "local" ? "active" : ""}
-                >
-                  🍽️ En el local
-                </button>
-                <button
-                  type="button"
-                  onClick={() => changeCatalogMode("takeaway")}
-                  className={catalogMode === "takeaway" ? "active" : ""}
-                >
-                  🛍️ Take Away
-                </button>
-              </div>
             </div>
             <section className="category-grid mb-6" aria-label="Categorías">
               {visibleCategories.map((cat: any) => {

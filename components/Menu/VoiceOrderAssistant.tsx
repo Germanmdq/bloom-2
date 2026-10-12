@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RobotHead } from "robot-heads";
-import { Mic, Send, X } from "lucide-react";
+import { Mic, X } from "lucide-react";
 
 type Product = { id: string; name: string; price: number };
 type RobotState = "idle" | "thinking" | "listening" | "speaking" | "happy" | "error";
@@ -23,6 +23,10 @@ export function VoiceOrderAssistant({
   const streamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const discardAudioRef = useRef(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const silenceIntervalRef = useRef<number | null>(null);
+  const speechStartedRef = useRef(false);
+  const silenceSinceRef = useRef<number | null>(null);
 
   const catalog = useMemo(
     () => products.map((product) => ({ id: product.id, name: product.name, price: Number(product.price) || 0 })),
@@ -30,6 +34,12 @@ export function VoiceOrderAssistant({
   );
 
   const stopMicrophone = useCallback(() => {
+    if (silenceIntervalRef.current !== null) {
+      window.clearInterval(silenceIntervalRef.current);
+      silenceIntervalRef.current = null;
+    }
+    void audioContextRef.current?.close();
+    audioContextRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
   }, []);
@@ -111,9 +121,18 @@ export function VoiceOrderAssistant({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream, MediaRecorder.isTypeSupported("audio/webm") ? { mimeType: "audio/webm" } : undefined);
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048;
+      source.connect(analyser);
+      const samples = new Uint8Array(analyser.fftSize);
       streamRef.current = stream;
+      audioContextRef.current = audioContext;
       audioChunksRef.current = [];
       discardAudioRef.current = false;
+      speechStartedRef.current = false;
+      silenceSinceRef.current = null;
       recorder.ondataavailable = (event) => {
         if (event.data.size) audioChunksRef.current.push(event.data);
       };
@@ -126,9 +145,30 @@ export function VoiceOrderAssistant({
       };
       recorder.start();
       mediaRecorderRef.current = recorder;
+      silenceIntervalRef.current = window.setInterval(() => {
+        analyser.getByteTimeDomainData(samples);
+        let energy = 0;
+        for (const sample of samples) {
+          const normalized = (sample - 128) / 128;
+          energy += normalized * normalized;
+        }
+        const volume = Math.sqrt(energy / samples.length);
+        const now = Date.now();
+
+        if (volume > 0.018) {
+          speechStartedRef.current = true;
+          silenceSinceRef.current = null;
+          return;
+        }
+        if (!speechStartedRef.current) return;
+        silenceSinceRef.current ??= now;
+        if (now - silenceSinceRef.current >= 5000 && recorder.state === "recording") {
+          recorder.stop();
+        }
+      }, 200);
       setListening(true);
       setState("listening");
-      setReply("Te estoy escuchando… Tocá el micrófono cuando termines.");
+      setReply("Te estoy escuchando… Se envía solo después de 5 segundos de silencio.");
     } catch {
       setReply("Necesito permiso para usar el micrófono. Permitilo en el navegador y probá otra vez.");
       setState("error");
@@ -153,7 +193,7 @@ export function VoiceOrderAssistant({
         aria-label="Abrir asistente de pedidos por voz"
       >
         <RobotHead state="idle" shape="circle" size={42} color="#c4b896" trimColor="#f5e8ca" screenColor="#173c31" antenna={false} />
-        Pedí por voz
+        Hablar ahora
       </button>
     );
   }
@@ -164,18 +204,18 @@ export function VoiceOrderAssistant({
         <RobotHead state={state} shape="circle" size={58} color="#c4b896" trimColor="#f5e8ca" screenColor="#173c31" antenna />
         <div className="min-w-0 flex-1">
           <p className="font-extrabold">Bloom por voz</p>
-          <p className="text-xs text-[#f5e8ca]">{listening ? "Te estoy escuchando…" : "Decime tu pedido"}</p>
+          <p className="text-xs text-[#f5e8ca]">{listening ? "Se envía solo al hacer una pausa" : "Decime tu pedido"}</p>
         </div>
         <button type="button" onClick={closeAssistant} className="rounded-full p-2 hover:bg-white/10" aria-label="Cerrar asistente"><X size={18} /></button>
       </div>
       <div className="space-y-3 p-4">
         <p className="rounded-2xl bg-[#f2f0e6] p-3 text-sm text-[#1a3028]">{reply}</p>
         <div className="flex gap-2">
-          <button type="button" onClick={() => void startListening()} className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white ${listening ? "bg-red-500 animate-pulse" : "bg-[#1a3028]"}`} aria-label={listening ? "Dejar de escuchar" : "Hablar con Bloom"}>
+          <button type="button" onClick={() => { if (!listening) void startListening(); }} disabled={listening} className={`flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl px-3 text-xs font-bold text-white disabled:cursor-default ${listening ? "bg-red-500 animate-pulse" : "bg-[#1a3028]"}`} aria-label="Hablar ahora">
             <Mic size={20} />
+            {listening ? "Escuchando" : "Hablar ahora"}
           </button>
-          <input value={transcript} onChange={(event) => setTranscript(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void submit(transcript); }} placeholder="Ej.: dos capuchinos y una medialuna" className="min-w-0 flex-1 rounded-2xl border border-[#c4b896]/50 bg-white px-3 text-sm outline-none focus:border-[#1a3028]" />
-          <button type="button" onClick={() => void submit(transcript)} className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#c4b896] text-[#1a3028]" aria-label="Enviar pedido"><Send size={18} /></button>
+          <input value={transcript} onChange={(event) => setTranscript(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void submit(transcript); }} placeholder="Tu pedido aparecerá acá" className="min-w-0 flex-1 rounded-2xl border border-[#c4b896]/50 bg-white px-3 text-sm outline-none focus:border-[#1a3028]" />
         </div>
       </div>
     </section>
