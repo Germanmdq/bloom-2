@@ -15,7 +15,12 @@ export async function GET() {
         const password = '123123';
 
         // 1. Buscar si el usuario ya existe en Auth
-        const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+        // El proyecto ya tiene varios usuarios, por lo que el tamaño por defecto
+        // de la página puede dejar al administrador fuera del listado.
+        const { data: { users }, error: listError } = await supabase.auth.admin.listUsers({
+            page: 1,
+            perPage: 1000,
+        });
         if (listError) throw listError;
 
         const existingUser = users.find(u => u.email === email);
