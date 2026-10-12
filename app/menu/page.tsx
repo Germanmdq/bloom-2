@@ -426,10 +426,14 @@ function MenuContent() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const changeCatalogMode = (mode: "local" | "takeaway") => {
+  const changeCatalogMode = (mode: "local" | "takeaway", openMenu = false) => {
     setCatalogMode(mode);
     setSelectedCategory("all");
     setSearchQuery("");
+    if (openMenu) {
+      setActiveTab("menu");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   // Filtrado reactivo de productos, según la modalidad elegida y la búsqueda.
@@ -801,7 +805,7 @@ function MenuContent() {
             <div className="px-4 md:px-0 mb-6 grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => changeCatalogMode("takeaway")}
+                onClick={() => changeCatalogMode("takeaway", true)}
                 className="flex flex-col items-center justify-center gap-1.5 py-5 rounded-[22px] bg-[#777b5b] text-[#f5e8ca] shadow-md active:scale-[0.97] transition-transform"
               >
                 <TakeAwayIcon size={44} />
@@ -810,7 +814,7 @@ function MenuContent() {
               </button>
               <button
                 type="button"
-                onClick={() => changeCatalogMode("local")}
+                onClick={() => changeCatalogMode("local", true)}
                 className="flex flex-col items-center justify-center gap-1.5 py-5 rounded-[22px] bg-[#c4b896] text-[#4b4e38] shadow-md active:scale-[0.97] transition-transform"
               >
                 <SalonIcon size={44} />
