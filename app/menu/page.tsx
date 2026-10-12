@@ -853,7 +853,7 @@ function MenuContent() {
             {platoDia && (
               <>
                 <div className="px-4 md:px-0 mb-3">
-                  <h2 className="text-xl font-extrabold text-[#1a3028] tracking-tight">
+                  <h2 className="text-xl font-extrabold text-[#4b4e38] tracking-tight">
                     🍽️ Plato del Día
                   </h2>
                   <p className="text-xs text-[#7a765a] mt-0.5">
@@ -866,7 +866,7 @@ function MenuContent() {
                     className="w-full bg-white rounded-[22px] border border-[#c4b896]/25 overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow"
                   >
                     {/* Franja superior destacada para el badge sin superposición */}
-                    <div className="bg-[#1a3028] px-4 py-2.5 flex items-center justify-between">
+                    <div className="bg-[#777b5b] px-4 py-2.5 flex items-center justify-between">
                       <div className="flex items-center gap-2 text-[#f5e8ca] text-xs font-extrabold uppercase tracking-wider">
                         <span>⭐</span>
                         <span>Plato del Día</span>
@@ -893,15 +893,15 @@ function MenuContent() {
 
                     {/* Info del plato */}
                     <div className="p-4 pb-5">
-                      <h3 className="font-extrabold text-lg text-[#1a3028] leading-snug">{platoDia.name}</h3>
+                      <h3 className="font-extrabold text-lg text-[#4b4e38] leading-snug">{platoDia.name}</h3>
                       {platoDia.description && (
                         <p className="text-[13px] text-[#6b6756] mt-1.5 leading-relaxed line-clamp-2">{platoDia.description}</p>
                       )}
                       <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#c4b896]/20">
-                        <span className="font-extrabold text-xl text-[#1a3028]">
+                        <span className="font-extrabold text-xl text-[#4b4e38]">
                           {formatCurrency(platoDia.price)}
                         </span>
-                        <span className="bg-[#1a3028] text-[#f5e8ca] text-xs font-bold px-4 py-2 rounded-full shadow-sm">
+                        <span className="bg-[#777b5b] text-[#f5e8ca] text-xs font-bold px-4 py-2 rounded-full shadow-sm">
                           Ver detalle →
                         </span>
                       </div>
@@ -911,32 +911,6 @@ function MenuContent() {
               </>
             )}
 
-            {/* ========== CATEGORÍAS CON EMOJIS ========== */}
-            <div className="px-4 md:px-0 mb-3 home-categories-heading">
-              <h3 className="text-base font-extrabold text-[#1a3028] tracking-tight">
-                Categorías
-              </h3>
-            </div>
-            <section className="category-grid mb-6" aria-label="Categorías">
-              {visibleCategories.map((cat: any) => {
-                const emoji = CATEGORY_EMOJIS[cat.name.toLowerCase()] || "🍴";
-                const productCount = products.filter((p) => p.category_id === cat.id).length;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => openCategory(cat.id)}
-                    className="category-card-emoji"
-                  >
-                    <span className="text-4xl h-10 flex items-center justify-center mb-2">{emoji}</span>
-                    <h3 className="font-bold text-sm text-[#1a3028] leading-tight">{cat.name}</h3>
-                    <small className="text-[11px] text-[#7a765a] font-medium mt-1 block">
-                      {productCount} {productCount === 1 ? "producto" : "productos"}
-                    </small>
-                  </button>
-                );
-              })}
-            </section>
-
             {/* CTA FINAL */}
             <div className="px-4 md:px-0 mb-8">
               <button
@@ -945,7 +919,7 @@ function MenuContent() {
                   setActiveTab("menu");
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className="w-full flex items-center justify-center gap-2 bg-[#1a3028] text-[#f5e8ca] text-sm font-bold px-6 py-4 rounded-2xl shadow-lg hover:bg-[#243d32] transition-colors active:scale-[0.98]"
+                className="w-full flex items-center justify-center gap-2 bg-[#777b5b] text-[#f5e8ca] text-sm font-bold px-6 py-4 rounded-2xl shadow-lg hover:bg-[#5f5c46] transition-colors active:scale-[0.98]"
               >
                 <Coffee size={18} />
                 Ver Menú Completo

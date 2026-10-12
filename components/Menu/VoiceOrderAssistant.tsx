@@ -17,7 +17,6 @@ export function VoiceOrderAssistant({
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<RobotState>("idle");
   const [listening, setListening] = useState(false);
-  const [transcript, setTranscript] = useState("");
   const [reply, setReply] = useState("¡Hola! Tocá el micrófono y pedime lo que quieras del menú.");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -75,10 +74,12 @@ export function VoiceOrderAssistant({
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error);
       const message = data.reply || "Listo, revisá el carrito.";
-      if (Array.isArray(data.items) && data.items.length) onAddItems(data.items);
+      const hasItems = Array.isArray(data.items) && data.items.length > 0;
+      if (hasItems) onAddItems(data.items);
       setReply(message);
-      setState(data.items?.length ? "happy" : "speaking");
+      setState(hasItems ? "happy" : "speaking");
       speak(message);
+      if (hasItems) window.setTimeout(() => setOpen(false), 1800);
     } catch (error) {
       const message = error instanceof Error ? error.message : "No pude procesar el pedido.";
       setReply(message);
@@ -97,7 +98,6 @@ export function VoiceOrderAssistant({
       if (!response.ok) throw new Error(data?.error);
       const text = typeof data?.transcript === "string" ? data.transcript : "";
       if (!text) throw new Error("No pude entender el audio. Probá de nuevo.");
-      setTranscript(text);
       await submit(text);
     } catch (error) {
       const message = error instanceof Error ? error.message : "No pude procesar el audio.";
@@ -162,13 +162,13 @@ export function VoiceOrderAssistant({
         }
         if (!speechStartedRef.current) return;
         silenceSinceRef.current ??= now;
-        if (now - silenceSinceRef.current >= 5000 && recorder.state === "recording") {
+        if (now - silenceSinceRef.current >= 2000 && recorder.state === "recording") {
           recorder.stop();
         }
       }, 200);
       setListening(true);
       setState("listening");
-      setReply("Te estoy escuchando… Se envía solo después de 5 segundos de silencio.");
+      setReply("Te estoy escuchando…");
     } catch {
       setReply("Necesito permiso para usar el micrófono. Permitilo en el navegador y probá otra vez.");
       setState("error");
@@ -204,18 +204,17 @@ export function VoiceOrderAssistant({
         <RobotHead state={state} shape="circle" size={58} color="#c4b896" trimColor="#f5e8ca" screenColor="#4b4e38" antenna />
         <div className="min-w-0 flex-1">
           <p className="font-extrabold">Bloom por voz</p>
-          <p className="text-xs text-[#f5e8ca]">{listening ? "Se envía solo al hacer una pausa" : "Decime tu pedido"}</p>
+          <p className="text-xs text-[#f5e8ca]">{listening ? "Escuchando" : "Decime tu pedido"}</p>
         </div>
         <button type="button" onClick={closeAssistant} className="rounded-full p-2 hover:bg-white/10" aria-label="Cerrar asistente"><X size={18} /></button>
       </div>
       <div className="space-y-3 p-4">
         <p className="rounded-2xl bg-[#f2f0e6] p-3 text-sm text-[#4b4e38]">{reply}</p>
-        <div className="flex gap-2">
-          <button type="button" onClick={() => { if (!listening) void startListening(); }} disabled={listening} className={`flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl px-3 text-xs font-bold text-white disabled:cursor-default ${listening ? "bg-red-500 animate-pulse" : "bg-[#777b5b]"}`} aria-label="Hablar ahora">
+        <div>
+          <button type="button" onClick={() => { if (!listening) void startListening(); }} disabled={listening} className={`flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-3 text-xs font-bold text-white disabled:cursor-default ${listening ? "bg-red-500 animate-pulse" : "bg-[#777b5b]"}`} aria-label="Hablar ahora">
             <Mic size={20} />
             {listening ? "Escuchando" : "Hablar ahora"}
           </button>
-          <input value={transcript} onChange={(event) => setTranscript(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void submit(transcript); }} placeholder="Tu pedido aparecerá acá" className="min-w-0 flex-1 rounded-2xl border border-[#c4b896]/50 bg-white px-3 text-sm outline-none focus:border-[#777b5b]" />
         </div>
       </div>
     </section>
