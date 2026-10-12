@@ -1,8 +1,36 @@
 import { NextResponse } from "next/server";
 
-type CatalogItem = { id: string; name: string; price: number };
+type CatalogItem = { id: string; name: string; description?: string; price: number };
 
 const MAX_CATALOG_ITEMS = 120;
+
+const normalize = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+function fallbackMatch(transcript: string, catalog: CatalogItem[]) {
+  const request = normalize(transcript);
+  const asksForCoffeeWithMilk = /cafe/.test(request) && /leche/.test(request);
+
+  if (asksForCoffeeWithMilk) {
+    const milkCoffee = catalog.find((item) => {
+      const details = normalize(`${item.name} ${item.description || ""}`);
+      return /capuchino|cappuccino|latte|cortado|cafe con leche/.test(details)
+        || (details.includes("cafe") && details.includes("leche"));
+    });
+    if (milkCoffee) return milkCoffee;
+  }
+
+  return catalog.find((item) => {
+    const name = normalize(item.name);
+    return name.length >= 4 && request.includes(name);
+  });
+}
 
 export async function POST(request: Request) {
   if (!process.env.GROQ_API_KEY) {
@@ -25,6 +53,7 @@ export async function POST(request: Request) {
           .map((item: CatalogItem) => ({
             id: String(item.id),
             name: String(item.name).slice(0, 120),
+            description: typeof item.description === "string" ? item.description.slice(0, 240) : "",
             price: Number(item.price),
           }))
       : [];
@@ -46,7 +75,7 @@ export async function POST(request: Request) {
         messages: [
           {
             role: "system",
-            content: `Sos Bloom, asistente de pedidos de una cafetería argentina. Interpretá el pedido usando exclusivamente el catálogo. Respondé JSON estricto: {"reply":"frase breve en español rioplatense","items":[{"id":"id exacto del catálogo","quantity":1}]}. Si falta una aclaración o el producto no existe, items debe ser []. No inventes productos, precios ni IDs.`,
+            content: `Sos Bloom, asistente de pedidos de una cafetería argentina. Interpretá el pedido usando exclusivamente el catálogo y las descripciones. Entendé nombres cotidianos: "café con leche" puede corresponder a un capuchino, latte o cortado cuya descripción incluya café y leche. Respondé JSON estricto: {"reply":"frase breve en español rioplatense","items":[{"id":"id exacto del catálogo","quantity":1}]}. Si falta una aclaración o el producto no existe, items debe ser []. No inventes productos, precios ni IDs.`,
           },
           {
             role: "user",
@@ -75,9 +104,14 @@ export async function POST(request: Request) {
           .filter((item: { id: string; quantity: number }) => catalogById.has(item.id))
       : [];
 
+    const suggestedItem = items.length ? null : fallbackMatch(transcript, catalog);
+    const resolvedItems = suggestedItem ? [{ id: suggestedItem.id, quantity: 1 }] : items;
+
     return NextResponse.json({
-      reply: typeof parsed?.reply === "string" ? parsed.reply.slice(0, 320) : "Listo, revisá tu pedido.",
-      items,
+      reply: suggestedItem
+        ? `Agregué ${suggestedItem.name} a tu pedido.`
+        : typeof parsed?.reply === "string" ? parsed.reply.slice(0, 320) : "Listo, revisá tu pedido.",
+      items: resolvedItems,
     });
   } catch (error) {
     console.error("[voice-order]", error);

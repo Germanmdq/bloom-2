@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RobotHead } from "robot-heads";
 import { Mic, X } from "lucide-react";
 
-type Product = { id: string; name: string; price: number };
+type Product = { id: string; name: string; description?: string | null; price: number };
 type RobotState = "idle" | "thinking" | "listening" | "speaking" | "happy" | "error";
 
 export function VoiceOrderAssistant({
@@ -28,7 +28,12 @@ export function VoiceOrderAssistant({
   const silenceSinceRef = useRef<number | null>(null);
 
   const catalog = useMemo(
-    () => products.map((product) => ({ id: product.id, name: product.name, price: Number(product.price) || 0 })),
+    () => products.map((product) => ({
+      id: product.id,
+      name: product.name,
+      description: product.description || "",
+      price: Number(product.price) || 0,
+    })),
     [products],
   );
 
