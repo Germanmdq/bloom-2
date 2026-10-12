@@ -14,17 +14,18 @@ import {
   Home, 
   Coffee, 
   User, 
+  ArrowLeft, 
+  Send,
   Trash2,
   CheckCircle2,
   Phone,
-  ChevronLeft,
+  ChevronRight,
+  BellRing,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { saveOfflineOrder } from "@/lib/offline/order-queue";
-import { TakeAwayIcon, SalonIcon } from "@/components/Menu/AnimatedIcons";
-import { buildCatalog, toMenuItem, type MenuItem } from "@/lib/menu/catalog";
-import OptionSheet, { type SheetLine } from "@/components/Menu/OptionSheet";
+import { VoiceOrderAssistant } from "@/components/Menu/VoiceOrderAssistant";
 import "./menu-pwa.css";
 
 // Formato de moneda argentina
@@ -35,8 +36,7 @@ const formatCurrency = (val: number) =>
     maximumFractionDigits: 0,
   }).format(val);
 
-const FALLBACK_PRODUCT_IMAGE =
-  "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop";
+const PAYMENTS_SIMULATION = process.env.NEXT_PUBLIC_PAYMENTS_SIMULATION === "true";
 
 // Fallback inicial para carga instantánea
 const FALLBACK_CATEGORIES = [
@@ -114,49 +114,62 @@ const FALLBACK_PRODUCTS = [
   },
 ];
 
-// Íconos de las tarjetas de categorías del menú
-const CATEGORY_ICONS: Record<string, string> = {
-  "café para llevar": "☕",
-  "té, capuchino y submarino": "🫖",
-  "facturas": "🥐",
-  "jugos exprimidos": "🍊",
-  "licuados": "🥤",
-  "tostados": "🥪",
-  "yogur": "🥣",
-  "tostadas": "🍞",
-  "menú del día": "🍽️",
+// Emojis e íconos por nombre de categoría (funciona con cualquier ID de Supabase)
+const CATEGORY_EMOJIS: Record<string, React.ReactNode> = {
+  "menú del día": "🍛",
   "cafetería": "☕",
-  "minutas": "🍔",
-  "opciones saludables": "🥗",
-  "pastas y platos diarios": "🍝",
-  "bebidas y postres": "🍮",
-  "promociones": "🏷️",
-  "desayunos y meriendas": "🍳",
-  "panificados": "🥖",
+  "platos": "🍽️",
+  "ofertas": "🏷️",
+  "cafetería delivery": "🛵",
+  "pastelería": "🧁",
+  "desayunos y meriendas": "🥞",
   "jugos y licuados": "🍹",
+  "bebidas": "🥤",
+  "sandwiches": "🥪",
+  "hamburguesas": "🍔",
+  "pizzas": "🍕",
+  "pastas": "🍝",
+  "milanesas": (
+    <img
+      src="/icons/milanesa.png"
+      alt="Milanesa"
+      className="w-10 h-10 object-contain drop-shadow-sm inline-block"
+    />
+  ),
+  "ensaladas": "🥗",
+  "empanadas": "🥟",
+  "tartas individuales": "🥧",
+  "panificados": "🥖",
+  "postres": "🍰",
+  "tortillas": "🫓",
+  "promociones": "🏷️",
 };
 
-type CoffeePersonality = "intenso" | "suave" | "equilibrado";
-
-const COFFEE_GAME_QUESTIONS: Array<{
-  question: string;
-  answers: Array<{ label: string; type: CoffeePersonality }>;
-}> = [
-  { question: "¿Cómo empezás el día?", answers: [{ label: "Con toda la energía", type: "intenso" }, { label: "De a poquito y sin apuro", type: "suave" }, { label: "Con calma, pero enfocado", type: "equilibrado" }] },
-  { question: "Elegí tu rincón ideal", answers: [{ label: "Una mesa junto a la barra", type: "intenso" }, { label: "Un sillón cómodo", type: "suave" }, { label: "Una mesa al sol", type: "equilibrado" }] },
-  { question: "¿Qué plan te representa más?", answers: [{ label: "Salir y hacer mil cosas", type: "intenso" }, { label: "Una charla larga", type: "suave" }, { label: "Un paseo tranquilo", type: "equilibrado" }] },
-  { question: "Cuando elegís un sabor, preferís…", answers: [{ label: "Que sea bien marcado", type: "intenso" }, { label: "Algo suave y cremoso", type: "suave" }, { label: "El punto justo", type: "equilibrado" }] },
-  { question: "Tu momento Bloom ideal es…", answers: [{ label: "Una pausa rápida que despierta", type: "intenso" }, { label: "Quedarme a disfrutar sin reloj", type: "suave" }, { label: "Compartir algo rico", type: "equilibrado" }] },
+// Orden pensado para que cada modalidad muestre sólo las categorías útiles.
+// Si una categoría todavía no existe en la base, simplemente no se muestra.
+const LOCAL_CATEGORY_NAMES = [
+  "cafetería",
+  "desayunos y meriendas",
+  "platos diarios",
+  "ensaladas",
+  "hamburguesas",
+  "milanesas",
+  "pastas",
+  "pizzas",
+  "tartas individuales",
+  "promociones",
 ];
 
-const COFFEE_GAME_RESULTS: Record<CoffeePersonality, { emoji: string; title: string; description: string }> = {
-  intenso: { emoji: "☕", title: "Sos un Espresso Intenso", description: "Directo, decidido y con energía para encarar el día." },
-  suave: { emoji: "🥛", title: "Sos un Latte Suave", description: "Cálido, tranquilo y de disfrutar cada momento sin apuro." },
-  equilibrado: { emoji: "🤎", title: "Sos un Capuchino Equilibrado", description: "Tenés el balance justo: energía, calma y ganas de compartir." },
-};
-
-// El video de apertura se muestra una vez por cada apertura de la app.
-const OPENING_VIDEO_SEEN_KEY = "bloom_opening_coffee_video_seen_v1";
+const TAKEAWAY_CATEGORY_NAMES = [
+  "cafetería delivery",
+  "cafetería",
+  "panificados",
+  "pastelería",
+  "bebidas",
+  "jugos y licuados",
+  "sandwiches",
+  "empanadas",
+];
 
 // Cambiar esta versión cuando cambia la estructura del catálogo. Así no se
 // hidratan categorías/productos de una versión anterior desde localStorage.
@@ -165,7 +178,6 @@ const menuCacheKey = (name: string) => `bloom_${MENU_CACHE_VERSION}_${name}`;
 const REPEAT_ORDER_KEY = "bloom_repeat_order";
 
 interface CartItem {
-  key: string; // producto + variante elegida
   id: string;
   name: string;
   price: number;
@@ -193,20 +205,9 @@ function MenuContent() {
 
   // Montaje en cliente (evita hydration mismatch)
   const [mounted, setMounted] = useState(false);
-  const [showOpeningVideo, setShowOpeningVideo] = useState(false);
   useEffect(() => {
     setMounted(true);
-    try {
-      if (!sessionStorage.getItem(OPENING_VIDEO_SEEN_KEY)) setShowOpeningVideo(true);
-    } catch {
-      setShowOpeningVideo(true);
-    }
   }, []);
-
-  const finishOpeningVideo = () => {
-    setShowOpeningVideo(false);
-    try { sessionStorage.setItem(OPENING_VIDEO_SEEN_KEY, "1"); } catch {}
-  };
 
   // Pestaña activa: 'inicio' | 'menu'
   const [activeTab, setActiveTab] = useState<"inicio" | "menu">("inicio");
@@ -215,43 +216,31 @@ function MenuContent() {
   const [categories, setCategories] = useState<any[]>(FALLBACK_CATEGORIES);
   const [products, setProducts] = useState<any[]>(FALLBACK_PRODUCTS);
   const [whatsappNumber, setWhatsappNumber] = useState("5492231234567");
+  const [latestNotification, setLatestNotification] = useState<any | null>(null);
 
   // Filtros y búsqueda
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [catalogMode, setCatalogMode] = useState<"local" | "takeaway">("local");
 
   // Producto seleccionado para el modal de detalle
-  const [selectedProduct, setSelectedProduct] = useState<MenuItem | null>(null);
-
-  useEffect(() => {
-    window.history.replaceState({ ...window.history.state, bloomMenu: { kind: "categories" } }, "");
-    const handlePopState = (event: PopStateEvent) => {
-      const view = event.state?.bloomMenu;
-      if (!view) return;
-      setSelectedProduct(null);
-      setSearchQuery("");
-      setSelectedCategory(view.categoryId ?? "all");
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [modalQuantity, setModalQuantity] = useState(1);
 
   // Carrito
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
-  const [repeatOrderLoaded, setRepeatOrderLoaded] = useState(false);
-  const [showCoffeeGame, setShowCoffeeGame] = useState(false);
-  const [coffeeGameStep, setCoffeeGameStep] = useState(0);
-  const [coffeeGameScores, setCoffeeGameScores] = useState<Record<CoffeePersonality, number>>({ intenso: 0, suave: 0, equilibrado: 0 });
   const [customerName, setCustomerName] = useState("");
   const [orderNotes, setOrderNotes] = useState("");
+  const [repeatOrderLoaded, setRepeatOrderLoaded] = useState(false);
 
   // Modalidad del pedido: 'mesa' | 'delivery' | 'retiro'
   const [orderModality, setOrderModality] = useState<"mesa" | "delivery" | "retiro">(
     "mesa"
   );
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "mercadopago">("cash");
   const [selectedTableNum, setSelectedTableNum] = useState<string>(
     tableId ? String(tableId) : ""
   );
@@ -322,7 +311,7 @@ function MenuContent() {
     loadData();
   }, [supabase]);
 
-  // Pedido elegido desde la cuenta: se reconstruye con el precio actual.
+  // Viene desde "Mi cuenta": rearmar el carrito con el precio vigente del catálogo.
   useEffect(() => {
     if (repeatOrderLoaded || searchParams.get("repeat") !== "1" || products.length === 0) return;
     setRepeatOrderLoaded(true);
@@ -331,7 +320,7 @@ function MenuContent() {
       const previous = raw ? JSON.parse(raw) as Array<{ id?: string; name: string; quantity: number }> : [];
       const restored = previous.map((item) => {
         const product = products.find((p: any) => p.id === item.id || p.name === item.name);
-        return product ? { key: `repeat-${product.id}`, id: product.id, name: product.name, price: Number(product.price) || 0, quantity: item.quantity, image_url: product.image_url } : null;
+        return product ? { id: product.id, name: product.name, price: Number(product.price) || 0, quantity: item.quantity, image_url: product.image_url } : null;
       }).filter(Boolean) as CartItem[];
       sessionStorage.removeItem(REPEAT_ORDER_KEY);
       if (restored.length) {
@@ -348,58 +337,119 @@ function MenuContent() {
     }
   }, [products, repeatOrderLoaded, searchParams]);
 
-  // Modalidad del menú: Take Away (retiro/delivery) o Salón
-  const menuModality = orderModality === "mesa" ? "salon" : "takeaway";
+  // Novedades creadas desde Administración. El aviso nativo sólo se usa si la
+  // persona eligió recibirlo desde el botón de la campana.
+  useEffect(() => {
+    let cancelled = false;
+    const loadLatestNotification = async () => {
+      const { data } = await supabase
+        .from("menu_notifications")
+        .select("id, title, body, type, created_at")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-  // Catálogo de la modalidad: combos en Promos y productos con variantes agrupados
-  const catalog = useMemo(
-    () => buildCatalog(categories, products, menuModality),
-    [categories, products, menuModality]
+      if (!data || cancelled) return;
+      setLatestNotification(data);
+
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        const seenKey = "bloom_last_menu_notification";
+        if (localStorage.getItem(seenKey) !== data.id) {
+          new Notification(data.title, { body: data.body, icon: "/icon-192.png" });
+          localStorage.setItem(seenKey, data.id);
+        }
+      }
+    };
+
+    loadLatestNotification();
+    const timer = window.setInterval(loadLatestNotification, 60000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [supabase]);
+
+  const enableNotifications = async () => {
+    if (!("Notification" in window)) {
+      toast.error("Este navegador no permite avisos.");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      toast.success("Listo, vas a recibir las novedades de Bloom.");
+      if (latestNotification) {
+        new Notification(latestNotification.title, { body: latestNotification.body, icon: "/icon-192.png" });
+        localStorage.setItem("bloom_last_menu_notification", latestNotification.id);
+      }
+    } else {
+      toast.message("Podés activar los avisos cuando quieras desde el navegador.");
+    }
+  };
+
+  const visibleCategories = useMemo(() => {
+    const names = catalogMode === "local" ? LOCAL_CATEGORY_NAMES : TAKEAWAY_CATEGORY_NAMES;
+    return names
+      .map((name) => categories.find((cat) => cat.name?.toLowerCase() === name))
+      .filter(Boolean);
+  }, [categories, catalogMode]);
+
+  // Las facturas suelen ser lo primero que se busca. Las detectamos también
+  // cuando el negocio las llamó "Pastelería" o "Panificados".
+  const facturasCategory = useMemo(
+    () =>
+      categories.find((category) => /factura|medialuna/i.test(category.name || "")) ||
+      categories.find((category) => /pasteler[ií]a|panificados/i.test(category.name || "")),
+    [categories]
   );
 
-  // Productos a mostrar: los de la categoría abierta, o los que coinciden con la búsqueda
-  const filteredProducts = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    if (q) {
-      return catalog.items.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q) ||
-          p.variants.some((v) => v.label.toLowerCase().includes(q)) ||
-          p.options.some((o) => o.choices.some((c) => c.toLowerCase().includes(q)))
-      );
-    }
-    return catalog.items.filter((p) => catalog.categoryItemIds[selectedCategory]?.includes(p.id));
-  }, [catalog, selectedCategory, searchQuery]);
-
-  const openCategory = catalog.displayCategories.find((c) => c.id === selectedCategory);
-
-  const startOrder = (modality: "retiro" | "delivery" | "mesa") => {
-    setOrderModality(modality);
-    setSelectedCategory("all");
+  const openCategory = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    setSearchQuery("");
     setActiveTab("menu");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const startCoffeeGame = () => {
-    setCoffeeGameStep(0);
-    setCoffeeGameScores({ intenso: 0, suave: 0, equilibrado: 0 });
-    setShowCoffeeGame(true);
+  const hasFacturas = useMemo(
+    () => products.some((product) => /factura|medialuna/i.test(product.name || "")),
+    [products]
+  );
+
+  const openFacturas = () => {
+    if (facturasCategory) {
+      openCategory(facturasCategory.id);
+      return;
+    }
+    setSelectedCategory("all");
+    setSearchQuery("factura");
+    setActiveTab("menu");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const answerCoffeeGame = (type: CoffeePersonality) => {
-    setCoffeeGameScores((scores) => ({ ...scores, [type]: scores[type] + 1 }));
-    setCoffeeGameStep((step) => step + 1);
+  const changeCatalogMode = (mode: "local" | "takeaway") => {
+    setCatalogMode(mode);
+    setSelectedCategory("all");
+    setSearchQuery("");
   };
 
-  const returnToWaiting = () => {
-    setShowCoffeeGame(false);
-    setCoffeeGameStep(0);
-    setCoffeeGameScores({ intenso: 0, suave: 0, equilibrado: 0 });
-  };
+  // Filtrado reactivo de productos, según la modalidad elegida y la búsqueda.
+  const filteredProducts = useMemo(() => {
+    const allowedCategoryIds = new Set(visibleCategories.map((category: any) => category.id));
+    return products.filter((p) => {
+      const matchCatalogMode = allowedCategoryIds.has(p.category_id);
+      const matchCategory =
+        selectedCategory === "all" ||
+        p.category_id === selectedCategory ||
+        p.category_name?.toLowerCase() === selectedCategory.toLowerCase();
 
-  const coffeeGameResult = (Object.keys(coffeeGameScores) as CoffeePersonality[])
-    .reduce((best, type) => coffeeGameScores[type] > coffeeGameScores[best] ? type : best, "equilibrado" as CoffeePersonality);
+      const q = searchQuery.toLowerCase().trim();
+      const matchSearch =
+        !q ||
+        p.name?.toLowerCase().includes(q) ||
+        p.description?.toLowerCase().includes(q);
+
+      return matchCatalogMode && matchCategory && matchSearch;
+    });
+  }, [products, selectedCategory, searchQuery, visibleCategories]);
 
   // Carrito helpers
   const cartTotal = useMemo(
@@ -411,50 +461,77 @@ function MenuContent() {
     [cart]
   );
 
-  const selectMenuCategory = (categoryId: string) => {
-    window.history.pushState({ bloomMenu: { kind: "category", categoryId } }, "");
-    setSearchQuery("");
-    setSelectedCategory(categoryId);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  const handleOpenProduct = (p: any) => {
+    setSelectedProduct(p);
+    setModalQuantity(1);
   };
 
-  const returnToCategories = () => {
-    if (window.history.state?.bloomMenu?.kind === "category") window.history.back();
-    else setSelectedCategory("all");
-  };
-
-  const handleOpenProduct = (item: MenuItem) => {
-    window.history.pushState({ bloomMenu: { kind: "product", categoryId: selectedCategory } }, "");
-    setSelectedProduct(item);
-  };
-
-  const closeProductSheet = () => {
-    if (window.history.state?.bloomMenu?.kind === "product") window.history.back();
-    else setSelectedProduct(null);
-  };
-
-  const handleAddToCart = (line: SheetLine, quantity: number) => {
-    const key = `${line.id}::${line.name}`;
+  const handleAddToCart = () => {
+    if (!selectedProduct) return;
     setCart((prev) => {
-      if (prev.some((item) => item.key === key)) {
+      const existing = prev.find((item) => item.id === selectedProduct.id);
+      if (existing) {
         return prev.map((item) =>
-          item.key === key ? { ...item, quantity: item.quantity + quantity } : item
+          item.id === selectedProduct.id
+            ? { ...item, quantity: item.quantity + modalQuantity }
+            : item
         );
       }
-      return [...prev, { key, ...line, quantity }];
+      return [
+        ...prev,
+        {
+          id: selectedProduct.id,
+          name: selectedProduct.name,
+          price: Number(selectedProduct.price) || 0,
+          quantity: modalQuantity,
+          image_url: selectedProduct.image_url,
+        },
+      ];
     });
 
-    toast.success(`Agregado al pedido (${quantity})`, {
-      description: line.name,
+    toast.success(`Agregado al pedido (${modalQuantity})`, {
+      description: selectedProduct.name,
     });
-    closeProductSheet();
+    setSelectedProduct(null);
   };
 
-  const updateQuantity = (key: string, delta: number) => {
+  const handleVoiceAddItems = (voiceItems: Array<{ id: string; quantity: number }>) => {
+    const additions = voiceItems
+      .map((item) => {
+        const product = products.find((candidate: any) => candidate.id === item.id);
+        return product
+          ? {
+              id: product.id,
+              name: product.name,
+              price: Number(product.price) || 0,
+              quantity: item.quantity,
+              image_url: product.image_url,
+            }
+          : null;
+      })
+      .filter(Boolean) as CartItem[];
+
+    if (!additions.length) return;
+    setCart((previous) => {
+      const next = [...previous];
+      for (const addition of additions) {
+        const existingIndex = next.findIndex((item) => item.id === addition.id);
+        if (existingIndex >= 0) {
+          next[existingIndex] = { ...next[existingIndex], quantity: next[existingIndex].quantity + addition.quantity };
+        } else {
+          next.push(addition);
+        }
+      }
+      return next;
+    });
+    toast.success("Agregamos tu pedido al carrito", { description: `${additions.length} producto(s) reconocido(s).` });
+  };
+
+  const updateQuantity = (id: string, delta: number) => {
     setCart((prev) =>
       prev
         .map((item) => {
-          if (item.key === key) {
+          if (item.id === id) {
             const next = item.quantity + delta;
             return next > 0 ? { ...item, quantity: next } : null;
           }
@@ -520,10 +597,16 @@ function MenuContent() {
         price: i.price,
       })),
       total: cartTotal,
+      payment_method: paymentMethod === "mercadopago" ? "MERCADO_PAGO" : "PENDING",
     };
 
     // 1. Si no hay conexión a internet, guardar de inmediato en la cola offline
     if (typeof navigator !== "undefined" && !navigator.onLine) {
+      if (paymentMethod === "mercadopago") {
+        toast.error("Necesitás conexión a internet para pagar con Mercado Pago.");
+        setIsSending(false);
+        return;
+      }
       saveOfflineOrder(orderPayload);
       setOrderSuccess(true);
       setCart([]);
@@ -535,6 +618,10 @@ function MenuContent() {
         description: "Se enviará automáticamente en cuanto recuperes señal.",
         duration: 5000,
       });
+      setTimeout(() => {
+        setOrderSuccess(false);
+        setIsCartOpen(false);
+      }, 3500);
       setIsSending(false);
       return;
     }
@@ -552,6 +639,26 @@ function MenuContent() {
         throw new Error(data.error || "No se pudo crear el pedido");
       }
 
+      if (paymentMethod === "mercadopago") {
+        if (!data.orderId) throw new Error("No se pudo preparar el pago");
+
+        const paymentRes = await fetch("/api/payments/create-preference", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            order_id: data.orderId,
+            customer: { name: computedCustomerName, phone: customerPhone.trim() },
+          }),
+        });
+        const paymentData = await paymentRes.json();
+        if (!paymentRes.ok || !paymentData.init_point) {
+          throw new Error(paymentData.error || "No se pudo iniciar Mercado Pago");
+        }
+
+        window.location.assign(paymentData.init_point);
+        return;
+      }
+
       setOrderSuccess(true);
       setCart([]);
       setCustomerName("");
@@ -565,7 +672,15 @@ function MenuContent() {
           ? "¡Pedido para Delivery registrado! 🛵"
           : "¡Pedido para Retiro registrado! 🏃"
       );
+      setTimeout(() => {
+        setOrderSuccess(false);
+        setIsCartOpen(false);
+      }, 3000);
     } catch (err: any) {
+      if (paymentMethod === "mercadopago") {
+        toast.error(err?.message || "No se pudo iniciar Mercado Pago. Intentá de nuevo.");
+        return;
+      }
       // Si la llamada falló por pérdida repentina de red, resguardar en cola offline
       saveOfflineOrder(orderPayload);
       setOrderSuccess(true);
@@ -578,6 +693,10 @@ function MenuContent() {
         description: "Se enviará automáticamente al local en cuanto se restablezca la conexión.",
         duration: 5000,
       });
+      setTimeout(() => {
+        setOrderSuccess(false);
+        setIsCartOpen(false);
+      }, 3500);
     } finally {
       setIsSending(false);
     }
@@ -586,47 +705,32 @@ function MenuContent() {
   if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f7f5ef]" suppressHydrationWarning>
-        <div className="w-10 h-10 border-4 border-[#c4b896] border-t-[#777b5b] rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-[#c4b896] border-t-[#1a3028] rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
     <div className="app-shell" suppressHydrationWarning>
-      <AnimatePresence>
-        {showOpeningVideo && (
-          <motion.section
-            className="fixed inset-0 z-[200] overflow-hidden bg-[#4b4e38]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            aria-label="Video de bienvenida Bloom"
-          >
-            <video
-              className="h-full w-full object-cover"
-              src="/videos/coffee-opening.mp4"
-              autoPlay
-              muted
-              playsInline
-              onEnded={finishOpeningVideo}
-            />
-            <div className="absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/55 to-transparent px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-20">
-              <button
-                type="button"
-                onClick={finishOpeningVideo}
-                className="rounded-full border border-white/60 bg-white/90 px-5 py-2 text-sm font-extrabold text-[#4b4e38] shadow-lg transition-transform active:scale-95"
-              >
-                Entrar al menú
-              </button>
-            </div>
-          </motion.section>
-        )}
-      </AnimatePresence>
-
       {/* HEADER SUPERIOR */}
       <header className="sticky top-0 z-40 bg-[#fffdf8]/90 backdrop-blur-md border-b border-[#c4b896]/20 px-4 py-3 sm:px-8">
         <div className="max-w-[1180px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
+            {activeTab === "menu" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("inicio");
+                  setSelectedCategory("all");
+                  setSearchQuery("");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="w-9 h-9 rounded-xl bg-white border border-[#c4b896]/30 text-[#1a3028] flex items-center justify-center shadow-sm hover:bg-[#f2f0e6] transition-colors"
+                aria-label="Volver al inicio"
+              >
+                <ArrowLeft size={19} />
+              </button>
+            )}
             <Link
               href="/"
               onClick={(e) => {
@@ -638,11 +742,11 @@ function MenuContent() {
               }}
               className="flex items-center gap-2.5 cursor-pointer text-left no-underline"
             >
-              <div className="w-9 h-9 rounded-xl bg-[#777b5b] flex items-center justify-center text-[#f5e8ca] shadow-sm">
+              <div className="w-9 h-9 rounded-xl bg-[#1a3028] flex items-center justify-center text-[#f5e8ca] shadow-sm">
                 <Coffee size={19} />
               </div>
               <div>
-                <span className="font-extrabold text-base tracking-tight text-[#4b4e38] block leading-none">
+                <span className="font-extrabold text-base tracking-tight text-[#1a3028] block leading-none">
                   BLOOM
                 </span>
                 <span className="text-[10px] uppercase font-bold tracking-widest text-[#7a765a] block leading-tight">
@@ -654,18 +758,30 @@ function MenuContent() {
 
           <div className="flex items-center gap-2">
             {tableLabel && (
-              <span className="bg-[#777b5b] text-[#f5e8ca] text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
+              <span className="bg-[#1a3028] text-[#f5e8ca] text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
                 {tableLabel}
               </span>
             )}
             <button
+              type="button"
+              onClick={enableNotifications}
+              className="relative p-2 rounded-xl bg-white border border-[#c4b896]/30 text-[#1a3028] shadow-sm hover:bg-[#f2f0e6] transition-colors"
+              aria-label="Activar avisos de promociones y plato del día"
+              title="Recibir novedades"
+            >
+              <BellRing size={19} />
+              {latestNotification && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#c8852e] border-2 border-white" />
+              )}
+            </button>
+            <button
               onClick={() => setIsCartOpen(true)}
-              className="relative p-2 rounded-xl bg-white border border-[#c4b896]/30 text-[#4b4e38] shadow-sm hover:bg-[#f2f0e6] transition-colors"
+              className="relative p-2 rounded-xl bg-white border border-[#c4b896]/30 text-[#1a3028] shadow-sm hover:bg-[#f2f0e6] transition-colors"
               aria-label="Abrir carrito de compras"
             >
               <ShoppingBag size={20} />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#777b5b] text-[#f5e8ca] text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
+                <span className="absolute -top-1 -right-1 bg-[#1a3028] text-[#f5e8ca] text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
                   {cartCount}
                 </span>
               )}
@@ -680,83 +796,189 @@ function MenuContent() {
         ============================================ */}
         {activeTab === "inicio" && (
           <>
-            {/* ========== TAKE AWAY / SALÓN ========== */}
-            <div className="px-4 md:px-0 mb-6 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => startOrder("retiro")}
-                className="flex flex-col items-center justify-center gap-1.5 py-5 rounded-[22px] bg-[#777b5b] text-[#f5e8ca] shadow-md active:scale-[0.97] transition-transform"
-              >
-                <TakeAwayIcon size={44} />
-                <span className="text-base font-extrabold tracking-wide">TAKE AWAY</span>
-                <span className="text-[11px] text-[#ebe8d6] font-semibold">Para llevar</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => startOrder("mesa")}
-                className="flex flex-col items-center justify-center gap-1.5 py-5 rounded-[22px] bg-[#c4b896] text-[#4b4e38] shadow-md active:scale-[0.97] transition-transform"
-              >
-                <SalonIcon size={44} />
-                <span className="text-base font-extrabold tracking-wide">SALÓN</span>
-                <span className="text-[11px] text-[#4b4e38]/70 font-semibold">Comer en el local</span>
-              </button>
-            </div>
-
-            <div className="px-4 md:px-0 mb-6">
-              <div className="home-feature-video rounded-[24px] overflow-hidden bg-[#777b5b] shadow-md">
-                <video className="w-full h-full object-cover" src="/videos/yogurt-pouring.mp4" autoPlay muted loop playsInline aria-label="Preparación de yogurt Bloom" />
+            {/* BANNER HERO */}
+            <div className="px-4 md:px-0 mb-5">
+              <div className="rounded-[24px] bg-[#1a3028] text-white p-6 shadow-md border border-[#c4b896]/20 relative overflow-hidden">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-[#c4b896] bg-white/10 px-3 py-1 rounded-full inline-block mb-2">
+                  Bloom Café de Especialidad
+                </span>
+                <h2 className="text-2xl font-extrabold text-[#f5e8ca]">Donde cada taza florece</h2>
+                <p className="text-xs text-[#a8c9b8] mt-1.5 max-w-sm leading-relaxed">
+                  Disfrutá de nuestros cafés tostados de especialidad, pastelería fresca del día y tostados artesanales.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("menu");
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="bg-[#c4b896] text-[#1a3028] text-xs font-bold px-4 py-2.5 rounded-full hover:bg-[#f5e8ca] transition-transform active:scale-95 cursor-pointer"
+                  >
+                    Explorar Menú Completo →
+                  </button>
+                  {hasFacturas && (
+                    <button
+                      type="button"
+                      onClick={openFacturas}
+                      className="bg-white/10 border border-[#c4b896]/50 text-[#f5e8ca] text-xs font-bold px-4 py-2.5 rounded-full hover:bg-white/20 transition-transform active:scale-95 cursor-pointer"
+                    >
+                      🥐 Ver facturas
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* ========== PLATO DEL DÍA (el elegido en el panel de administración) ========== */}
+            {/* Video destacado: mantiene el contenido principal centrado antes de las categorías */}
+            <div className="px-4 md:px-0 mb-7">
+              <div className="home-feature-video rounded-[24px] overflow-hidden bg-[#1a3028] border border-[#c4b896]/25 shadow-md">
+                <video
+                  className="w-full h-full object-cover"
+                  src="/videos/yogurt-pouring.mp4"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  aria-label="Preparación de yogurt Bloom"
+                />
+              </div>
+            </div>
+
+            {/* ========== PLATO DEL DÍA ========== */}
+            {latestNotification && (
+              <div className="px-4 md:px-0 mb-4">
+                <button
+                  type="button"
+                  onClick={enableNotifications}
+                  className="w-full text-left flex items-center gap-3 rounded-2xl border border-[#c4b896]/40 bg-[#fffaf0] px-4 py-3 shadow-sm"
+                >
+                  <BellRing size={20} className="text-[#c8852e] shrink-0" />
+                  <span>
+                    <span className="block text-xs font-black text-[#1a3028]">{latestNotification.title}</span>
+                    <span className="block text-[11px] text-[#6b6756] mt-0.5">{latestNotification.body}</span>
+                  </span>
+                </button>
+              </div>
+            )}
             {platoDia && (
               <>
                 <div className="px-4 md:px-0 mb-3">
-                  <h2 className="text-xl font-extrabold text-[#4b4e38] tracking-tight">
+                  <h2 className="text-xl font-extrabold text-[#1a3028] tracking-tight">
                     🍽️ Plato del Día
                   </h2>
                   <p className="text-xs text-[#7a765a] mt-0.5">
                     Nuestra recomendación especial de hoy
                   </p>
                 </div>
-                <div className="px-4 md:px-0 mb-8">
-                  <article
-                    onClick={() => handleOpenProduct(toMenuItem(platoDia))}
+                <div className="px-4 md:px-0 mb-6">
+                  <div
+                    onClick={() => handleOpenProduct(platoDia)}
                     className="w-full bg-white rounded-[22px] border border-[#c4b896]/25 overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow"
                   >
-                    <div className="w-full h-[190px] sm:h-[255px] relative bg-[#edeae0] overflow-hidden">
+                    {/* Franja superior destacada para el badge sin superposición */}
+                    <div className="bg-[#1a3028] px-4 py-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-[#f5e8ca] text-xs font-extrabold uppercase tracking-wider">
+                        <span>⭐</span>
+                        <span>Plato del Día</span>
+                      </div>
+                      <span className="text-[11px] text-[#c4b896] font-semibold">
+                        Recomendación del chef
+                      </span>
+                    </div>
+
+                    {/* Imagen del plato */}
+                    <div className="w-full h-[190px] sm:h-[230px] overflow-hidden relative bg-[#edeae0]">
                       <img
-                        src={platoDia.image_url || FALLBACK_PRODUCT_IMAGE}
+                        src={
+                          platoDia.image_url ||
+                          "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop"
+                        }
                         alt=""
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = FALLBACK_PRODUCT_IMAGE;
+                          (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop";
                         }}
                       />
-                      <span className="absolute top-3 left-3 bg-[#777b5b] text-[#f5e8ca] text-[11px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-full shadow">
-                        ⭐ Plato del día
-                      </span>
                     </div>
+
+                    {/* Info del plato */}
                     <div className="p-4 pb-5">
-                      <h3 className="font-extrabold text-lg text-[#4b4e38] leading-snug">{platoDia.name}</h3>
+                      <h3 className="font-extrabold text-lg text-[#1a3028] leading-snug">{platoDia.name}</h3>
                       {platoDia.description && (
-                        <p className="text-[13px] text-[#6b6756] mt-1.5 leading-relaxed line-clamp-2">
-                          {platoDia.description}
-                        </p>
+                        <p className="text-[13px] text-[#6b6756] mt-1.5 leading-relaxed line-clamp-2">{platoDia.description}</p>
                       )}
                       <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#c4b896]/20">
-                        <span className="font-extrabold text-xl text-[#4b4e38]">
+                        <span className="font-extrabold text-xl text-[#1a3028]">
                           {formatCurrency(platoDia.price)}
                         </span>
-                        <span className="bg-[#777b5b] text-[#f5e8ca] text-xs font-bold px-4 py-2 rounded-full shadow-sm">
+                        <span className="bg-[#1a3028] text-[#f5e8ca] text-xs font-bold px-4 py-2 rounded-full shadow-sm">
                           Ver detalle →
                         </span>
                       </div>
                     </div>
-                  </article>
+                  </div>
                 </div>
               </>
             )}
+
+            {/* ========== CATEGORÍAS CON EMOJIS ========== */}
+            <div className="px-4 md:px-0 mb-3 home-categories-heading">
+              <h3 className="text-base font-extrabold text-[#1a3028] tracking-tight">
+                Elegí cómo querés pedir
+              </h3>
+              <div className="catalog-mode-switch" role="group" aria-label="Modalidad del catálogo">
+                <button
+                  type="button"
+                  onClick={() => changeCatalogMode("local")}
+                  className={catalogMode === "local" ? "active" : ""}
+                >
+                  🍽️ En el local
+                </button>
+                <button
+                  type="button"
+                  onClick={() => changeCatalogMode("takeaway")}
+                  className={catalogMode === "takeaway" ? "active" : ""}
+                >
+                  🛍️ Take Away
+                </button>
+              </div>
+            </div>
+            <section className="category-grid mb-6" aria-label="Categorías">
+              {visibleCategories.map((cat: any) => {
+                const emoji = CATEGORY_EMOJIS[cat.name.toLowerCase()] || "🍴";
+                const productCount = products.filter((p) => p.category_id === cat.id).length;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => openCategory(cat.id)}
+                    className="category-card-emoji"
+                  >
+                    <span className="text-4xl h-10 flex items-center justify-center mb-2">{emoji}</span>
+                    <h3 className="font-bold text-sm text-[#1a3028] leading-tight">{cat.name}</h3>
+                    <small className="text-[11px] text-[#7a765a] font-medium mt-1 block">
+                      {productCount} {productCount === 1 ? "producto" : "productos"}
+                    </small>
+                  </button>
+                );
+              })}
+            </section>
+
+            {/* CTA FINAL */}
+            <div className="px-4 md:px-0 mb-8">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("menu");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-[#1a3028] text-[#f5e8ca] text-sm font-bold px-6 py-4 rounded-2xl shadow-lg hover:bg-[#243d32] transition-colors active:scale-[0.98]"
+              >
+                <Coffee size={18} />
+                Ver Menú Completo
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </>
         )}
 
@@ -765,167 +987,178 @@ function MenuContent() {
         ============================================ */}
         {activeTab === "menu" && (
           <>
-            {/* MODALIDAD ELEGIDA */}
-            <div className="flex items-center justify-between gap-2 px-[18px] md:px-0 pt-3">
-              <div className="flex items-center gap-1 rounded-full bg-white border border-[#c4b896]/35 p-1 shadow-sm">
-                <button type="button" onClick={() => startOrder("retiro")} className={`rounded-full px-3 py-1.5 text-[11px] font-black transition-colors ${menuModality === "takeaway" ? "bg-[#777b5b] text-[#f5e8ca]" : "text-[#777b5b]"}`}>🛍️ Take Away</button>
-                <button type="button" onClick={() => startOrder("mesa")} className={`rounded-full px-3 py-1.5 text-[11px] font-black transition-colors ${menuModality === "salon" ? "bg-[#777b5b] text-[#f5e8ca]" : "text-[#777b5b]"}`}>🍽️ Salón</button>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab("inicio");
-                  setSelectedCategory("all");
-                  setSearchQuery("");
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="shrink-0 flex items-center gap-1 text-xs font-bold bg-white border border-[#c4b896]/40 text-[#4b4e38] px-3 py-2 rounded-full shadow-sm"
-              >
-                <ChevronLeft size={15} /> Volver
-              </button>
+            <div className="menu-sticky-controls">
+              {/* BUSCADOR */}
+              <section className="search-box" aria-label="Buscador de productos">
+                <Search size={18} className="text-[#a39a7f] shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Buscar café, tostados, medialunas..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="text-[#a39a7f] hover:text-[#1a3028] p-1"
+                    aria-label="Limpiar búsqueda"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </section>
+
+              {/* FILTROS HORIZONTALES DE CATEGORÍAS */}
+              <nav className="filter-scroll" aria-label="Categorías de productos">
+                <button
+                  onClick={() => setSelectedCategory("all")}
+                  className={`filter-chip ${selectedCategory === "all" ? "active" : ""}`}
+                >
+                  Todos
+                </button>
+                {visibleCategories.map((cat: any) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`filter-chip ${selectedCategory === cat.id ? "active" : ""}`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </nav>
             </div>
 
-            {/* BUSCADOR */}
-            <section className="search-box" aria-label="Buscador de productos">
-              <Search size={18} className="text-[#a39a7f] shrink-0" />
-              <input
-                type="text"
-                placeholder={menuModality === "salon" ? "Buscar en Salón…" : "Buscar en Take Away…"}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="text-[#a39a7f] hover:text-[#4b4e38] p-1"
-                  aria-label="Limpiar búsqueda"
-                >
-                  <X size={16} />
-                </button>
-              )}
+            {/* GRILLA DE PRODUCTOS */}
+            <section
+              className={`products-grid ${/factura|medialuna|pasteler[ií]a|panificados/i.test(`${categories.find((category) => category.id === selectedCategory)?.name || ""} ${searchQuery}`) ? "products-grid-compact" : ""}`}
+              aria-label="Catálogo de productos"
+            >
+              {filteredProducts.map((p) => {
+                const catObj = categories.find((c) => c.id === p.category_id);
+                const catName = catObj?.name || "Café & Delicias";
+                const imageUrl =
+                  p.image_url ||
+                  "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=600&auto=format&fit=crop";
+
+                return (
+                  <article
+                    key={p.id}
+                    onClick={() => handleOpenProduct(p)}
+                    className="product-card"
+                  >
+                    <div className="product-image">
+                      <Image
+                        src={imageUrl}
+                        alt={p.name}
+                        width={400}
+                        height={400}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="product-info">
+                      <small>{catName}</small>
+                      <h3>{p.name}</h3>
+                      {p.description && <p>{p.description}</p>}
+                      <span className="product-price">{formatCurrency(p.price)}</span>
+                    </div>
+                  </article>
+                );
+              })}
             </section>
 
-            {/* CATEGORÍAS DE LA MODALIDAD (tarjetas) */}
-            {!searchQuery.trim() && !openCategory && (
-              <section className="menu-category-grid" aria-label="Categorías">
-                {catalog.displayCategories.map((cat, index) => {
-                  const catItems = catalog.items.filter((it) => catalog.categoryItemIds[cat.id]?.includes(it.id));
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => {
-                        selectMenuCategory(cat.id);
-                      }}
-                      className="menu-category-card"
-                    >
-                      <span
-                        className="menu-category-emoji"
-                        style={{ animationDelay: `${index * 90}ms` }}
-                        aria-hidden="true"
-                      >
-                        {CATEGORY_ICONS[cat.name.toLowerCase()] ?? "🍴"}
-                      </span>
-                      <span className="font-extrabold text-base text-[#4b4e38] mt-1">{cat.name}</span>
-                      <span className="text-[12px] text-[#7a765a] leading-snug line-clamp-2">
-                        {catItems.map((it) => it.name).join(" · ")}
-                      </span>
-                    </button>
-                  );
-                })}
-              </section>
-            )}
-
-            {/* PRODUCTOS DE LA CATEGORÍA ABIERTA O DE LA BÚSQUEDA */}
-            {(searchQuery.trim() || openCategory) && (
-              <>
-                {!searchQuery.trim() && openCategory && (
-                  <div className="flex items-center gap-3 px-[18px] md:px-0 mb-4">
-                    <button
-                      type="button"
-                      onClick={returnToCategories}
-                      className="flex items-center gap-1 text-xs font-bold bg-white border border-[#c4b896]/40 text-[#4b4e38] px-3.5 py-2 rounded-full shadow-sm"
-                    >
-                      <ChevronLeft size={15} /> Categorías
-                    </button>
-                    <h2 className="font-extrabold text-xl text-[#4b4e38] truncate">{openCategory.name}</h2>
-                  </div>
-                )}
-
-                <section className="products-grid" aria-label="Productos">
-                  {filteredProducts.map((p) => {
-                    const catName =
-                      catalog.displayCategories.find((c) => c.id === p.category_id)?.name ?? "";
-                    const hasChoices =
-                      p.variants.length > 1 || p.options.length > 0 || !!p.pick || !!p.repeat;
-                    return (
-                      <article
-                        key={p.id}
-                        onClick={() => handleOpenProduct(p)}
-                        className="product-card"
-                      >
-                        <div className="product-image">
-                          <Image
-                            src={p.image_url || FALLBACK_PRODUCT_IMAGE}
-                            alt={p.name}
-                            width={400}
-                            height={400}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        </div>
-                        <div className="product-info">
-                          <small>{catName}</small>
-                          <h3>{p.name}</h3>
-                          {p.description && <p>{p.description}</p>}
-                          <span className="product-price">
-                            {p.variants.length > 1 ? `Desde ${formatCurrency(p.price)}` : formatCurrency(p.price)}
-                          </span>
-                          {hasChoices && (
-                            <span className="block mt-1 text-[11px] font-bold text-[#777b5b]">
-                              Elegir opciones ›
-                            </span>
-                          )}
-                        </div>
-                      </article>
-                    );
-                  })}
-                </section>
-
-                {filteredProducts.length === 0 && (
-                  <div className="text-center py-16 px-4">
-                    <p className="text-[#7a765a] font-medium text-sm">
-                      No encontramos productos que coincidan con tu búsqueda.
-                    </p>
-                    <button
-                      onClick={() => {
-                        setSearchQuery("");
-                        setSelectedCategory("all");
-                      }}
-                      className="mt-3 text-xs font-bold text-[#4b4e38] underline underline-offset-4"
-                    >
-                      Ver categorías
-                    </button>
-                  </div>
-                )}
-              </>
+            {filteredProducts.length === 0 && (
+              <div className="text-center py-16 px-4">
+                <p className="text-[#7a765a] font-medium text-sm">
+                  No encontramos productos que coincidan con tu búsqueda.
+                </p>
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSelectedCategory("all");
+                  }}
+                  className="mt-3 text-xs font-bold text-[#1a3028] underline underline-offset-4"
+                >
+                  Ver todos los productos
+                </button>
+              </div>
             )}
           </>
         )}
       </main>
 
-      {/* HOJA INFERIOR: VARIANTES Y OPCIONES DEL PRODUCTO */}
+      {/* MODAL: PRODUCTO ABIERTO */}
       <AnimatePresence>
         {selectedProduct && (
-          <OptionSheet
-            key={selectedProduct.id}
-            item={selectedProduct}
-            categoryName={
-              catalog.displayCategories.find((c) => c.id === selectedProduct.category_id)?.name
-            }
-            onClose={closeProductSheet}
-            onAdd={handleAddToCart}
-          />
+          <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedProduct(null)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", stiffness: 350, damping: 35 }}
+              className="product-sheet relative w-full max-w-lg bg-[#ffffff] rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col z-[160]"
+            >
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="absolute top-4 left-4 z-20 w-10 h-10 rounded-full bg-black/40 text-white backdrop-blur-md flex items-center justify-center hover:bg-black/60 transition-colors"
+                aria-label="Volver al menú"
+              >
+                <ArrowLeft size={20} />
+              </button>
+
+              <div className="overflow-y-auto product-detail">
+                <div className="product-detail-image">
+                  <Image
+                    src={
+                      selectedProduct.image_url ||
+                      "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop"
+                    }
+                    alt={selectedProduct.name}
+                    width={600}
+                    height={600}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <div className="product-detail-content">
+                  <small>
+                    {categories.find((c) => c.id === selectedProduct.category_id)?.name ||
+                      "Bloom Selección"}
+                  </small>
+                  <h1>{selectedProduct.name}</h1>
+                  {selectedProduct.description && (
+                    <p>{selectedProduct.description}</p>
+                  )}
+                  <span className="product-detail-price">
+                    {formatCurrency(selectedProduct.price * modalQuantity)}
+                  </span>
+
+                </div>
+              </div>
+              <div className="product-detail-actions">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#7a765a]">Cantidad</span>
+                  <div className="flex items-center gap-3 bg-[#f2f0e6] px-3 py-1.5 rounded-full border border-[#c4b896]/30">
+                    <button onClick={() => setModalQuantity((q) => Math.max(1, q - 1))} disabled={modalQuantity <= 1} className="p-1 rounded-full text-[#1a3028] disabled:opacity-30" aria-label="Disminuir cantidad"><Minus size={16} /></button>
+                    <span className="font-bold text-sm min-w-[20px] text-center text-[#1a3028]">{modalQuantity}</span>
+                    <button onClick={() => setModalQuantity((q) => q + 1)} className="p-1 rounded-full text-[#1a3028]" aria-label="Aumentar cantidad"><Plus size={16} /></button>
+                  </div>
+                </div>
+                <button onClick={handleAddToCart} className="primary-action !mt-3">
+                  <ShoppingBag size={20} />
+                  <span>Agregar al pedido · {formatCurrency(selectedProduct.price * modalQuantity)}</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
@@ -950,10 +1183,10 @@ function MenuContent() {
             >
               <div className="p-5 border-b border-[#c4b896]/25 flex items-center justify-between bg-white">
                 <div className="flex items-center gap-2">
-                  <ShoppingBag size={22} className="text-[#4b4e38]" />
-                  <h2 className="font-extrabold text-lg text-[#4b4e38]">Tu Pedido</h2>
+                  <ShoppingBag size={22} className="text-[#1a3028]" />
+                  <h2 className="font-extrabold text-lg text-[#1a3028]">Tu Pedido</h2>
                   {tableLabel && (
-                    <span className="text-[10px] bg-[#777b5b] text-[#f5e8ca] font-bold px-2.5 py-0.5 rounded-full">
+                    <span className="text-[10px] bg-[#1a3028] text-[#f5e8ca] font-bold px-2.5 py-0.5 rounded-full">
                       {tableLabel}
                     </span>
                   )}
@@ -969,73 +1202,35 @@ function MenuContent() {
 
               {orderSuccess ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                  {showCoffeeGame ? (
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={coffeeGameStep}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.18 }}
-                        className="w-full max-w-sm"
-                      >
-                        {coffeeGameStep < COFFEE_GAME_QUESTIONS.length ? (
-                          <>
-                            <div className="flex items-center justify-between mb-5">
-                              <button type="button" onClick={returnToWaiting} className="text-xs font-bold text-[#777b5b]">← Volver a la espera</button>
-                              <span className="text-xs font-black text-[#7a765a]">{coffeeGameStep + 1} / {COFFEE_GAME_QUESTIONS.length}</span>
-                            </div>
-                            <Coffee size={46} className="mx-auto text-[#777b5b] mb-4" />
-                            <h3 className="font-extrabold text-2xl text-[#4b4e38] mb-6">{COFFEE_GAME_QUESTIONS[coffeeGameStep].question}</h3>
-                            <div className="space-y-3">
-                              {COFFEE_GAME_QUESTIONS[coffeeGameStep].answers.map((answer) => (
-                                <button key={answer.label} type="button" onClick={() => answerCoffeeGame(answer.type)} className="w-full rounded-2xl border border-[#c4b896]/45 bg-white px-4 py-4 text-left text-sm font-bold text-[#4b4e38] shadow-sm transition active:scale-[0.98] hover:border-[#777b5b]">
-                                  {answer.label}
-                                </button>
-                              ))}
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-5xl block mb-4">{COFFEE_GAME_RESULTS[coffeeGameResult].emoji}</span>
-                            <p className="text-xs font-black uppercase tracking-wider text-[#777b5b] mb-2">Tu resultado</p>
-                            <h3 className="font-extrabold text-2xl text-[#4b4e38] mb-3">{COFFEE_GAME_RESULTS[coffeeGameResult].title}</h3>
-                            <p className="text-sm text-[#5f5c46] leading-relaxed mb-7">{COFFEE_GAME_RESULTS[coffeeGameResult].description}</p>
-                            <button type="button" onClick={returnToWaiting} className="w-full rounded-2xl bg-[#777b5b] px-5 py-3.5 text-sm font-black text-[#f5e8ca] shadow-md">Volver a la espera</button>
-                          </>
-                        )}
-                      </motion.div>
-                    </AnimatePresence>
-                  ) : (
-                    <>
-                      <CheckCircle2 size={64} className="text-[#10b981] mb-4 animate-bounce" />
-                      <h3 className="font-extrabold text-2xl text-[#4b4e38] mb-2">¡Pedido Confirmado!</h3>
-                      <div className="mb-4 rounded-full bg-[#777b5b] text-[#f5e8ca] px-4 py-2 text-xs font-black shadow-sm">
-                        {orderModality === "mesa" ? `🍽️ Para consumir en el local · Mesa ${selectedTableNum || 1}` : orderModality === "retiro" ? "🏃 Para retirar en el local" : "🛵 Envío a domicilio"}
-                      </div>
-                      <p className="text-sm text-[#5f5c46] max-w-xs leading-relaxed">
-                        {orderModality === "mesa" ? `Tu pedido fue recibido con éxito para la Mesa ${selectedTableNum || 1}. En breve te lo alcanzamos a tu mesa.` : orderModality === "delivery" ? "Tu pedido fue recibido con éxito. ¡Ya lo estamos preparando para el envío!" : "Tu pedido fue recibido con éxito. Te avisaremos cuando esté listo en el mostrador."}
-                      </p>
-                      <button type="button" onClick={startCoffeeGame} className="mt-6 w-full max-w-sm rounded-2xl border border-[#c4b896]/45 bg-[#f2f0e6] px-5 py-4 text-left shadow-sm transition active:scale-[0.98]">
-                        <span className="block text-lg mb-1">☕</span>
-                        <span className="block font-extrabold text-[#4b4e38]">¿Qué tipo de café sos?</span>
-                        <span className="block text-xs text-[#7a765a] mt-1">Jugá mientras preparamos tu pedido</span>
-                      </button>
-                    </>
-                  )}
+                  <CheckCircle2 size={64} className="text-[#10b981] mb-4 animate-bounce" />
+                  <h3 className="font-extrabold text-2xl text-[#1a3028] mb-2">¡Pedido Confirmado!</h3>
+                  <div className="mb-4 rounded-full bg-[#1a3028] text-[#f5e8ca] px-4 py-2 text-xs font-black shadow-sm">
+                    {orderModality === "mesa"
+                      ? `🍽️ Para consumir en el local · Mesa ${selectedTableNum || 1}`
+                      : orderModality === "retiro"
+                      ? "🏃 Para retirar en el local"
+                      : "🛵 Envío a domicilio"}
+                  </div>
+                  <p className="text-sm text-[#5f5c46] max-w-xs leading-relaxed">
+                    {orderModality === 'mesa' 
+                      ? `Tu pedido fue recibido con éxito para la Mesa ${selectedTableNum || 1}. En breve te lo alcanzamos a tu mesa.`
+                      : orderModality === 'delivery'
+                      ? `Tu pedido fue recibido con éxito. ¡Ya lo estamos preparando para el envío!`
+                      : `Tu pedido fue recibido con éxito. Te avisaremos cuando esté listo en el mostrador.`}
+                  </p>
                 </div>
               ) : cart.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
                   <div className="w-16 h-16 rounded-full bg-[#f2f0e6] flex items-center justify-center text-[#7a765a] mb-4">
                     <ShoppingBag size={28} />
                   </div>
-                  <h3 className="font-bold text-base text-[#4b4e38] mb-1">El pedido está vacío</h3>
+                  <h3 className="font-bold text-base text-[#1a3028] mb-1">El pedido está vacío</h3>
                   <p className="text-xs text-[#7a765a] max-w-xs mb-6">
                     Explora nuestra carta y selecciona lo que más te guste para disfrutar.
                   </p>
                   <button
                     onClick={() => setIsCartOpen(false)}
-                    className="text-xs font-bold bg-[#777b5b] text-[#f5e8ca] px-5 py-2.5 rounded-full shadow-md hover:bg-[#63674a] transition-colors"
+                    className="text-xs font-bold bg-[#1a3028] text-[#f5e8ca] px-5 py-2.5 rounded-full shadow-md hover:bg-[#243d32] transition-colors"
                   >
                     Ver Menú
                   </button>
@@ -1045,11 +1240,11 @@ function MenuContent() {
                   <div className="flex-1 overflow-y-auto p-5 space-y-3">
                     {cart.map((item) => (
                       <div
-                        key={item.key}
+                        key={item.id}
                         className="bg-white p-3.5 rounded-2xl border border-[#c4b896]/25 flex items-center justify-between gap-3 shadow-sm"
                       >
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-sm text-[#4b4e38] truncate">{item.name}</h4>
+                          <h4 className="font-bold text-sm text-[#1a3028] truncate">{item.name}</h4>
                           <span className="text-xs font-semibold text-[#7a765a]">
                             {formatCurrency(item.price)} c/u
                           </span>
@@ -1057,25 +1252,25 @@ function MenuContent() {
 
                         <div className="flex items-center gap-2 bg-[#f2f0e6] px-2 py-1 rounded-full">
                           <button
-                            onClick={() => updateQuantity(item.key, -1)}
-                            className="p-1 text-[#4b4e38] hover:text-black"
+                            onClick={() => updateQuantity(item.id, -1)}
+                            className="p-1 text-[#1a3028] hover:text-black"
                             aria-label="Restar 1"
                           >
                             {item.quantity === 1 ? <Trash2 size={13} /> : <Minus size={13} />}
                           </button>
-                          <span className="min-w-[28px] px-2 py-0.5 rounded-full bg-white border border-[#c4b896]/35 font-bold text-sm text-center text-[#4b4e38]">
+                          <span className="font-bold text-xs min-w-[16px] text-center text-[#1a3028]">
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() => updateQuantity(item.key, 1)}
-                            className="p-1 text-[#4b4e38] hover:text-black"
+                            onClick={() => updateQuantity(item.id, 1)}
+                            className="p-1 text-[#1a3028] hover:text-black"
                             aria-label="Sumar 1"
                           >
                             <Plus size={13} />
                           </button>
                         </div>
 
-                        <span className="font-extrabold text-sm text-[#4b4e38] min-w-[65px] text-right">
+                        <span className="font-extrabold text-sm text-[#1a3028] min-w-[65px] text-right">
                           {formatCurrency(item.price * item.quantity)}
                         </span>
                       </div>
@@ -1083,14 +1278,26 @@ function MenuContent() {
 
                     {/* Selector de Modalidad — 2 opciones grandes (DENTRO del scroll para que siempre sea visible) */}
                     <div className="mt-4 pt-4 border-t border-[#c4b896]/30 space-y-3">
-                      {orderModality !== "mesa" && <div className="space-y-2">
-                        <label className="text-xs font-black tracking-wider uppercase text-[#4b4e38] block">
+                      <div className="space-y-2">
+                        <label className="text-xs font-black tracking-wider uppercase text-[#1a3028] block">
                           ¿Cómo querés tu pedido? *
                         </label>
                         <div className="grid grid-cols-2 gap-2">
-                          <button type="button" onClick={() => setOrderModality("delivery")} className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-2xl border-2 transition-all font-black text-xs ${orderModality === "delivery" ? "border-[#777b5b] bg-[#777b5b] text-[#f5e8ca] shadow-lg scale-[1.01]" : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#777b5b]/40"}`}>
-                            <span className="text-2xl">🛵</span><span className="text-center leading-tight">Delivery</span>
-                            {orderModality === "delivery" && <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />}
+                          {/* Comer en el local */}
+                          <button
+                            type="button"
+                            onClick={() => setOrderModality("mesa")}
+                            className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-3 rounded-2xl border-2 transition-all font-black text-sm ${
+                              orderModality === "mesa"
+                                ? "border-[#1a3028] bg-[#1a3028] text-[#f5e8ca] shadow-lg scale-[1.01]"
+                                : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#1a3028]/40"
+                            }`}
+                          >
+                            <span className="text-2xl">🍽️</span>
+                            <span className="text-center leading-tight">Comer en<br/>el local</span>
+                            {orderModality === "mesa" && (
+                              <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />
+                            )}
                           </button>
 
                           {/* Retirar */}
@@ -1099,8 +1306,8 @@ function MenuContent() {
                             onClick={() => setOrderModality("retiro")}
                             className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-3 rounded-2xl border-2 transition-all font-black text-sm ${
                               orderModality === "retiro"
-                                ? "border-[#777b5b] bg-[#777b5b] text-[#f5e8ca] shadow-lg scale-[1.01]"
-                                : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#777b5b]/40"
+                                ? "border-[#1a3028] bg-[#1a3028] text-[#f5e8ca] shadow-lg scale-[1.01]"
+                                : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#1a3028]/40"
                             }`}
                           >
                             <span className="text-2xl">🏃</span>
@@ -1110,7 +1317,7 @@ function MenuContent() {
                             )}
                           </button>
                         </div>
-                      </div>}
+                      </div>
 
                       {/* Campos según la modalidad */}
                       {orderModality === "mesa" && (
@@ -1129,7 +1336,7 @@ function MenuContent() {
                                   value={selectedTableNum}
                                   onChange={(e) => setSelectedTableNum(e.target.value)}
                                   placeholder="Ej: 3"
-                                  className="w-full text-xs font-extrabold px-3 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#777b5b] focus:ring-1 focus:ring-[#777b5b]"
+                                  className="w-full text-xs font-extrabold px-3 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028] focus:ring-1 focus:ring-[#1a3028]"
                                 />
                                 <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#7a765a]">
                                   1-40
@@ -1145,7 +1352,7 @@ function MenuContent() {
                                 value={customerName}
                                 onChange={(e) => setCustomerName(e.target.value)}
                                 placeholder="Ej: Sofía"
-                                className="w-full text-xs px-3 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#777b5b]"
+                                className="w-full text-xs px-3 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
                               />
                             </div>
                           </div>
@@ -1165,7 +1372,7 @@ function MenuContent() {
                                 value={customerName}
                                 onChange={(e) => setCustomerName(e.target.value)}
                                 placeholder="Ej: Juan"
-                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#777b5b]"
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
                               />
                             </div>
                             <div>
@@ -1177,7 +1384,7 @@ function MenuContent() {
                                 value={customerPhone}
                                 onChange={(e) => setCustomerPhone(e.target.value)}
                                 placeholder="223 555-1234"
-                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#777b5b]"
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
                               />
                             </div>
                           </div>
@@ -1191,7 +1398,7 @@ function MenuContent() {
                           placeholder="Aclaraciones (ej: sin hielo, edulcorante)"
                           value={orderNotes}
                           onChange={(e) => setOrderNotes(e.target.value)}
-                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/30 bg-[#f9f8f3] outline-none focus:border-[#777b5b]"
+                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/30 bg-[#f9f8f3] outline-none focus:border-[#1a3028]"
                         />
                       </div>
                     </div>
@@ -1199,11 +1406,38 @@ function MenuContent() {
 
                   {/* FOOTER DEL CARRITO: Solo Subtotal, Total y Botón */}
                   <div className="p-4 sm:p-5 bg-white border-t border-[#c4b896]/25 space-y-2.5">
+                    <div className="space-y-2 pb-1">
+                      <p className="text-xs font-black tracking-wider uppercase text-[#1a3028]">Forma de pago</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod("cash")}
+                          className={`rounded-xl border-2 px-3 py-2.5 text-xs font-black transition-colors ${
+                            paymentMethod === "cash"
+                              ? "border-[#1a3028] bg-[#1a3028] text-[#f5e8ca]"
+                              : "border-[#c4b896]/40 text-[#5f5c46] hover:border-[#1a3028]/40"
+                          }`}
+                        >
+                          Efectivo al retirar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod("mercadopago")}
+                          className={`rounded-xl border-2 px-3 py-2.5 text-xs font-black transition-colors ${
+                            paymentMethod === "mercadopago"
+                              ? "border-[#009ee3] bg-[#e8f7ff] text-[#007eb8]"
+                              : "border-[#c4b896]/40 text-[#5f5c46] hover:border-[#009ee3]/50"
+                          }`}
+                        >
+                          {PAYMENTS_SIMULATION ? "Pago simulado" : "Mercado Pago"}
+                        </button>
+                      </div>
+                    </div>
                     <div className="flex items-center justify-between text-sm font-semibold text-[#5f5c46]">
                       <span>Subtotal</span>
                       <span>{formatCurrency(cartTotal)}</span>
                     </div>
-                    <div className="flex items-center justify-between text-lg font-black text-[#4b4e38] pt-1.5 border-t border-dashed border-[#c4b896]/30">
+                    <div className="flex items-center justify-between text-lg font-black text-[#1a3028] pt-1.5 border-t border-dashed border-[#c4b896]/30">
                       <span>Total</span>
                       <span>{formatCurrency(cartTotal)}</span>
                     </div>
@@ -1221,7 +1455,11 @@ function MenuContent() {
                       ) : (
                         <>
                           <CheckCircle2 size={18} />
-                          <span>Confirmar Pedido · {formatCurrency(cartTotal)}</span>
+                          <span>
+                            {paymentMethod === "mercadopago"
+                              ? PAYMENTS_SIMULATION ? "Confirmar pago simulado" : "Pagar con Mercado Pago"
+                              : "Confirmar Pedido"} · {formatCurrency(cartTotal)}
+                          </span>
                         </>
                       )}
                     </button>
@@ -1232,6 +1470,8 @@ function MenuContent() {
           </div>
         )}
       </AnimatePresence>
+
+      <VoiceOrderAssistant products={products} onAddItems={handleVoiceAddItems} />
 
       {/* DOCK INFERIOR (PWA FLOATING DOCK) */}
       <div 
@@ -1298,7 +1538,7 @@ export default function MenuPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-[#f7f5ef]">
-          <div className="w-10 h-10 border-4 border-[#c4b896] border-t-[#777b5b] rounded-full animate-spin" />
+          <div className="w-10 h-10 border-4 border-[#c4b896] border-t-[#1a3028] rounded-full animate-spin" />
         </div>
       }
     >
