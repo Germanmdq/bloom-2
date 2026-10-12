@@ -189,10 +189,10 @@ export function VoiceOrderAssistant({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-4 z-[140] flex items-center gap-2 rounded-full bg-[#1a3028] py-2 pl-2 pr-4 text-sm font-bold text-white shadow-xl transition hover:scale-[1.02]"
+        className="fixed bottom-24 right-4 z-[140] flex items-center gap-2 rounded-full bg-[#777b5b] py-2 pl-2 pr-4 text-sm font-bold text-[#f5e8ca] shadow-xl transition hover:scale-[1.02]"
         aria-label="Abrir asistente de pedidos por voz"
       >
-        <RobotHead state="idle" shape="circle" size={42} color="#c4b896" trimColor="#f5e8ca" screenColor="#173c31" antenna={false} />
+        <RobotHead state="idle" shape="circle" size={42} color="#c4b896" trimColor="#f5e8ca" screenColor="#4b4e38" antenna={false} />
         Hablar ahora
       </button>
     );
@@ -200,8 +200,8 @@ export function VoiceOrderAssistant({
 
   return (
     <section className="fixed bottom-4 right-4 z-[160] w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-3xl border border-[#c4b896]/50 bg-[#fffdf8] shadow-2xl">
-      <div className="flex items-center gap-3 bg-[#1a3028] px-4 py-3 text-white">
-        <RobotHead state={state} shape="circle" size={58} color="#c4b896" trimColor="#f5e8ca" screenColor="#173c31" antenna />
+      <div className="flex items-center gap-3 bg-[#777b5b] px-4 py-3 text-[#f5e8ca]">
+        <RobotHead state={state} shape="circle" size={58} color="#c4b896" trimColor="#f5e8ca" screenColor="#4b4e38" antenna />
         <div className="min-w-0 flex-1">
           <p className="font-extrabold">Bloom por voz</p>
           <p className="text-xs text-[#f5e8ca]">{listening ? "Se envía solo al hacer una pausa" : "Decime tu pedido"}</p>
@@ -209,13 +209,13 @@ export function VoiceOrderAssistant({
         <button type="button" onClick={closeAssistant} className="rounded-full p-2 hover:bg-white/10" aria-label="Cerrar asistente"><X size={18} /></button>
       </div>
       <div className="space-y-3 p-4">
-        <p className="rounded-2xl bg-[#f2f0e6] p-3 text-sm text-[#1a3028]">{reply}</p>
+        <p className="rounded-2xl bg-[#f2f0e6] p-3 text-sm text-[#4b4e38]">{reply}</p>
         <div className="flex gap-2">
-          <button type="button" onClick={() => { if (!listening) void startListening(); }} disabled={listening} className={`flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl px-3 text-xs font-bold text-white disabled:cursor-default ${listening ? "bg-red-500 animate-pulse" : "bg-[#1a3028]"}`} aria-label="Hablar ahora">
+          <button type="button" onClick={() => { if (!listening) void startListening(); }} disabled={listening} className={`flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl px-3 text-xs font-bold text-white disabled:cursor-default ${listening ? "bg-red-500 animate-pulse" : "bg-[#777b5b]"}`} aria-label="Hablar ahora">
             <Mic size={20} />
             {listening ? "Escuchando" : "Hablar ahora"}
           </button>
-          <input value={transcript} onChange={(event) => setTranscript(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void submit(transcript); }} placeholder="Tu pedido aparecerá acá" className="min-w-0 flex-1 rounded-2xl border border-[#c4b896]/50 bg-white px-3 text-sm outline-none focus:border-[#1a3028]" />
+          <input value={transcript} onChange={(event) => setTranscript(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void submit(transcript); }} placeholder="Tu pedido aparecerá acá" className="min-w-0 flex-1 rounded-2xl border border-[#c4b896]/50 bg-white px-3 text-sm outline-none focus:border-[#777b5b]" />
         </div>
       </div>
     </section>

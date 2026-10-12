@@ -40,7 +40,7 @@ export async function POST(request: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-20b",
         temperature: 0.2,
         response_format: { type: "json_object" },
         messages: [

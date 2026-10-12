@@ -797,40 +797,6 @@ function MenuContent() {
         ============================================ */}
         {activeTab === "inicio" && (
           <>
-            {/* BANNER HERO */}
-            <div className="px-4 md:px-0 mb-5">
-              <div className="rounded-[24px] bg-[#1a3028] text-white p-6 shadow-md border border-[#c4b896]/20 relative overflow-hidden">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-[#c4b896] bg-white/10 px-3 py-1 rounded-full inline-block mb-2">
-                  Bloom Café de Especialidad
-                </span>
-                <h2 className="text-2xl font-extrabold text-[#f5e8ca]">Donde cada taza florece</h2>
-                <p className="text-xs text-[#a8c9b8] mt-1.5 max-w-sm leading-relaxed">
-                  Disfrutá de nuestros cafés tostados de especialidad, pastelería fresca del día y tostados artesanales.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab("menu");
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                    className="bg-[#c4b896] text-[#1a3028] text-xs font-bold px-4 py-2.5 rounded-full hover:bg-[#f5e8ca] transition-transform active:scale-95 cursor-pointer"
-                  >
-                    Explorar Menú Completo →
-                  </button>
-                  {hasFacturas && (
-                    <button
-                      type="button"
-                      onClick={openFacturas}
-                      className="bg-white/10 border border-[#c4b896]/50 text-[#f5e8ca] text-xs font-bold px-4 py-2.5 rounded-full hover:bg-white/20 transition-transform active:scale-95 cursor-pointer"
-                    >
-                      🥐 Ver facturas
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
             {/* ========== TAKE AWAY / SALÓN ========== */}
             <div className="px-4 md:px-0 mb-6 grid grid-cols-2 gap-3">
               <button
