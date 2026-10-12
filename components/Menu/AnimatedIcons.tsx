@@ -18,3 +18,13 @@ export function SalonIcon({ size = 44, className = "" }: IconProps) {
     </svg>
   );
 }
+
+export function DishIcon({ size = 44, className = "" }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M8 32a16 16 0 0 1 32 0M24 13v3" />
+      <circle cx="24" cy="11" r="2" />
+      <path d="M5 36h38" />
+    </svg>
+  );
+}
