@@ -13,12 +13,12 @@ export function VoiceOrderAssistant({
   products,
   onAddItems,
   onOpenCart,
-  isCartOpen,
+  isOverlayOpen,
 }: {
   products: Product[];
   onAddItems: (items: VoiceItem[]) => void;
   onOpenCart: () => void;
-  isCartOpen: boolean;
+  isOverlayOpen: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<RobotState>("idle");
@@ -250,14 +250,14 @@ export function VoiceOrderAssistant({
   };
 
   if (!open) {
-    // El acceso queda fijo mientras se navega, pero no puede tapar acciones del carrito.
-    if (isCartOpen) return null;
+    // El acceso queda fijo mientras se navega, pero no puede tapar ninguna vista de acción.
+    if (isOverlayOpen) return null;
 
     return (
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-[9rem] right-4 z-[220] flex items-center gap-2 rounded-full bg-[#777b5b] py-2 pl-2 pr-4 text-sm font-bold text-[#f5e8ca] shadow-xl transition hover:scale-[1.02] sm:bottom-8"
+        className="fixed bottom-[5.75rem] right-3 z-40 flex items-center gap-2 rounded-full bg-[#777b5b] py-2 pl-2 pr-3 text-sm font-bold text-[#f5e8ca] shadow-xl transition hover:scale-[1.02] sm:bottom-8 sm:right-6"
         aria-label="Abrir asistente de pedidos por voz"
       >
         <RobotHead state="idle" shape="circle" size={42} color="#c4b896" trimColor="#f5e8ca" screenColor="#4b4e38" antenna={false} />

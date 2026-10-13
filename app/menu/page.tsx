@@ -1426,7 +1426,7 @@ function MenuContent() {
         products={products}
         onAddItems={handleVoiceAddItems}
         onOpenCart={() => setIsCartOpen(true)}
-        isCartOpen={isCartOpen}
+        isOverlayOpen={isCartOpen || Boolean(selectedProduct)}
       />
 
       {/* DOCK INFERIOR (PWA FLOATING DOCK) */}
