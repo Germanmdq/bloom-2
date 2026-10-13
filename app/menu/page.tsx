@@ -277,7 +277,7 @@ function MenuContent() {
       try {
         const [{ data: cats }, { data: prods }, { data: settings }] = await Promise.all([
           supabase.from("categories").select("id, name, sort_order").order("sort_order", { ascending: true }),
-          supabase.from("products").select("id, name, description, price, image_url, category_id, active, options").eq("active", true),
+          supabase.from("products").select("id, name, description, price, image_url, category_id, active").eq("active", true),
           supabase.from("app_settings").select("whatsapp, plato_del_dia_id, plato_dia_price").eq("id", 1).maybeSingle(),
         ]);
 
@@ -796,13 +796,6 @@ function MenuContent() {
       </header>
 
       <main className="page-content max-w-[1180px] mx-auto pt-2">
-        <VoiceOrderAssistant
-          products={products.map((product) => ({ ...product, category_name: categories.find((category) => category.id === product.category_id)?.name }))}
-          onAddItems={handleVoiceAddItems}
-          onOpenCart={() => setIsCartOpen(true)}
-          isOverlayOpen={isCartOpen || Boolean(selectedProduct)}
-          inline
-        />
         {/* ============================================
             TAB: INICIO — Tarjetas de categorías + Info del local
         ============================================ */}
@@ -985,6 +978,7 @@ function MenuContent() {
                 ))}
               </nav>
             </div>
+
             {/* GRILLA DE PRODUCTOS */}
             <section
               className={`products-grid ${/factura|medialuna|pasteler[ií]a|panificados/i.test(`${categories.find((category) => category.id === selectedCategory)?.name || ""} ${searchQuery}`) ? "products-grid-compact" : ""}`}
@@ -1233,13 +1227,13 @@ function MenuContent() {
                       </div>
                     ))}
 
-                    {/* Selector de Modalidad — 2 opciones grandes (DENTRO del scroll para que siempre sea visible) */}
+                    {/* Selector de modalidad — las tres opciones quedan en una misma fila. */}
                     <div className="mt-4 pt-4 border-t border-[#c4b896]/30 space-y-3">
                       <div className="space-y-2">
                         <label className="text-xs font-black tracking-wider uppercase text-[#1a3028] block">
                           ¿Cómo querés tu pedido? *
                         </label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           {/* Retirar */}
                           <button
                             type="button"
@@ -1250,8 +1244,8 @@ function MenuContent() {
                                 : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#1a3028]/40"
                             }`}
                           >
-                            <span className="text-2xl">🏃</span>
-                            <span className="text-center leading-tight">Retirar<br/>del local</span>
+                            <span className="text-xl">🏃</span>
+                            <span className="text-center leading-tight text-xs">Retirar<br/>del local</span>
                             {orderModality === "retiro" && (
                               <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />
                             )}
@@ -1267,9 +1261,26 @@ function MenuContent() {
                                 : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#1a3028]/40"
                             }`}
                           >
-                            <span className="text-2xl">🍽️</span>
-                            <span className="text-center leading-tight">Comer en<br/>el local</span>
+                            <span className="text-xl">🍽️</span>
+                            <span className="text-center leading-tight text-xs">Comer en<br/>el local</span>
                             {orderModality === "mesa" && (
+                              <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />
+                            )}
+                          </button>
+
+                          {/* Delivery */}
+                          <button
+                            type="button"
+                            onClick={() => setOrderModality("delivery")}
+                            className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-2xl border-2 transition-all font-black text-sm ${
+                              orderModality === "delivery"
+                                ? "border-[#1a3028] bg-[#1a3028] text-[#f5e8ca] shadow-lg scale-[1.01]"
+                                : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#1a3028]/40"
+                            }`}
+                          >
+                            <span className="text-xl">🛵</span>
+                            <span className="text-center leading-tight text-xs">Delivery<br/>a domicilio</span>
+                            {orderModality === "delivery" && (
                               <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />
                             )}
                           </button>
@@ -1344,6 +1355,44 @@ function MenuContent() {
                                 className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
                               />
                             </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {orderModality === "delivery" && (
+                        <div className="space-y-2 bg-[#fdfbf7] p-3 rounded-2xl border border-[#c4b896]/30">
+                          <p className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider">Datos para delivery</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1">Tu nombre *</label>
+                              <input
+                                type="text"
+                                value={customerName}
+                                onChange={(e) => setCustomerName(e.target.value)}
+                                placeholder="Ej: Juan"
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1 flex items-center gap-1"><Phone size={11} className="text-gray-500" /> Teléfono *</label>
+                              <input
+                                type="tel"
+                                value={customerPhone}
+                                onChange={(e) => setCustomerPhone(e.target.value)}
+                                placeholder="223 555-1234"
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1">Dirección de entrega *</label>
+                            <input
+                              type="text"
+                              value={deliveryAddress}
+                              onChange={(e) => setDeliveryAddress(e.target.value)}
+                              placeholder="Calle, número y departamento"
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                            />
                           </div>
                         </div>
                       )}
@@ -1427,6 +1476,13 @@ function MenuContent() {
           </div>
         )}
       </AnimatePresence>
+
+      <VoiceOrderAssistant
+        products={products}
+        onAddItems={handleVoiceAddItems}
+        onOpenCart={() => setIsCartOpen(true)}
+        isOverlayOpen={isCartOpen || Boolean(selectedProduct)}
+      />
 
       {/* DOCK INFERIOR (PWA FLOATING DOCK) */}
       <div 
