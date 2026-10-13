@@ -1,9 +1,90 @@
 import { NextResponse } from "next/server";
 
-type CatalogItem = { id: string; name: string; description?: string; price: number; category?: string; options?: unknown };
+type CatalogItem = { id: string; name: string; description?: string; price: number };
 type VoiceTurn = { role: "user" | "assistant"; content: string };
 
 const MAX_CATALOG_ITEMS = 120;
+const DISAMBIGUATING_TERMS = [
+  "pollo", "jamon", "queso", "carne", "cerdo", "pescado", "atun",
+  "vegetariano", "vegano", "aquarius", "coca", "sprite", "fanta", "pepsi",
+  "limon", "naranja", "chocolate", "vainilla",
+];
+const QUANTITY_WORDS: Record<string, number> = {
+  un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5,
+  seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10,
+};
+
+const isQuestion = (value: string) =>
+  /[?¿]/.test(value)
+  || /^\s*(que|qué|cual|cuál|cuanto|cuánto|como|cómo|tenes|tenés|hay|me recomend[aá]s|podes|podés)\b/i.test(value);
+
+const normalize = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const words = (value: string) => normalize(value).split(" ").filter(Boolean).map((word) =>
+  word.endsWith("s") && word.length > 3 ? word.slice(0, -1) : word,
+);
+
+function requestedQuantity(transcript: string) {
+  const numeric = normalize(transcript).match(/\b(\d{1,2})\b/);
+  if (numeric) return Math.min(20, Math.max(1, Number(numeric[1])));
+  return words(transcript).map((word) => QUANTITY_WORDS[word]).find(Boolean);
+}
+
+function requestedDiscriminators(transcript: string) {
+  const requestWords = new Set(words(transcript));
+  return DISAMBIGUATING_TERMS.filter((term) => requestWords.has(term));
+}
+
+function itemHasTerms(item: CatalogItem, terms: string[]) {
+  const itemWords = new Set(words(`${item.name} ${item.description || ""}`));
+  return terms.every((term) => itemWords.has(term));
+}
+
+function findExplicitCatalogItem(transcript: string, catalog: CatalogItem[]) {
+  const requestWords = words(transcript);
+  const discriminators = requestedDiscriminators(transcript);
+  if (!discriminators.length) return undefined;
+
+  const ranked = catalog
+    .filter((item) => itemHasTerms(item, discriminators))
+    .map((item) => {
+      const nameWords = new Set(words(item.name));
+      const detailWords = new Set(words(item.description || ""));
+      const score = requestWords.reduce((total, word) =>
+        total + (nameWords.has(word) ? 3 : detailWords.has(word) ? 1 : 0), 0);
+      return { item, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  return ranked[0]?.score ? ranked[0].item : undefined;
+}
+
+function fallbackMatch(transcript: string, catalog: CatalogItem[]) {
+  const request = normalize(transcript);
+  if (isQuestion(transcript)) return undefined;
+  const asksForCoffeeWithMilk = /cafe/.test(request) && /leche/.test(request);
+
+  if (asksForCoffeeWithMilk) {
+    const milkCoffee = catalog.find((item) => {
+      const details = normalize(`${item.name} ${item.description || ""}`);
+      return /capuchino|cappuccino|latte|cortado|cafe con leche/.test(details)
+        || (details.includes("cafe") && details.includes("leche"));
+    });
+    if (milkCoffee) return milkCoffee;
+  }
+
+  return catalog.find((item) => {
+    const name = normalize(item.name);
+    return name.length >= 4 && request.includes(name);
+  });
+}
 
 export async function POST(request: Request) {
   if (!process.env.GROQ_API_KEY) {
@@ -37,8 +118,6 @@ export async function POST(request: Request) {
             name: String(item.name).slice(0, 120),
             description: typeof item.description === "string" ? item.description.slice(0, 240) : "",
             price: Number(item.price),
-            category: typeof item.category === "string" ? item.category.slice(0, 80) : "",
-            options: item.options == null ? null : JSON.stringify(item.options).slice(0, 2000),
           }))
       : [];
 
@@ -60,7 +139,7 @@ export async function POST(request: Request) {
         messages: [
           {
             role: "system",
-            content: `Sos Bloom, el asistente conversacional de una cafetería argentina. Podés responder preguntas breves sobre el menú, precios, ingredientes, opciones y recomendaciones usando exclusivamente el catálogo y el historial de esta conversación. También interpretás pedidos naturales: entendé frases cotidianas, diminutivos y referencias al contexto como "café con leche", "unas medialunas", "lo de siempre" o "uno de esos". Distinguí una consulta informativa de un pedido expresado como pregunta: "¿me das un cortado?" o "¿podés traerme un café?" son pedidos. Para consultas sin intención de compra devolvé items []. Buscá promociones en el catálogo (categoría Promociones, nombres de combos y descripciones con componentes). Antes de resolver productos separados, compará el pedido con esas promociones. Si hay una promoción que incluye EXACTAMENTE lo solicitado, con las mismas cantidades y opciones, y resulta igual o más barata, proponé esa promoción como un único item y explicá su nombre, contenido y precio: el cliente confirma en la app. No sumes además sus componentes porque duplicaría el pedido. Ejemplo: "un cortado y una medialuna" debe buscar una promo compatible de café/cortado + una medialuna. No supongas que "factura" equivale a medialuna ni que cualquier tamaño de café sirve: verificá descripción y opciones. Si la promo más cercana exige agregar productos, cambiar cantidades, tamaño, relleno o tipo de bebida, preguntá si le interesa y devolvé items [] hasta que acepte. Recordá la propuesta del historial cuando conteste "sí", "dale" o "esa promo". Si no hay ninguna promo compatible, resolvé los productos disponibles sin inventar descuentos. Tratá errores de transcripción evidentes como "mediluna" como "medialuna". No confundas cortado con capuccino o latte. Si falta definir una opción obligatoria, preguntá por ella. Cuando el cliente pida productos de forma clara, devolvé esos productos con la cantidad solicitada. Si una referencia no tiene contexto suficiente o puede significar dos productos distintos, no adivines: preguntá brevemente cuál prefiere y devolvé items []. Nunca inventes productos, precios ni IDs, ni digas que un pedido ya fue agregado: la app va a pedir confirmación antes. Respondé JSON estricto: {"reply":"frase breve en español rioplatense","items":[{"id":"id exacto del catálogo","quantity":1}]}.`,
+            content: `Sos Bloom, el asistente conversacional de una cafetería argentina. Podés responder preguntas breves sobre el menú, precios, ingredientes, opciones y recomendaciones usando exclusivamente el catálogo y el historial de esta conversación. También interpretás pedidos naturales, diminutivos y referencias al contexto como "café con leche", "unas medialunas", "lo de siempre", "uno de esos" o "coso". Si "coso" o una referencia no se puede deducir con seguridad del último pedido mencionado, preguntá cuál producto quiere y devolvé items []. REGLA CRÍTICA: nunca reemplaces una característica explícita por otra. Pollo no es jamón ni queso; Aquarius no es otra gaseosa; una marca, sabor, carne o ingrediente mencionado debe coincidir en el producto o su descripción. Si no existe el producto exacto, decilo y no devuelvas items. Cuando sea una pregunta, respondé claro y amable, y devolvé items []. Cuando el cliente pida productos de forma clara, devolvé esos productos con la cantidad solicitada. Nunca inventes productos, precios ni IDs, ni digas que un pedido ya fue agregado: la app va a pedir confirmación antes. Respondé JSON estricto: {"reply":"frase breve en español rioplatense","items":[{"id":"id exacto del catálogo","quantity":1}]}.`,
           },
           ...history.map((turn) => ({ role: turn.role, content: turn.content })),
           {
@@ -90,9 +169,29 @@ export async function POST(request: Request) {
           .filter((item: { id: string; quantity: number }) => catalogById.has(item.id))
       : [];
 
+    const explicitCatalogItem = findExplicitCatalogItem(transcript, catalog);
+    const modelItem = items.length === 1 ? catalogById.get(items[0].id) : undefined;
+    const discriminators = requestedDiscriminators(transcript);
+    const modelSubstitutedAnIngredient = Boolean(
+      modelItem && discriminators.length && !itemHasTerms(modelItem, discriminators),
+    );
+    const requestedItems = isQuestion(transcript) ? [] : items;
+    const correctedItems = !isQuestion(transcript) && explicitCatalogItem && items.length <= 1
+      ? [{ id: explicitCatalogItem.id, quantity: requestedQuantity(transcript) || items[0]?.quantity || 1 }]
+      : modelSubstitutedAnIngredient
+        ? []
+        : requestedItems;
+    const suggestedItem = correctedItems.length ? null : fallbackMatch(transcript, catalog);
+    const resolvedItems = suggestedItem ? [{ id: suggestedItem.id, quantity: requestedQuantity(transcript) || 1 }] : correctedItems;
+    const reply = explicitCatalogItem && resolvedItems.some((item: { id: string; quantity: number }) => item.id === explicitCatalogItem.id)
+      ? `Entendí: ${resolvedItems[0].quantity > 1 ? `${resolvedItems[0].quantity} ` : ""}${explicitCatalogItem.name}.`
+      : modelSubstitutedAnIngredient
+        ? "No encontré esa opción exacta en el menú. ¿Querés que te diga las alternativas disponibles?"
+        : typeof parsed?.reply === "string" ? parsed.reply.slice(0, 320) : "Listo, revisá tu pedido.";
+
     return NextResponse.json({
-      reply: typeof parsed?.reply === "string" ? parsed.reply.slice(0, 600) : "Revisá tu pedido antes de confirmar.",
-      items,
+      reply: suggestedItem ? `Entendí: ${suggestedItem.name}.` : reply,
+      items: resolvedItems,
     });
   } catch (error) {
     console.error("[voice-order]", error);
