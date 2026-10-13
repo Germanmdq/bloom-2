@@ -252,7 +252,7 @@ export function VoiceOrderAssistant({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-36 right-4 z-[140] flex items-center gap-2 rounded-full bg-[#777b5b] py-2 pl-2 pr-4 text-sm font-bold text-[#f5e8ca] shadow-xl transition hover:scale-[1.02]"
+        className="fixed bottom-[9rem] right-4 z-[220] flex items-center gap-2 rounded-full bg-[#777b5b] py-2 pl-2 pr-4 text-sm font-bold text-[#f5e8ca] shadow-xl transition hover:scale-[1.02] sm:bottom-8"
         aria-label="Abrir asistente de pedidos por voz"
       >
         <RobotHead state="idle" shape="circle" size={42} color="#c4b896" trimColor="#f5e8ca" screenColor="#4b4e38" antenna={false} />
