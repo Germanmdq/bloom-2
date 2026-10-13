@@ -2,6 +2,8 @@ import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
+export const dynamic = "force-dynamic";
+
 function hasValidBootstrapToken(request: Request) {
   const expected = process.env.ADMIN_BOOTSTRAP_TOKEN?.trim();
   const received = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
