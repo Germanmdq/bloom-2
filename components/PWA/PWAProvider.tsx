@@ -99,16 +99,22 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
 
     // 3. Register Service Worker
     if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
+      const registerServiceWorker = () => {
         navigator.serviceWorker
-          .register("/sw.js")
+          .register("/sw.js", { updateViaCache: "none" })
           .then((registration) => {
+            void registration.update().catch(() => {});
             console.log("[PWA] ServiceWorker registered with scope:", registration.scope);
           })
           .catch((error) => {
             console.warn("[PWA] ServiceWorker registration failed:", error);
           });
-      });
+      };
+      if (document.readyState === "complete") {
+        registerServiceWorker();
+      } else {
+        window.addEventListener("load", registerServiceWorker, { once: true });
+      }
     }
 
     // 4. Listen for beforeinstallprompt event

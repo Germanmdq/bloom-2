@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bloom-pwa-v1';
+const CACHE_NAME = 'bloom-pwa-v2';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_ASSETS = [
@@ -30,7 +30,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.filter((key) => key.startsWith('bloom-pwa-') && key !== CACHE_NAME).map((key) => caches.delete(key))
       );
     }).then(() => {
       return self.clients.claim();
