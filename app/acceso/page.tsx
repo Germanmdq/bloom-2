@@ -35,9 +35,20 @@ export default function AccesoPage() {
         const email = !isPhone && !username.includes("@")
             ? `${username}@bloom.com`
             : username;
-        const { data, error: authError } = isPhone
+        let { data, error: authError } = isPhone
             ? await supabase.auth.signInWithPassword({ phone: phoneClean, password: password.trim() })
             : await supabase.auth.signInWithPassword({ email, password: password.trim() });
+
+        // Las cuentas creadas con el registro simple por teléfono usan un email
+        // interno. Conservamos el intento por teléfono real para el resto.
+        if (isPhone && (authError || !data.user)) {
+            const fallback = await supabase.auth.signInWithPassword({
+                email: `${phoneClean}@bloom.local`,
+                password: password.trim(),
+            });
+            data = fallback.data;
+            authError = fallback.error;
+        }
 
         if (authError || !data.user) {
             setError("Datos incorrectos. Verificá teléfono/email y contraseña.");

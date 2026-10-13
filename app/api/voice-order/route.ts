@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 type CatalogItem = { id: string; name: string; description?: string; price: number };
+type VoiceTurn = { role: "user" | "assistant"; content: string };
 
 const MAX_CATALOG_ITEMS = 120;
 
@@ -43,6 +44,15 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const transcript = typeof body?.transcript === "string" ? body.transcript.trim() : "";
+    const history: VoiceTurn[] = Array.isArray(body?.history)
+      ? body.history
+          .slice(-6)
+          .filter((turn: unknown): turn is VoiceTurn => {
+            const candidate = turn as VoiceTurn;
+            return (candidate?.role === "user" || candidate?.role === "assistant") && typeof candidate?.content === "string";
+          })
+          .map((turn: VoiceTurn) => ({ role: turn.role, content: turn.content.slice(0, 360) }))
+      : [];
     const catalog: CatalogItem[] = Array.isArray(body?.catalog)
       ? body.catalog
           .slice(0, MAX_CATALOG_ITEMS)
@@ -75,8 +85,9 @@ export async function POST(request: Request) {
         messages: [
           {
             role: "system",
-            content: `Sos Bloom, asistente de pedidos de una cafetería argentina. Interpretá el pedido usando exclusivamente el catálogo y las descripciones. Entendé nombres cotidianos: "café con leche" puede corresponder a un capuchino, latte o cortado cuya descripción incluya café y leche. Respondé JSON estricto: {"reply":"frase breve en español rioplatense","items":[{"id":"id exacto del catálogo","quantity":1}]}. Si falta una aclaración o el producto no existe, items debe ser []. No inventes productos, precios ni IDs.`,
+            content: `Sos Bloom, asistente de pedidos de una cafetería argentina. Interpretá pedidos naturales usando exclusivamente el catálogo y sus descripciones. Entendé frases cotidianas, diminutivos y variantes: "café con leche" puede ser capuchino, latte o cortado si su descripción lo indica; "unas medialunas", "lo de siempre" o "uno de esos" pueden referirse al contexto de la conversación. Si la referencia no tiene contexto suficiente o puede significar dos productos distintos, no adivines: preguntá brevemente cuál prefiere y devolvé items []. Nunca inventes productos, precios ni IDs. Respondé JSON estricto: {"reply":"frase breve en español rioplatense","items":[{"id":"id exacto del catálogo","quantity":1}]}. Si entendés uno o varios productos, devolvelos todos con la cantidad solicitada.`,
           },
+          ...history.map((turn) => ({ role: turn.role, content: turn.content })),
           {
             role: "user",
             content: JSON.stringify({ pedido: transcript, catalogo: catalog }),

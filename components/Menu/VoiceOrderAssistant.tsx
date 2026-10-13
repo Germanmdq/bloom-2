@@ -2,22 +2,28 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RobotHead } from "robot-heads";
-import { Mic, X } from "lucide-react";
+import { Check, Mic, RotateCcw, X } from "lucide-react";
 
 type Product = { id: string; name: string; description?: string | null; price: number };
 type RobotState = "idle" | "thinking" | "listening" | "speaking" | "happy" | "error";
+type VoiceItem = { id: string; quantity: number };
+type VoiceTurn = { role: "user" | "assistant"; content: string };
 
 export function VoiceOrderAssistant({
   products,
   onAddItems,
+  onOpenCart,
 }: {
   products: Product[];
-  onAddItems: (items: Array<{ id: string; quantity: number }>) => void;
+  onAddItems: (items: VoiceItem[]) => void;
+  onOpenCart: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<RobotState>("idle");
   const [listening, setListening] = useState(false);
   const [reply, setReply] = useState("¡Hola! Tocá el micrófono y pedime lo que quieras del menú.");
+  const [pendingItems, setPendingItems] = useState<VoiceItem[]>([]);
+  const [history, setHistory] = useState<VoiceTurn[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -35,6 +41,17 @@ export function VoiceOrderAssistant({
       price: Number(product.price) || 0,
     })),
     [products],
+  );
+
+  const pendingDescription = useMemo(
+    () => pendingItems
+      .map((item) => {
+        const product = products.find((candidate) => candidate.id === item.id);
+        return product ? `${item.quantity > 1 ? `${item.quantity} ` : ""}${product.name}` : null;
+      })
+      .filter(Boolean)
+      .join(", "),
+    [pendingItems, products],
   );
 
   const stopMicrophone = useCallback(() => {
@@ -70,27 +87,53 @@ export function VoiceOrderAssistant({
     const cleaned = text.trim();
     if (!cleaned) return;
     setState("thinking");
+    setPendingItems([]);
     try {
       const response = await fetch("/api/voice-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: cleaned, catalog }),
+        body: JSON.stringify({ transcript: cleaned, catalog, history: history.slice(-6) }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error);
-      const message = data.reply || "Listo, revisá el carrito.";
-      const hasItems = Array.isArray(data.items) && data.items.length > 0;
-      if (hasItems) onAddItems(data.items);
+      const items = Array.isArray(data.items) ? data.items as VoiceItem[] : [];
+      const message = typeof data.reply === "string"
+        ? data.reply
+        : "No llegué a identificar un producto. Decime cuál querés.";
+      setHistory((previous) => {
+        const next: VoiceTurn[] = [
+          ...previous,
+          { role: "user", content: cleaned },
+          { role: "assistant", content: message },
+        ];
+        return next.slice(-8);
+      });
+
+      if (items.length) {
+        const names = items
+          .map((item) => {
+            const product = products.find((candidate) => candidate.id === item.id);
+            return product ? `${item.quantity > 1 ? `${item.quantity} ` : ""}${product.name}` : null;
+          })
+          .filter(Boolean)
+          .join(", ");
+        const confirmation = `Entendí: ${names}. ¿Querés confirmar este pedido?`;
+        setPendingItems(items);
+        setReply(confirmation);
+        setState("happy");
+        speak(confirmation);
+        return;
+      }
+
       setReply(message);
-      setState(hasItems ? "happy" : "speaking");
+      setState("speaking");
       speak(message);
-      if (hasItems) window.setTimeout(() => setOpen(false), 1800);
     } catch (error) {
       const message = error instanceof Error ? error.message : "No pude procesar el pedido.";
       setReply(message);
       setState("error");
     }
-  }, [catalog, onAddItems, speak]);
+  }, [catalog, history, products, speak]);
 
   const transcribeAudio = useCallback(async (audio: Blob) => {
     setState("thinking");
@@ -189,6 +232,21 @@ export function VoiceOrderAssistant({
     setOpen(false);
   }, [stopMicrophone]);
 
+  const confirmPendingOrder = () => {
+    if (!pendingItems.length) return;
+    onAddItems(pendingItems);
+    setPendingItems([]);
+    setReply("Listo, ya lo sumé al carrito.");
+    closeAssistant();
+    window.setTimeout(onOpenCart, 120);
+  };
+
+  const revisePendingOrder = () => {
+    setPendingItems([]);
+    setReply("Perfecto, decime de nuevo qué querés pedir o qué querés cambiar.");
+    setState("idle");
+  };
+
   if (!open) {
     return (
       <button
@@ -204,24 +262,32 @@ export function VoiceOrderAssistant({
   }
 
   return (
-    <section className="fixed bottom-4 right-4 z-[160] w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-3xl border border-[#c4b896]/50 bg-[#fffdf8] shadow-2xl">
-      <div className="flex items-center gap-3 bg-[#777b5b] px-4 py-3 text-[#f5e8ca]">
-        <RobotHead state={state} shape="circle" size={58} color="#c4b896" trimColor="#f5e8ca" screenColor="#4b4e38" antenna />
+    <div className="fixed inset-0 z-[210] flex items-end justify-center bg-black/45 p-0 backdrop-blur-sm sm:items-center sm:p-6">
+      <section className="flex h-full w-full flex-col overflow-hidden bg-[#fffdf8] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-[32px]">
+      <div className="flex items-center gap-3 bg-[#777b5b] px-5 py-4 text-[#f5e8ca]">
+        <RobotHead state={state} shape="circle" size={68} color="#c4b896" trimColor="#f5e8ca" screenColor="#4b4e38" antenna />
         <div className="min-w-0 flex-1">
-          <p className="font-extrabold">Bloom por voz</p>
-          <p className="text-xs text-[#f5e8ca]">{listening ? "Escuchando" : "Decime tu pedido"}</p>
+          <p className="text-lg font-extrabold">Bloom por voz</p>
+          <p className="text-sm text-[#f5e8ca]">{listening ? "Escuchando tu pedido" : pendingItems.length ? "Revisá antes de agregar" : "Decime tu pedido"}</p>
         </div>
-        <button type="button" onClick={closeAssistant} className="rounded-full p-2 hover:bg-white/10" aria-label="Cerrar asistente"><X size={18} /></button>
+        <button type="button" onClick={closeAssistant} className="rounded-full p-2 hover:bg-white/10" aria-label="Cerrar asistente"><X size={22} /></button>
       </div>
-      <div className="space-y-3 p-4">
-        <p className="rounded-2xl bg-[#f2f0e6] p-3 text-sm text-[#4b4e38]">{reply}</p>
-        <div>
-          <button type="button" onClick={() => { if (!listening) void startListening(); }} disabled={listening} className={`flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-3 text-xs font-bold text-white disabled:cursor-default ${listening ? "bg-red-500 animate-pulse" : "bg-[#777b5b]"}`} aria-label="Hablar ahora">
-            <Mic size={20} />
+      <div className="flex flex-1 flex-col justify-center space-y-5 p-5 sm:p-7">
+        <p className="rounded-3xl bg-[#f2f0e6] p-5 text-base leading-relaxed text-[#4b4e38]">{reply}</p>
+        {pendingItems.length ? (
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-[#c4b896]/45 bg-white px-4 py-3 text-sm font-semibold text-[#4b4e38]">{pendingDescription}</div>
+            <button type="button" onClick={confirmPendingOrder} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#777b5b] px-4 font-extrabold text-[#f5e8ca]"><Check size={21} />Confirmar pedido y ver carrito</button>
+            <button type="button" onClick={revisePendingOrder} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#777b5b]/45 px-4 text-sm font-bold text-[#4b4e38]"><RotateCcw size={17} />Cambiar pedido</button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => { if (!listening) void startListening(); }} disabled={listening} className={`flex h-14 w-full items-center justify-center gap-2 rounded-2xl px-4 font-bold text-white disabled:cursor-default ${listening ? "bg-red-500 animate-pulse" : "bg-[#777b5b]"}`} aria-label="Hablar ahora">
+            <Mic size={22} />
             {listening ? "Escuchando" : "Hablar ahora"}
           </button>
-        </div>
+        )}
       </div>
-    </section>
+      </section>
+    </div>
   );
 }

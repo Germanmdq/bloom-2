@@ -1422,7 +1422,11 @@ function MenuContent() {
         )}
       </AnimatePresence>
 
-      <VoiceOrderAssistant products={products} onAddItems={handleVoiceAddItems} />
+      <VoiceOrderAssistant
+        products={products}
+        onAddItems={handleVoiceAddItems}
+        onOpenCart={() => setIsCartOpen(true)}
+      />
 
       {/* DOCK INFERIOR (PWA FLOATING DOCK) */}
       <div 
