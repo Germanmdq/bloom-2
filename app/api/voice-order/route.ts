@@ -5,6 +5,10 @@ type VoiceTurn = { role: "user" | "assistant"; content: string };
 
 const MAX_CATALOG_ITEMS = 120;
 
+const isQuestion = (value: string) =>
+  /[?¿]/.test(value)
+  || /^\s*(que|qué|cual|cuál|cuanto|cuánto|como|cómo|tenes|tenés|hay|me recomend[aá]s|podes|podés)\b/i.test(value);
+
 const normalize = (value: string) =>
   value
     .normalize("NFD")
@@ -16,8 +20,7 @@ const normalize = (value: string) =>
 
 function fallbackMatch(transcript: string, catalog: CatalogItem[]) {
   const request = normalize(transcript);
-  const isQuestion = /\?|^(que|cual|cuanto|como|tenes|hay|me recomend)/.test(request);
-  if (isQuestion) return undefined;
+  if (isQuestion(transcript)) return undefined;
   const asksForCoffeeWithMilk = /cafe/.test(request) && /leche/.test(request);
 
   if (asksForCoffeeWithMilk) {
@@ -118,8 +121,9 @@ export async function POST(request: Request) {
           .filter((item: { id: string; quantity: number }) => catalogById.has(item.id))
       : [];
 
-    const suggestedItem = items.length ? null : fallbackMatch(transcript, catalog);
-    const resolvedItems = suggestedItem ? [{ id: suggestedItem.id, quantity: 1 }] : items;
+    const requestedItems = isQuestion(transcript) ? [] : items;
+    const suggestedItem = requestedItems.length ? null : fallbackMatch(transcript, catalog);
+    const resolvedItems = suggestedItem ? [{ id: suggestedItem.id, quantity: 1 }] : requestedItems;
 
     return NextResponse.json({
       reply: suggestedItem
