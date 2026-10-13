@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RobotHead } from "robot-heads";
 import { Check, Mic, RotateCcw, X } from "lucide-react";
 
-type Product = { id: string; name: string; description?: string | null; price: number };
+type Product = { id: string; name: string; description?: string | null; price: number; category_name?: string; options?: unknown };
 type RobotState = "idle" | "thinking" | "listening" | "speaking" | "happy" | "error";
 type VoiceItem = { id: string; quantity: number };
 type VoiceTurn = { role: "user" | "assistant"; content: string };
@@ -43,6 +43,8 @@ export function VoiceOrderAssistant({
       name: product.name,
       description: product.description || "",
       price: Number(product.price) || 0,
+      category: product.category_name || "",
+      options: product.options ?? null,
     })),
     [products],
   );

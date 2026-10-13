@@ -277,7 +277,7 @@ function MenuContent() {
       try {
         const [{ data: cats }, { data: prods }, { data: settings }] = await Promise.all([
           supabase.from("categories").select("id, name, sort_order").order("sort_order", { ascending: true }),
-          supabase.from("products").select("id, name, description, price, image_url, category_id, active").eq("active", true),
+          supabase.from("products").select("id, name, description, price, image_url, category_id, active, options").eq("active", true),
           supabase.from("app_settings").select("whatsapp, plato_del_dia_id, plato_dia_price").eq("id", 1).maybeSingle(),
         ]);
 
@@ -797,7 +797,7 @@ function MenuContent() {
 
       <main className="page-content max-w-[1180px] mx-auto pt-2">
         <VoiceOrderAssistant
-          products={products}
+          products={products.map((product) => ({ ...product, category_name: categories.find((category) => category.id === product.category_id)?.name }))}
           onAddItems={handleVoiceAddItems}
           onOpenCart={() => setIsCartOpen(true)}
           isOverlayOpen={isCartOpen || Boolean(selectedProduct)}

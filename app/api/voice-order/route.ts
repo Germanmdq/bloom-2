@@ -1,42 +1,9 @@
 import { NextResponse } from "next/server";
 
-type CatalogItem = { id: string; name: string; description?: string; price: number };
+type CatalogItem = { id: string; name: string; description?: string; price: number; category?: string; options?: unknown };
 type VoiceTurn = { role: "user" | "assistant"; content: string };
 
 const MAX_CATALOG_ITEMS = 120;
-
-const isQuestion = (value: string) =>
-  /[?¿]/.test(value)
-  || /^\s*(que|qué|cual|cuál|cuanto|cuánto|como|cómo|tenes|tenés|hay|me recomend[aá]s|podes|podés)\b/i.test(value);
-
-const normalize = (value: string) =>
-  value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9 ]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-function fallbackMatch(transcript: string, catalog: CatalogItem[]) {
-  const request = normalize(transcript);
-  if (isQuestion(transcript)) return undefined;
-  const asksForCoffeeWithMilk = /cafe/.test(request) && /leche/.test(request);
-
-  if (asksForCoffeeWithMilk) {
-    const milkCoffee = catalog.find((item) => {
-      const details = normalize(`${item.name} ${item.description || ""}`);
-      return /capuchino|cappuccino|latte|cortado|cafe con leche/.test(details)
-        || (details.includes("cafe") && details.includes("leche"));
-    });
-    if (milkCoffee) return milkCoffee;
-  }
-
-  return catalog.find((item) => {
-    const name = normalize(item.name);
-    return name.length >= 4 && request.includes(name);
-  });
-}
 
 export async function POST(request: Request) {
   if (!process.env.GROQ_API_KEY) {
@@ -70,6 +37,8 @@ export async function POST(request: Request) {
             name: String(item.name).slice(0, 120),
             description: typeof item.description === "string" ? item.description.slice(0, 240) : "",
             price: Number(item.price),
+            category: typeof item.category === "string" ? item.category.slice(0, 80) : "",
+            options: item.options == null ? null : JSON.stringify(item.options).slice(0, 2000),
           }))
       : [];
 
@@ -91,7 +60,7 @@ export async function POST(request: Request) {
         messages: [
           {
             role: "system",
-            content: `Sos Bloom, el asistente conversacional de una cafetería argentina. Podés responder preguntas breves sobre el menú, precios, ingredientes, opciones y recomendaciones usando exclusivamente el catálogo y el historial de esta conversación. También interpretás pedidos naturales: entendé frases cotidianas, diminutivos y referencias al contexto como "café con leche", "unas medialunas", "lo de siempre" o "uno de esos". Cuando sea una pregunta, respondé claro y amable, y devolvé items []. Cuando el cliente pida productos de forma clara, devolvé esos productos con la cantidad solicitada. Si una referencia no tiene contexto suficiente o puede significar dos productos distintos, no adivines: preguntá brevemente cuál prefiere y devolvé items []. Nunca inventes productos, precios ni IDs, ni digas que un pedido ya fue agregado: la app va a pedir confirmación antes. Respondé JSON estricto: {"reply":"frase breve en español rioplatense","items":[{"id":"id exacto del catálogo","quantity":1}]}.`,
+            content: `Sos Bloom, el asistente conversacional de una cafetería argentina. Podés responder preguntas breves sobre el menú, precios, ingredientes, opciones y recomendaciones usando exclusivamente el catálogo y el historial de esta conversación. También interpretás pedidos naturales: entendé frases cotidianas, diminutivos y referencias al contexto como "café con leche", "unas medialunas", "lo de siempre" o "uno de esos". Distinguí una consulta informativa de un pedido expresado como pregunta: "¿me das un cortado?" o "¿podés traerme un café?" son pedidos. Para consultas sin intención de compra devolvé items []. Buscá promociones en el catálogo (categoría Promociones, nombres de combos y descripciones con componentes). Antes de resolver productos separados, compará el pedido con esas promociones. Si hay una promoción que incluye EXACTAMENTE lo solicitado, con las mismas cantidades y opciones, y resulta igual o más barata, proponé esa promoción como un único item y explicá su nombre, contenido y precio: el cliente confirma en la app. No sumes además sus componentes porque duplicaría el pedido. Ejemplo: "un cortado y una medialuna" debe buscar una promo compatible de café/cortado + una medialuna. No supongas que "factura" equivale a medialuna ni que cualquier tamaño de café sirve: verificá descripción y opciones. Si la promo más cercana exige agregar productos, cambiar cantidades, tamaño, relleno o tipo de bebida, preguntá si le interesa y devolvé items [] hasta que acepte. Recordá la propuesta del historial cuando conteste "sí", "dale" o "esa promo". Si no hay ninguna promo compatible, resolvé los productos disponibles sin inventar descuentos. Tratá errores de transcripción evidentes como "mediluna" como "medialuna". No confundas cortado con capuccino o latte. Si falta definir una opción obligatoria, preguntá por ella. Cuando el cliente pida productos de forma clara, devolvé esos productos con la cantidad solicitada. Si una referencia no tiene contexto suficiente o puede significar dos productos distintos, no adivines: preguntá brevemente cuál prefiere y devolvé items []. Nunca inventes productos, precios ni IDs, ni digas que un pedido ya fue agregado: la app va a pedir confirmación antes. Respondé JSON estricto: {"reply":"frase breve en español rioplatense","items":[{"id":"id exacto del catálogo","quantity":1}]}.`,
           },
           ...history.map((turn) => ({ role: turn.role, content: turn.content })),
           {
@@ -121,15 +90,9 @@ export async function POST(request: Request) {
           .filter((item: { id: string; quantity: number }) => catalogById.has(item.id))
       : [];
 
-    const requestedItems = isQuestion(transcript) ? [] : items;
-    const suggestedItem = requestedItems.length ? null : fallbackMatch(transcript, catalog);
-    const resolvedItems = suggestedItem ? [{ id: suggestedItem.id, quantity: 1 }] : requestedItems;
-
     return NextResponse.json({
-      reply: suggestedItem
-        ? `Agregué ${suggestedItem.name} a tu pedido.`
-        : typeof parsed?.reply === "string" ? parsed.reply.slice(0, 320) : "Listo, revisá tu pedido.",
-      items: resolvedItems,
+      reply: typeof parsed?.reply === "string" ? parsed.reply.slice(0, 600) : "Revisá tu pedido antes de confirmar.",
+      items,
     });
   } catch (error) {
     console.error("[voice-order]", error);
