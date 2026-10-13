@@ -13,10 +13,12 @@ export function VoiceOrderAssistant({
   products,
   onAddItems,
   onOpenCart,
+  isCartOpen,
 }: {
   products: Product[];
   onAddItems: (items: VoiceItem[]) => void;
   onOpenCart: () => void;
+  isCartOpen: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<RobotState>("idle");
@@ -92,7 +94,7 @@ export function VoiceOrderAssistant({
       const response = await fetch("/api/voice-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: cleaned, catalog, history: history.slice(-6) }),
+        body: JSON.stringify({ transcript: cleaned, catalog, history: history.slice(-16) }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error);
@@ -106,7 +108,7 @@ export function VoiceOrderAssistant({
           { role: "user", content: cleaned },
           { role: "assistant", content: message },
         ];
-        return next.slice(-8);
+        return next.slice(-16);
       });
 
       if (items.length) {
@@ -248,6 +250,9 @@ export function VoiceOrderAssistant({
   };
 
   if (!open) {
+    // El acceso queda fijo mientras se navega, pero no puede tapar acciones del carrito.
+    if (isCartOpen) return null;
+
     return (
       <button
         type="button"

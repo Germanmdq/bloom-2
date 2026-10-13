@@ -1234,23 +1234,6 @@ function MenuContent() {
                           ¿Cómo querés tu pedido? *
                         </label>
                         <div className="grid grid-cols-2 gap-2">
-                          {/* Comer en el local */}
-                          <button
-                            type="button"
-                            onClick={() => setOrderModality("mesa")}
-                            className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-3 rounded-2xl border-2 transition-all font-black text-sm ${
-                              orderModality === "mesa"
-                                ? "border-[#1a3028] bg-[#1a3028] text-[#f5e8ca] shadow-lg scale-[1.01]"
-                                : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#1a3028]/40"
-                            }`}
-                          >
-                            <span className="text-2xl">🍽️</span>
-                            <span className="text-center leading-tight">Comer en<br/>el local</span>
-                            {orderModality === "mesa" && (
-                              <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />
-                            )}
-                          </button>
-
                           {/* Retirar */}
                           <button
                             type="button"
@@ -1264,6 +1247,23 @@ function MenuContent() {
                             <span className="text-2xl">🏃</span>
                             <span className="text-center leading-tight">Retirar<br/>del local</span>
                             {orderModality === "retiro" && (
+                              <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />
+                            )}
+                          </button>
+
+                          {/* Comer en el local */}
+                          <button
+                            type="button"
+                            onClick={() => setOrderModality("mesa")}
+                            className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-3 rounded-2xl border-2 transition-all font-black text-sm ${
+                              orderModality === "mesa"
+                                ? "border-[#1a3028] bg-[#1a3028] text-[#f5e8ca] shadow-lg scale-[1.01]"
+                                : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#1a3028]/40"
+                            }`}
+                          >
+                            <span className="text-2xl">🍽️</span>
+                            <span className="text-center leading-tight">Comer en<br/>el local</span>
+                            {orderModality === "mesa" && (
                               <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />
                             )}
                           </button>
@@ -1426,6 +1426,7 @@ function MenuContent() {
         products={products}
         onAddItems={handleVoiceAddItems}
         onOpenCart={() => setIsCartOpen(true)}
+        isCartOpen={isCartOpen}
       />
 
       {/* DOCK INFERIOR (PWA FLOATING DOCK) */}

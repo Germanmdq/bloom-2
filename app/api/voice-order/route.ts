@@ -16,6 +16,8 @@ const normalize = (value: string) =>
 
 function fallbackMatch(transcript: string, catalog: CatalogItem[]) {
   const request = normalize(transcript);
+  const isQuestion = /\?|^(que|cual|cuanto|como|tenes|hay|me recomend)/.test(request);
+  if (isQuestion) return undefined;
   const asksForCoffeeWithMilk = /cafe/.test(request) && /leche/.test(request);
 
   if (asksForCoffeeWithMilk) {
@@ -46,12 +48,12 @@ export async function POST(request: Request) {
     const transcript = typeof body?.transcript === "string" ? body.transcript.trim() : "";
     const history: VoiceTurn[] = Array.isArray(body?.history)
       ? body.history
-          .slice(-6)
+          .slice(-16)
           .filter((turn: unknown): turn is VoiceTurn => {
             const candidate = turn as VoiceTurn;
             return (candidate?.role === "user" || candidate?.role === "assistant") && typeof candidate?.content === "string";
           })
-          .map((turn: VoiceTurn) => ({ role: turn.role, content: turn.content.slice(0, 360) }))
+          .map((turn: VoiceTurn) => ({ role: turn.role, content: turn.content.slice(0, 700) }))
       : [];
     const catalog: CatalogItem[] = Array.isArray(body?.catalog)
       ? body.catalog
@@ -79,13 +81,14 @@ export async function POST(request: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-oss-20b",
-        temperature: 0.2,
+        model: "qwen/qwen3.8-27b",
+        reasoning_effort: "none",
+        temperature: 0.35,
         response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
-            content: `Sos Bloom, asistente de pedidos de una cafetería argentina. Interpretá pedidos naturales usando exclusivamente el catálogo y sus descripciones. Entendé frases cotidianas, diminutivos y variantes: "café con leche" puede ser capuchino, latte o cortado si su descripción lo indica; "unas medialunas", "lo de siempre" o "uno de esos" pueden referirse al contexto de la conversación. Si la referencia no tiene contexto suficiente o puede significar dos productos distintos, no adivines: preguntá brevemente cuál prefiere y devolvé items []. Nunca inventes productos, precios ni IDs. Respondé JSON estricto: {"reply":"frase breve en español rioplatense","items":[{"id":"id exacto del catálogo","quantity":1}]}. Si entendés uno o varios productos, devolvelos todos con la cantidad solicitada.`,
+            content: `Sos Bloom, el asistente conversacional de una cafetería argentina. Podés responder preguntas breves sobre el menú, precios, ingredientes, opciones y recomendaciones usando exclusivamente el catálogo y el historial de esta conversación. También interpretás pedidos naturales: entendé frases cotidianas, diminutivos y referencias al contexto como "café con leche", "unas medialunas", "lo de siempre" o "uno de esos". Cuando sea una pregunta, respondé claro y amable, y devolvé items []. Cuando el cliente pida productos de forma clara, devolvé esos productos con la cantidad solicitada. Si una referencia no tiene contexto suficiente o puede significar dos productos distintos, no adivines: preguntá brevemente cuál prefiere y devolvé items []. Nunca inventes productos, precios ni IDs, ni digas que un pedido ya fue agregado: la app va a pedir confirmación antes. Respondé JSON estricto: {"reply":"frase breve en español rioplatense","items":[{"id":"id exacto del catálogo","quantity":1}]}.`,
           },
           ...history.map((turn) => ({ role: turn.role, content: turn.content })),
           {
