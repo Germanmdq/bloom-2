@@ -601,6 +601,32 @@ export default function TablesPage() {
         );
     }
 
+    if (selectedTable || selectedWebOrder) {
+        return (
+            <section aria-label="Detalle del pedido" className="h-[calc(100dvh-8rem)] min-h-[480px] overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                {selectedWebOrder ? (
+                    <OrderSheet
+                        key={selectedWebOrder.id}
+                        tableId={selectedWebOrder.delivery_type === 'delivery' ? 5001 : 5000}
+                        webOrderId={selectedWebOrder.id}
+                        webOrderData={selectedWebOrder}
+                        onClose={() => { setSelectedWebOrder(null); fetchWebOrders(); }}
+                        onOrderComplete={() => { setSelectedWebOrder(null); fetchWebOrders(); fetchTables(); }}
+                    />
+                ) : selectedTable && (
+                    <OrderSheet
+                        key={selectedTable.id}
+                        tableId={selectedTable.id}
+                        initialTableData={selectedTable}
+                        initialShowPayment={autoOpenPayment}
+                        onClose={() => { setSelectedTable(null); setAutoOpenPayment(false); setTimeout(() => fetchTables(), 300); }}
+                        onOrderComplete={() => handleOrderComplete()}
+                    />
+                )}
+            </section>
+        );
+    }
+
     return (
         <div className="relative min-h-full">
             {/* 🔔 Toasts de nuevos pedidos */}
@@ -641,39 +667,6 @@ export default function TablesPage() {
                 })}
             </AnimatePresence>
 
-            {/* OrderSheet Overlay */}
-            {selectedTable && (
-                <div className="fixed inset-0 z-50 overflow-hidden">
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-white/40 backdrop-blur-3xl"
-                        onClick={() => { setSelectedTable(null); fetchTables(); }}
-                    />
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        transition={{ type: "spring", damping: 25, stiffness: 200, opacity: { duration: 0.2 } }}
-                        className="relative z-10 w-full h-full flex flex-col p-4 md:p-10"
-                    >
-                        <div className="bg-white/90 backdrop-blur-2xl w-full h-full rounded-[3rem] shadow-[0_40px_100px_rgba(0,0,0,0.1)] border border-white/50 overflow-hidden flex flex-col">
-                            <OrderSheet
-                                tableId={selectedTable.id}
-                                initialTableData={selectedTable}
-                                initialShowPayment={autoOpenPayment}
-                                onClose={() => {
-                                    setSelectedTable(null);
-                                    setAutoOpenPayment(false);
-                                    setTimeout(() => fetchTables(), 300);
-                                }}
-                                onOrderComplete={() => handleOrderComplete()}
-                            />
-                        </div>
-                    </motion.div>
-                </div>
-            )}
 
             {/* New Table Modal */}
             {/* Quick Pay Modal (F5) */}
@@ -1318,35 +1311,6 @@ export default function TablesPage() {
                 </>
             )}
 
-            {/* Web Order Sheet */}
-            {selectedWebOrder && (
-                <div className="fixed inset-0 z-50 overflow-hidden">
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-white/40 backdrop-blur-3xl"
-                        onClick={() => { setSelectedWebOrder(null); fetchWebOrders(); }}
-                    />
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        transition={{ type: "spring", damping: 25, stiffness: 200, opacity: { duration: 0.2 } }}
-                        className="relative z-10 w-full h-full flex flex-col p-4 md:p-10"
-                    >
-                        <div className="bg-white/90 backdrop-blur-2xl w-full h-full rounded-[3rem] shadow-[0_40px_100px_rgba(0,0,0,0.1)] border border-white/50 overflow-hidden flex flex-col">
-                            <OrderSheet
-                        tableId={selectedWebOrder.delivery_type === 'delivery' ? 5001 : 5000}
-                                webOrderId={selectedWebOrder.id}
-                                webOrderData={selectedWebOrder}
-                                onClose={() => { setSelectedWebOrder(null); fetchWebOrders(); }}
-                                onOrderComplete={() => { setSelectedWebOrder(null); fetchWebOrders(); fetchTables(); }}
-                            />
-                        </div>
-                    </motion.div>
-                </div>
-            )}
         </div>
     );
 }

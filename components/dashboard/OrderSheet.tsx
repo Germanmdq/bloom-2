@@ -1401,7 +1401,7 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
         <div className="h-full flex flex-col bg-slate-50 overflow-hidden">
 
             {/* ── HEADER: Minimalist & Premium ── */}
-            <div className="px-8 py-6 bg-white border-b border-slate-100 shrink-0 shadow-sm z-20">
+            <div className="px-4 py-3 bg-white border-b border-slate-100 shrink-0 shadow-sm z-20">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-6">
                         {isWebTable && currentWebOrderId && (
@@ -1911,7 +1911,7 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                     </div>
 
                     {/* Footer del carrito — paleta Bloom */}
-                    <details className="max-h-[45%] overflow-y-auto bg-bloom-cream border-t border-bloom-gold/30 shrink-0">
+                    <details open className="max-h-[45%] overflow-y-auto bg-bloom-cream border-t border-bloom-gold/30 shrink-0">
 <summary className="sticky top-0 z-10 cursor-pointer bg-bloom-cream px-4 py-3 font-bold text-english-900">Total ${finalTotal.toLocaleString()} · Notas y cobro</summary>
 <div className="flex flex-col gap-2 p-4 pt-1">
                         <div className="relative">
