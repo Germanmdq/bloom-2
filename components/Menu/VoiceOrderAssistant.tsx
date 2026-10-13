@@ -4,23 +4,31 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RobotHead } from "robot-heads";
 import { Check, Mic, RotateCcw, X } from "lucide-react";
 
-type Product = { id: string; name: string; description?: string | null; price: number; category_name?: string; options?: unknown };
+type Product = { id: string; name: string; description?: string | null; price: number };
 type RobotState = "idle" | "thinking" | "listening" | "speaking" | "happy" | "error";
 type VoiceItem = { id: string; quantity: number };
 type VoiceTurn = { role: "user" | "assistant"; content: string };
+
+const mergeVoiceItems = (current: VoiceItem[], additions: VoiceItem[]) => {
+  const merged = current.map((item) => ({ ...item }));
+  for (const addition of additions) {
+    const index = merged.findIndex((item) => item.id === addition.id);
+    if (index >= 0) merged[index].quantity += addition.quantity;
+    else merged.push({ ...addition });
+  }
+  return merged;
+};
 
 export function VoiceOrderAssistant({
   products,
   onAddItems,
   onOpenCart,
   isOverlayOpen,
-  inline = false,
 }: {
   products: Product[];
   onAddItems: (items: VoiceItem[]) => void;
   onOpenCart: () => void;
   isOverlayOpen: boolean;
-  inline?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<RobotState>("idle");
@@ -43,8 +51,6 @@ export function VoiceOrderAssistant({
       name: product.name,
       description: product.description || "",
       price: Number(product.price) || 0,
-      category: product.category_name || "",
-      options: product.options ?? null,
     })),
     [products],
   );
@@ -93,7 +99,6 @@ export function VoiceOrderAssistant({
     const cleaned = text.trim();
     if (!cleaned) return;
     setState("thinking");
-    setPendingItems([]);
     try {
       const response = await fetch("/api/voice-order", {
         method: "POST",
@@ -116,15 +121,16 @@ export function VoiceOrderAssistant({
       });
 
       if (items.length) {
-        const names = items
+        const nextPendingItems = mergeVoiceItems(pendingItems, items);
+        const names = nextPendingItems
           .map((item) => {
             const product = products.find((candidate) => candidate.id === item.id);
             return product ? `${item.quantity > 1 ? `${item.quantity} ` : ""}${product.name}` : null;
           })
           .filter(Boolean)
           .join(", ");
-        const confirmation = `Entendí: ${names}. ¿Querés confirmar este pedido?`;
-        setPendingItems(items);
+        const confirmation = `Perfecto, por ahora llevás: ${names}. ¿Querés agregar algo más o confirmar el pedido?`;
+        setPendingItems(nextPendingItems);
         setReply(confirmation);
         setState("happy");
         speak(confirmation);
@@ -139,7 +145,7 @@ export function VoiceOrderAssistant({
       setReply(message);
       setState("error");
     }
-  }, [catalog, history, products, speak]);
+  }, [catalog, history, pendingItems, products, speak]);
 
   const transcribeAudio = useCallback(async (audio: Blob) => {
     setState("thinking");
@@ -249,28 +255,19 @@ export function VoiceOrderAssistant({
 
   const revisePendingOrder = () => {
     setPendingItems([]);
-    setReply("Perfecto, decime de nuevo qué querés pedir o qué querés cambiar.");
+    setReply("Perfecto, empecemos de nuevo. Decime qué querés pedir.");
     setState("idle");
+  };
+
+  const continuePendingOrder = () => {
+    setReply("Perfecto, seguí diciéndome qué querés agregar.");
+    setState("idle");
+    void startListening();
   };
 
   if (!open) {
     // El acceso queda fijo mientras se navega, pero no puede tapar ninguna vista de acción.
     if (isOverlayOpen) return null;
-
-    if (inline) {
-      return (
-        <section aria-label="Pedir por voz" className="mx-4 mb-6 flex flex-col items-center gap-4 rounded-[24px] border border-[#c4b896]/40 bg-[#edeae0] p-5 text-center sm:flex-row sm:text-left md:mx-0">
-          <RobotHead state="idle" shape="circle" size={82} color="#c4b896" trimColor="#f5e8ca" screenColor="#4b4e38" antenna />
-          <div className="flex-1">
-            <h2 className="text-xl font-extrabold text-[#4b4e38]">Pedile a Bloom por voz</h2>
-            <p className="mt-1 text-sm text-[#6b6756]">Decime qué querés y revisá tu pedido antes de sumarlo al carrito.</p>
-          </div>
-          <button type="button" onClick={() => setOpen(true)} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#777b5b] px-6 py-3 font-bold text-[#f5e8ca] transition hover:bg-[#4b4e38] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#777b5b] sm:w-auto">
-            <Mic size={20} aria-hidden="true" /> Hablar ahora
-          </button>
-        </section>
-      );
-    }
 
     return (
       <button
@@ -292,7 +289,7 @@ export function VoiceOrderAssistant({
         <RobotHead state={state} shape="circle" size={68} color="#c4b896" trimColor="#f5e8ca" screenColor="#4b4e38" antenna />
         <div className="min-w-0 flex-1">
           <p className="text-lg font-extrabold">Bloom por voz</p>
-          <p className="text-sm text-[#f5e8ca]">{listening ? "Escuchando tu pedido" : pendingItems.length ? "Revisá antes de agregar" : "Decime tu pedido"}</p>
+          <p className="text-sm text-[#f5e8ca]">{listening ? "Escuchando tu pedido" : pendingItems.length ? "Podés seguir agregando" : "Decime tu pedido"}</p>
         </div>
         <button type="button" onClick={closeAssistant} className="rounded-full p-2 hover:bg-white/10" aria-label="Cerrar asistente"><X size={22} /></button>
       </div>
@@ -301,7 +298,8 @@ export function VoiceOrderAssistant({
         {pendingItems.length ? (
           <div className="space-y-3">
             <div className="rounded-2xl border border-[#c4b896]/45 bg-white px-4 py-3 text-sm font-semibold text-[#4b4e38]">{pendingDescription}</div>
-            <button type="button" onClick={confirmPendingOrder} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#777b5b] px-4 font-extrabold text-[#f5e8ca]"><Check size={21} />Confirmar pedido y ver carrito</button>
+            <button type="button" onClick={continuePendingOrder} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#777b5b] px-4 font-extrabold text-[#f5e8ca]"><Mic size={21} />Seguir agregando</button>
+            <button type="button" onClick={confirmPendingOrder} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#777b5b]/45 px-4 text-sm font-bold text-[#4b4e38]"><Check size={18} />Confirmar pedido y ver carrito</button>
             <button type="button" onClick={revisePendingOrder} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#777b5b]/45 px-4 text-sm font-bold text-[#4b4e38]"><RotateCcw size={17} />Cambiar pedido</button>
           </div>
         ) : (
