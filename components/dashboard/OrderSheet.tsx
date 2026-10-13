@@ -1866,7 +1866,7 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                         ) : (
                             <div className="flex flex-col gap-2">
                                 {cart.map((item, index) => (
-                                    <div key={index} className="group relative bg-white border border-gray-100 p-3 rounded-2xl flex gap-3 items-center hover:border-black transition-all">
+                                    <div key={index} className="group relative bg-white border border-gray-100 p-3 rounded-2xl grid grid-cols-[auto_minmax(0,1fr)] gap-3 items-center hover:border-black transition-all">
                                         <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-black group-hover:text-white transition-all shrink-0">
                                             <IconToolsKitchen2 size={18} />
                                         </div>
@@ -1877,7 +1877,7 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                                             </p>
                                             {item.notes && <p className="text-[9px] text-slate-900 font-bold mt-1 leading-tight">{item.notes}</p>}
                                         </div>
-                                        <div className="shrink-0 flex items-center gap-1.5">
+                                        <div className="col-span-2 flex items-center justify-end gap-1.5">
                                             <div className="flex items-center bg-slate-50 rounded-xl p-1 px-1.5 gap-2">
                                                 <button
                                                     onClick={() => updateQuantity(index, -1)}
