@@ -1,0 +1,300 @@
+{
+  "version": 1,
+  "project": {
+    "name": "bloom",
+    "productType": null,
+    "stack": [
+      "nextjs",
+      "react",
+      "tailwind-v4"
+    ]
+  },
+  "sources": {
+    "tokens": [
+      "app/globals.css"
+    ],
+    "components": [
+      "components/ui"
+    ],
+    "assets": [
+      "public/images"
+    ],
+    "instructions": []
+  },
+  "design": {
+    "colorMode": "light",
+    "colors": {
+      "--color-bloom-50": {
+        "value": "#f8f7f3",
+        "source": "app/globals.css"
+      },
+      "--color-bloom-100": {
+        "value": "#eceae0",
+        "source": "app/globals.css"
+      },
+      "--color-bloom-200": {
+        "value": "#ddd8c8",
+        "source": "app/globals.css"
+      },
+      "--color-bloom-300": {
+        "value": "#c4c0aa",
+        "source": "app/globals.css"
+      },
+      "--color-bloom-400": {
+        "value": "#a39a7f",
+        "source": "app/globals.css"
+      },
+      "--color-bloom-500": {
+        "value": "#8a8368",
+        "source": "app/globals.css"
+      },
+      "--color-bloom-600": {
+        "value": "#7a765a",
+        "source": "app/globals.css"
+      },
+      "--color-bloom-700": {
+        "value": "#5f5c46",
+        "source": "app/globals.css"
+      },
+      "--color-bloom-800": {
+        "value": "#4a4838",
+        "source": "app/globals.css"
+      },
+      "--color-bloom-900": {
+        "value": "#3d3b2f",
+        "source": "app/globals.css"
+      },
+      "--color-bloom-cream": {
+        "value": "#f2f0e6",
+        "source": "app/globals.css"
+      },
+      "--color-bloom-page": {
+        "value": "#f7f5ef",
+        "source": "app/globals.css"
+      },
+      "--color-bloom-gold": {
+        "value": "#c4b896",
+        "source": "app/globals.css"
+      },
+      "--color-bloom-gold-dark": {
+        "value": "#a89868",
+        "source": "app/globals.css"
+      },
+      "--color-english-50": {
+        "value": "#eef4f0",
+        "source": "app/globals.css"
+      },
+      "--color-english-100": {
+        "value": "#d4e4dc",
+        "source": "app/globals.css"
+      },
+      "--color-english-200": {
+        "value": "#a8c9b8",
+        "source": "app/globals.css"
+      },
+      "--color-english-300": {
+        "value": "#7aab92",
+        "source": "app/globals.css"
+      },
+      "--color-english-400": {
+        "value": "#528a6f",
+        "source": "app/globals.css"
+      },
+      "--color-english-500": {
+        "value": "#3d6b52",
+        "source": "app/globals.css"
+      },
+      "--color-english-600": {
+        "value": "#2d4a3e",
+        "source": "app/globals.css"
+      },
+      "--color-english-700": {
+        "value": "#243d32",
+        "source": "app/globals.css"
+      },
+      "--color-english-800": {
+        "value": "#1a3028",
+        "source": "app/globals.css"
+      },
+      "--color-english-900": {
+        "value": "#142620",
+        "source": "app/globals.css"
+      },
+      "--color-bloom-50-legacy": {
+        "value": "var(--color-bloom-50)",
+        "source": "app/globals.css"
+      },
+      "--color-bloom-600-primary": {
+        "value": "var(--color-bloom-600)",
+        "source": "app/globals.css"
+      },
+      "--color-success": {
+        "value": "#10b981",
+        "source": "app/globals.css"
+      },
+      "--color-warning": {
+        "value": "#a89868",
+        "source": "app/globals.css"
+      },
+      "--color-danger": {
+        "value": "#ef4444",
+        "source": "app/globals.css"
+      },
+      "--color-info": {
+        "value": "#3b82f6",
+        "source": "app/globals.css"
+      },
+      "--color-ink-0": {
+        "value": "#ffffff",
+        "source": "app/globals.css"
+      },
+      "--color-ink-50": {
+        "value": "#fbfbfd",
+        "source": "app/globals.css"
+      },
+      "--color-ink-100": {
+        "value": "#f5f5f7",
+        "source": "app/globals.css"
+      },
+      "--color-ink-200": {
+        "value": "#e8e8ed",
+        "source": "app/globals.css"
+      },
+      "--color-ink-300": {
+        "value": "#d2d2d7",
+        "source": "app/globals.css"
+      },
+      "--color-ink-400": {
+        "value": "#aeaeb2",
+        "source": "app/globals.css"
+      },
+      "--color-ink-500": {
+        "value": "#86868b",
+        "source": "app/globals.css"
+      },
+      "--color-ink-600": {
+        "value": "#6e6e73",
+        "source": "app/globals.css"
+      },
+      "--color-ink-700": {
+        "value": "#424245",
+        "source": "app/globals.css"
+      },
+      "--color-ink-800": {
+        "value": "#1d1d1f",
+        "source": "app/globals.css"
+      },
+      "--color-ink-900": {
+        "value": "#0b0b0d",
+        "source": "app/globals.css"
+      },
+      "--color-dark-50": {
+        "value": "#f9fafb",
+        "source": "app/globals.css"
+      },
+      "--color-dark-100": {
+        "value": "#f3f4f6",
+        "source": "app/globals.css"
+      },
+      "--color-dark-200": {
+        "value": "#e5e7eb",
+        "source": "app/globals.css"
+      },
+      "--color-dark-300": {
+        "value": "#d1d5db",
+        "source": "app/globals.css"
+      },
+      "--color-dark-400": {
+        "value": "#9ca3af",
+        "source": "app/globals.css"
+      },
+      "--color-dark-500": {
+        "value": "#6b7280",
+        "source": "app/globals.css"
+      },
+      "--color-dark-600": {
+        "value": "#4b5563",
+        "source": "app/globals.css"
+      },
+      "--color-dark-700": {
+        "value": "#374151",
+        "source": "app/globals.css"
+      },
+      "--color-dark-800": {
+        "value": "#1f2937",
+        "source": "app/globals.css"
+      },
+      "--color-dark-900": {
+        "value": "#111827",
+        "source": "app/globals.css"
+      },
+      "--color-chocolate": {
+        "value": "#4a4838",
+        "source": "app/globals.css"
+      },
+      "--color-piedra": {
+        "value": "#2c2a24",
+        "source": "app/globals.css"
+      },
+      "--color-crema": {
+        "value": "#f2f0e6",
+        "source": "app/globals.css"
+      },
+      "--color-gris": {
+        "value": "#7a736e",
+        "source": "app/globals.css"
+      }
+    },
+    "typography": {
+      "--font-sans": {
+        "value": "var(--font-inter), ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\"",
+        "source": "app/globals.css"
+      }
+    },
+    "spacing": {},
+    "radius": {},
+    "shadows": {},
+    "motion": {},
+    "density": "unknown"
+  },
+  "components": {
+    "installed": [
+      "apple-cards-carousel",
+      "PhoneInput"
+    ],
+    "preferredPrimitives": [],
+    "patterns": []
+  },
+  "constraints": {
+    "must": [],
+    "avoid": []
+  },
+  "decisions": [],
+  "evidence": [
+    {
+      "fact": "components.installed",
+      "source": "components/ui"
+    },
+    {
+      "fact": "design.colorMode:light",
+      "source": "app/globals.css"
+    },
+    {
+      "fact": "design.tokens",
+      "source": "app/globals.css"
+    },
+    {
+      "fact": "project.stack:nextjs",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:react",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:tailwind-v4",
+      "source": "package.json"
+    }
+  ],
+  "generatedAt": "2026-10-13T13:02:58.578Z"
+}
