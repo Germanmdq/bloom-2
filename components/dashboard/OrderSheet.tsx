@@ -1911,11 +1911,9 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                     </div>
 
                     {/* Footer del carrito — paleta Bloom */}
-                    <details className="group/checkout max-h-[45%] overflow-y-auto bg-bloom-cream border-t border-bloom-gold/30 shrink-0">
-                        <summary className="sticky top-0 z-10 cursor-pointer bg-bloom-cream px-4 py-3 font-bold text-english-900 focus-visible:outline-2 focus-visible:outline-english-600">
-                            Total ${finalTotal.toLocaleString()} · Notas y cobro
-                        </summary>
-                        <div className="flex flex-col gap-2 p-4 pt-1">
+                    <details className="max-h-[45%] overflow-y-auto bg-bloom-cream border-t border-bloom-gold/30 shrink-0">
+<summary className="sticky top-0 z-10 cursor-pointer bg-bloom-cream px-4 py-3 font-bold text-english-900">Total ${finalTotal.toLocaleString()} · Notas y cobro</summary>
+<div className="flex flex-col gap-2 p-4 pt-1">
                         <div className="relative">
                             <input
                                 type="text"
@@ -2019,9 +2017,7 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                                 <IconPrinter size={16} /> Comanda Mozo
                             </button>
                         </div>
-                        </div>
-                    </details>
-                </div>
+                </div></details>
             </div>
 
 
