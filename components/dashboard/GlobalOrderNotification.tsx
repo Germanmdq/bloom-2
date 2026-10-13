@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { IconShoppingBag, IconChevronRight, IconX } from "@tabler/icons-react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { soundAlerts } from "@/lib/audio/sound-alerts";
 
@@ -12,7 +12,6 @@ export function GlobalOrderNotification() {
     const [notifications, setNotifications] = useState<any[]>([]);
     const supabase = createClient();
     const router = useRouter();
-    const pathname = usePathname();
 
     useEffect(() => {
         const knownOrderIds = new Set<string>();
@@ -85,27 +84,22 @@ export function GlobalOrderNotification() {
         };
     }, []);
 
-    const playNotificationSound = () => {
-        soundAlerts.playOrderAlert();
-    };
-
     const handleAccept = (notif: any) => {
         setNotifications(prev => prev.filter(n => n.id !== notif.id));
-        if (pathname === '/dashboard/tables') {
-            // Ya estamos en mesas: disparar evento para que refresque
-            window.dispatchEvent(new CustomEvent('bloom-refresh-tables'));
-        } else {
-            router.push('/dashboard/tables');
+        const params = new URLSearchParams({ order: notif.id });
+        if (notif.table_id && String(notif.order_type).toLowerCase() !== 'web' && Number(notif.table_id) < 5000) {
+            params.set('table', String(notif.table_id));
         }
+        router.push(`/dashboard/tables?${params.toString()}`);
+        window.dispatchEvent(new CustomEvent('bloom-refresh-tables'));
     };
 
     return (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[999] flex flex-col items-center pointer-events-none w-full max-w-sm">
             <AnimatePresence>
-                {notifications.map((notif, idx) => {
+                {notifications.slice(0, 1).map((notif) => {
                     const isDelivery = notif.delivery_type === 'delivery' || notif.order_type === 'DELIVERY';
-                    const isTakeaway = notif.delivery_type === 'takeaway' || notif.order_type === 'TAKEAWAY';
-                    const isMesa = Boolean(notif.table_id) || notif.order_type === 'LOCAL';
+                    const isMesa = !isDelivery && String(notif.order_type).toLowerCase() !== 'web' && Number(notif.table_id) > 0 && Number(notif.table_id) < 5000;
                     
                     const tagLabel = isMesa ? `🍽️ Mesa ${notif.table_id || ''}` : isDelivery ? '🛵 Delivery' : '🏃 Retiro en Local';
                     const tagColor = isDelivery ? 'text-red-500' : isMesa ? 'text-amber-500' : 'text-emerald-500';
@@ -114,6 +108,8 @@ export function GlobalOrderNotification() {
 
                     return (
                         <motion.div
+                            role="alertdialog"
+                            aria-label="Nuevo pedido recibido"
                             key={notif.id}
                             initial={{ opacity: 0, y: -100, scale: 0.8 }}
                             animate={{ opacity: 1, y: idx * 10, scale: 1 - (idx * 0.05) }}
@@ -137,6 +133,7 @@ export function GlobalOrderNotification() {
                                     </div>
                                     <button 
                                         onClick={() => setNotifications(prev => prev.filter(n => n.id !== notif.id))}
+                                        aria-label="Dejar este pedido para después"
                                         className="text-gray-300 hover:text-gray-900 transition-colors"
                                     >
                                         <IconX size={20} />
@@ -152,7 +149,7 @@ export function GlobalOrderNotification() {
                                     onClick={() => handleAccept(notif)}
                                     className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg text-white ${iconBg}`}
                                 >
-                                    Ir a Gestionar <IconChevronRight size={16} />
+                                    Aceptar y abrir pedido <IconChevronRight size={16} />
                                 </button>
                             </div>
                         </motion.div>

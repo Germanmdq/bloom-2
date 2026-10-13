@@ -41,6 +41,22 @@ export default function TablesPage() {
     // Web orders state
     const [webOrders, setWebOrders] = useState<WebOrder[]>([]);
     const [selectedWebOrder, setSelectedWebOrder] = useState<WebOrder | null>(null);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const orderId = params.get('order');
+        if (!orderId) return;
+        const tableId = params.get('table');
+        const table = tableId ? tables.find((item) => String(item.id) === tableId) : null;
+        const order = !tableId ? webOrders.find((item) => item.id === orderId) : null;
+        if (!table && !order) return;
+        if (table) { setSelectedWebOrder(null); setSelectedTable(table); }
+        if (order) { setSelectedTable(null); setSelectedWebOrder(order); }
+        params.delete('order');
+        params.delete('table');
+        const search = params.toString();
+        window.history.replaceState(window.history.state, '', `${window.location.pathname}${search ? `?${search}` : ''}`);
+    }, [tables, webOrders]);
     const [mounted, setMounted] = useState(false);
 
     // Toast de nuevo pedido

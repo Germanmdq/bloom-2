@@ -7,6 +7,7 @@ import { IconLock, IconBackspace } from "@tabler/icons-react";
 import { IconBell, IconMenu2, IconSearch } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
 import { SalesComparisonPanel, ComparisonType } from "@/components/dashboard/SalesComparisonPanel";
+import { GlobalOrderNotification } from "./GlobalOrderNotification";
 import { LowStockBanner } from "./LowStockBanner";
 import "@/app/dashboard/dashboard.css";
 
@@ -72,6 +73,8 @@ export function DashboardClientLayout({
         </main>
         <MobileBottomNav onMoreClick={() => setSidebarOpen(true)} />
       </div>
+
+      <GlobalOrderNotification />
 
       {comparisonPanel && (
         <SalesComparisonPanel comparisonType={comparisonPanel} onClose={() => setComparisonPanel(null)} />
