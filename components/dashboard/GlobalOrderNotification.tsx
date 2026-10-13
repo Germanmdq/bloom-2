@@ -52,7 +52,7 @@ export function GlobalOrderNotification() {
             try {
                 const { data } = await supabase
                     .from('orders')
-                    .select('id, customer_name, total, order_type, delivery_type, table_id, status, created_at')
+                    .select('id, customer_name, total, order_type, delivery_type, table_id, status, created_at, items, notes')
                     .eq('status', 'pending')
                     .order('created_at', { ascending: false })
                     .limit(15);
@@ -143,6 +143,24 @@ export function GlobalOrderNotification() {
                                 <div className="flex items-center justify-between bg-gray-50 rounded-2xl p-4 mb-4">
                                     <span className="text-xs font-bold text-gray-400 uppercase tracking-widest italic">ID: {notif.id.slice(0, 8)}</span>
                                     <span className="text-lg font-black text-gray-900">${Number(notif.total).toLocaleString()}</span>
+                                </div>
+
+                                <div className="mb-4 max-h-[35dvh] overflow-y-auto rounded-2xl border border-gray-100 p-3" aria-label="Productos del pedido">
+                                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">Lo que pidieron</p>
+                                    {Array.isArray(notif.items) && notif.items.some((item: any) => !item.is_meta) ? (
+                                        <ul className="space-y-3">
+                                            {notif.items.filter((item: any) => !item.is_meta).map((item: any, index: number) => (
+                                                <li key={`${item.id || item.name}-${index}`} className="flex items-start gap-3 text-sm">
+                                                    <span className="shrink-0 rounded-lg bg-gray-100 px-2 py-1 font-bold text-gray-900">{Number(item.quantity) || 1}×</span>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="break-words font-semibold text-gray-900">{item.name || 'Producto'}</p>
+                                                        {item.notes && <p className="mt-1 break-words text-xs text-gray-600">{String(item.notes)}</p>}
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : <p className="text-sm text-gray-500">Abrí el pedido para consultar el detalle.</p>}
+                                    {notif.notes && <p className="mt-3 border-t border-gray-100 pt-2 text-sm text-gray-600"><strong>Nota:</strong> {String(notif.notes)}</p>}
                                 </div>
 
                                 <button
