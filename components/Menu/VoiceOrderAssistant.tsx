@@ -14,11 +14,13 @@ export function VoiceOrderAssistant({
   onAddItems,
   onOpenCart,
   isOverlayOpen,
+  inline = false,
 }: {
   products: Product[];
   onAddItems: (items: VoiceItem[]) => void;
   onOpenCart: () => void;
   isOverlayOpen: boolean;
+  inline?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<RobotState>("idle");
@@ -252,6 +254,21 @@ export function VoiceOrderAssistant({
   if (!open) {
     // El acceso queda fijo mientras se navega, pero no puede tapar ninguna vista de acción.
     if (isOverlayOpen) return null;
+
+    if (inline) {
+      return (
+        <section aria-label="Pedir por voz" className="mx-4 mb-6 flex flex-col items-center gap-4 rounded-[24px] border border-[#c4b896]/40 bg-[#edeae0] p-5 text-center sm:flex-row sm:text-left md:mx-0">
+          <RobotHead state="idle" shape="circle" size={82} color="#c4b896" trimColor="#f5e8ca" screenColor="#4b4e38" antenna />
+          <div className="flex-1">
+            <h2 className="text-xl font-extrabold text-[#4b4e38]">Pedile a Bloom por voz</h2>
+            <p className="mt-1 text-sm text-[#6b6756]">Decime qué querés y revisá tu pedido antes de sumarlo al carrito.</p>
+          </div>
+          <button type="button" onClick={() => setOpen(true)} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#777b5b] px-6 py-3 font-bold text-[#f5e8ca] transition hover:bg-[#4b4e38] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#777b5b] sm:w-auto">
+            <Mic size={20} aria-hidden="true" /> Hablar ahora
+          </button>
+        </section>
+      );
+    }
 
     return (
       <button

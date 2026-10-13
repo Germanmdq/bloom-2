@@ -796,6 +796,13 @@ function MenuContent() {
       </header>
 
       <main className="page-content max-w-[1180px] mx-auto pt-2">
+        <VoiceOrderAssistant
+          products={products}
+          onAddItems={handleVoiceAddItems}
+          onOpenCart={() => setIsCartOpen(true)}
+          isOverlayOpen={isCartOpen || Boolean(selectedProduct)}
+          inline
+        />
         {/* ============================================
             TAB: INICIO — Tarjetas de categorías + Info del local
         ============================================ */}
@@ -978,7 +985,6 @@ function MenuContent() {
                 ))}
               </nav>
             </div>
-
             {/* GRILLA DE PRODUCTOS */}
             <section
               className={`products-grid ${/factura|medialuna|pasteler[ií]a|panificados/i.test(`${categories.find((category) => category.id === selectedCategory)?.name || ""} ${searchQuery}`) ? "products-grid-compact" : ""}`}
@@ -1421,13 +1427,6 @@ function MenuContent() {
           </div>
         )}
       </AnimatePresence>
-
-      <VoiceOrderAssistant
-        products={products}
-        onAddItems={handleVoiceAddItems}
-        onOpenCart={() => setIsCartOpen(true)}
-        isOverlayOpen={isCartOpen || Boolean(selectedProduct)}
-      />
 
       {/* DOCK INFERIOR (PWA FLOATING DOCK) */}
       <div 
