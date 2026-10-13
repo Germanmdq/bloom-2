@@ -112,7 +112,7 @@ export function GlobalOrderNotification() {
                             aria-label="Nuevo pedido recibido"
                             key={notif.id}
                             initial={{ opacity: 0, y: -100, scale: 0.8 }}
-                            animate={{ opacity: 1, y: idx * 10, scale: 1 - (idx * 0.05) }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.5, y: -20 }}
                             className={`pointer-events-auto w-full bg-white rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.15)] border-4 overflow-hidden mb-2 ${borderColor}`}
                         >
