@@ -8,6 +8,12 @@ type Product = { id: string; name: string; description?: string | null; price: n
 type RobotState = "idle" | "thinking" | "listening" | "speaking" | "happy" | "error";
 type VoiceItem = { id: string; quantity: number };
 type VoiceTurn = { role: "user" | "assistant"; content: string };
+type VoiceCustomerDetails = {
+  name?: string;
+  phone?: string;
+  address?: string;
+  orderType?: "mesa" | "retiro" | "delivery";
+};
 
 const mergeVoiceItems = (current: VoiceItem[], additions: VoiceItem[]) => {
   const merged = current.map((item) => ({ ...item }));
@@ -19,16 +25,50 @@ const mergeVoiceItems = (current: VoiceItem[], additions: VoiceItem[]) => {
   return merged;
 };
 
+function extractPrivateDetails(text: string): VoiceCustomerDetails {
+  const nameMatch = text.match(/\b(?:me llamo|mi nombre es)\s+([a-záéíóúüñ]+(?:\s+[a-záéíóúüñ]+){0,2}?)(?=\s+(?:y|para|quiero|dame|agreg[aá]|sum[aá]|con)\b|[,.]|$)/i);
+  const phoneMatch = text.match(/\b(?:\+?54\s?)?(?:9\s?)?\d[\d\s-]{7,}\d\b/);
+  const normalized = text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  const orderType = /delivery|domicilio|envio/.test(normalized)
+    ? "delivery"
+    : /retir|para llevar|take away/.test(normalized)
+      ? "retiro"
+      : /salon|comer en el local|comer ahi|comer aca/.test(normalized)
+        ? "mesa"
+        : undefined;
+  return {
+    name: nameMatch?.[1]?.trim(),
+    phone: phoneMatch?.[0]?.replace(/\D/g, ""),
+    orderType,
+  };
+}
+
+function withoutPrivateDetails(text: string) {
+  return text
+    .replace(/\b(?:me llamo|mi nombre es)\s+[a-záéíóúüñ]+(?:\s+[a-záéíóúüñ]+){0,2}?(?=\s+(?:y|para|quiero|dame|agreg[aá]|sum[aá]|con)\b|[,.]|$)/ig, "")
+    .replace(/\b(?:\+?54\s?)?(?:9\s?)?\d[\d\s-]{7,}\d\b/g, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/^\s*(y|,)?\s*/i, "")
+    .trim();
+}
+
 export function VoiceOrderAssistant({
   products,
   onAddItems,
   onOpenCart,
   isOverlayOpen,
+  customerName,
+  onCustomerDetails,
 }: {
   products: Product[];
   onAddItems: (items: VoiceItem[]) => void;
   onOpenCart: () => void;
   isOverlayOpen: boolean;
+  customerName: string;
+  onCustomerDetails: (details: VoiceCustomerDetails) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<RobotState>("idle");
@@ -98,12 +138,26 @@ export function VoiceOrderAssistant({
   const submit = useCallback(async (text: string) => {
     const cleaned = text.trim();
     if (!cleaned) return;
+    const privateDetails = extractPrivateDetails(cleaned);
+    if (privateDetails.name || privateDetails.phone || privateDetails.orderType) {
+      onCustomerDetails(privateDetails);
+    }
+    const assistantTranscript = withoutPrivateDetails(cleaned);
+    if (!assistantTranscript) {
+      const message = privateDetails.name
+        ? `Perfecto, ${privateDetails.name}. ¿Qué te gustaría pedir?`
+        : "Perfecto, guardé ese dato. ¿Qué te gustaría pedir?";
+      setReply(message);
+      setState("happy");
+      speak(message);
+      return;
+    }
     setState("thinking");
     try {
       const response = await fetch("/api/voice-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: cleaned, catalog, history: history.slice(-16) }),
+        body: JSON.stringify({ transcript: assistantTranscript, catalog, history: history.slice(-16) }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error);
@@ -114,7 +168,7 @@ export function VoiceOrderAssistant({
       setHistory((previous) => {
         const next: VoiceTurn[] = [
           ...previous,
-          { role: "user", content: cleaned },
+          { role: "user", content: assistantTranscript },
           { role: "assistant", content: message },
         ];
         return next.slice(-16);
@@ -145,7 +199,7 @@ export function VoiceOrderAssistant({
       setReply(message);
       setState("error");
     }
-  }, [catalog, history, pendingItems, products, speak]);
+  }, [catalog, history, onCustomerDetails, pendingItems, products, speak]);
 
   const transcribeAudio = useCallback(async (audio: Blob) => {
     setState("thinking");
@@ -246,6 +300,13 @@ export function VoiceOrderAssistant({
 
   const confirmPendingOrder = () => {
     if (!pendingItems.length) return;
+    if (!customerName.trim()) {
+      const message = "Antes de confirmar, decime tu nombre. Por ejemplo: me llamo Mateo.";
+      setReply(message);
+      setState("idle");
+      speak(message);
+      return;
+    }
     onAddItems(pendingItems);
     setPendingItems([]);
     setReply("Listo, ya lo sumé al carrito.");

@@ -247,6 +247,7 @@ function MenuContent() {
   );
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [voiceOrderModality, setVoiceOrderModality] = useState<"mesa" | "retiro" | "delivery" | null>(null);
 
   useEffect(() => {
     if (tableId) {
@@ -618,6 +619,7 @@ function MenuContent() {
       setCustomerName("");
       setDeliveryAddress("");
       setCustomerPhone("");
+      setVoiceOrderModality(null);
       setOrderNotes("");
       toast.warning("¡Pedido guardado sin conexión! 📶", {
         description: "Se enviará automáticamente en cuanto recuperes señal.",
@@ -1480,8 +1482,18 @@ function MenuContent() {
       <VoiceOrderAssistant
         products={products}
         onAddItems={handleVoiceAddItems}
-        onOpenCart={() => setIsCartOpen(true)}
+        onOpenCart={() => {
+          setOrderModality(voiceOrderModality || "retiro");
+          setIsCartOpen(true);
+        }}
         isOverlayOpen={isCartOpen || Boolean(selectedProduct)}
+        customerName={customerName}
+        onCustomerDetails={(details) => {
+          if (details.name) setCustomerName(details.name);
+          if (details.phone) setCustomerPhone(details.phone);
+          if (details.address) setDeliveryAddress(details.address);
+          if (details.orderType) setVoiceOrderModality(details.orderType);
+        }}
       />
 
       {/* DOCK INFERIOR (PWA FLOATING DOCK) */}
