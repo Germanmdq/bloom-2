@@ -14,7 +14,7 @@ type CustomerProfile = {
 };
 
 function passwordForPhone(phone: string) {
-  return `bloom-${phone.slice(-6)}`;
+  return phone.slice(-6);
 }
 
 function sessionClient(request: NextRequest, response: NextResponse) {
