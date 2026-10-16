@@ -3,9 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { DashboardClientLayout } from "@/components/dashboard/DashboardClientLayout";
 
-// El panel depende de la sesión actual; no debe generarse como página estática.
-export const dynamic = "force-dynamic";
-
 export default async function DashboardLayout({
   children,
 }: Readonly<{
@@ -22,11 +19,11 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, is_customer")
     .eq("id", user.id)
     .single();
 
-  const isStaff = profile?.role === "ADMIN" || profile?.role === "WAITER" || profile?.role === "KITCHEN" || isAdminEmail(user.email);
+  const isStaff = !profile?.is_customer && (profile?.role === "ADMIN" || profile?.role === "WAITER" || profile?.role === "KITCHEN" || isAdminEmail(user.email));
 
   if (!isStaff) {
     redirect("/acceso");

@@ -1,9 +1,9 @@
 /**
  * Prioridad: variables en `.env.local` / entorno, si no hay, los mismos valores que ya usa el repo
- * en `scripts/seed-menu.mjs` y el resto de scripts (proyecto `elvifblvjvcbwabhrlco`).
+ * en `scripts/seed-menu.mjs` y el resto de scripts (proyecto `zcgctaqzqcpqopforttc`, Bloom Nuevo).
  */
-const DEFAULT_PROJECT_URL = "https://elvifblvjvcbwabhrlco.supabase.co";
-const DEFAULT_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJhc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsdmlmYmx2anZjYndhYmhybGNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0MDUwNjksImV4cCI6MjA4Mzk4MTA2OX0.-qQkxgfz9Sz6c77QLHLo1bELXSAJINrKDJ5ovwBeECY";
+const DEFAULT_PROJECT_URL = "https://zcgctaqzqcpqopforttc.supabase.co";
+const DEFAULT_ANON_KEY = "sb_publishable_HNrP-eOoDNRb17Q0BfmMQQ_hNuFi50h";
 
 
 export function getSupabaseUrl(): string {
