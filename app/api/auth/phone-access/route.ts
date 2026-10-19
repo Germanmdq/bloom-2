@@ -1,5 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server";
+﻿import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 import { supabaseSessionCookieOptions } from "@/lib/supabase/cookie-options";
@@ -32,6 +33,12 @@ async function startCustomerSession(request: NextRequest, response: NextResponse
   return client.auth.signInWithPassword({ phone, password: passwordForPhone(phone) });
 }
 
+function publicClient() {
+  return createSupabaseClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const phone = normalizePhone(String(body.phone ?? ""));
@@ -41,8 +48,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Ingresá un número de teléfono válido." }, { status: 400 });
   }
 
-  const service = createServiceRoleClient();
-  const { data: profiles, error: lookupError } = await service
+  // `profiles` tiene una política de lectura pública. No dependemos de la
+  // service_role para reconocer a los clientes ya migrados.
+  const { data: profiles, error: lookupError } = await publicClient()
     .from("profiles")
     .select("id, full_name, phone, is_customer")
     .not("phone", "is", null)
@@ -63,7 +71,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: "needs_name" });
   }
 
-  let customerName = profile?.full_name?.trim() || fullName;
+  // Los clientes ya migrados entran con el teléfono y la contraseña interna
+  // formada por sus últimos seis dígitos. Este camino no usa service_role.
+  if (profile) {
+    const response = NextResponse.json({ status: "ok", name: profile.full_name?.trim() || "", created: false });
+    const { error: signInError } = await startCustomerSession(request, response, phone);
+    if (signInError) {
+      console.error("[phone-access] sign in", signInError);
+      return NextResponse.json({ error: "No pudimos iniciar tu sesión. Intentá de nuevo." }, { status: 401 });
+    }
+    return response;
+  }
+
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+    return NextResponse.json(
+      { error: "El alta de clientes todavía no está configurada. Intentá más tarde." },
+      { status: 503 },
+    );
+  }
+
+  const service = createServiceRoleClient();
+
+  let customerName = fullName;
   if (!profile) {
     const { data: created, error: createError } = await service.auth.admin.createUser({
       phone,
@@ -88,15 +117,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Tu cuenta se creó, pero no pudimos completar tus datos. Intentá nuevamente." }, { status: 500 });
     }
     customerName = fullName;
-  } else {
-    const { error: passwordError } = await service.auth.admin.updateUserById(profile.id, {
-      password: passwordForPhone(phone),
-      phone_confirm: true,
-    });
-    if (passwordError) {
-      console.error("[phone-access] customer session setup", passwordError);
-      return NextResponse.json({ error: "No pudimos iniciar tu sesión. Intentá de nuevo." }, { status: 500 });
-    }
   }
 
   const response = NextResponse.json({ status: "ok", name: customerName, created: !profile });

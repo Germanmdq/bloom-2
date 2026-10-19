@@ -8,12 +8,15 @@ const DEFAULT_ANON_KEY = "sb_publishable_HNrP-eOoDNRb17Q0BfmMQQ_hNuFi50h";
 
 export function getSupabaseUrl(): string {
   const u = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  return u && u.trim() !== "" ? u.trim() : DEFAULT_PROJECT_URL;
+  // Bloom usa únicamente Bloom Nuevo. Una variable heredada de Bloom Final no
+  // puede reemplazar la URL correcta en un deploy de Vercel.
+  return u?.trim() === DEFAULT_PROJECT_URL ? u.trim() : DEFAULT_PROJECT_URL;
 }
 
 export function getSupabaseAnonKey(): string {
-  const k = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  return k && k.trim() !== "" ? k.trim() : DEFAULT_ANON_KEY;
+  // Esta es una clave pública. Mantenerla junto con la URL evita combinar el
+  // proyecto nuevo con una anon key vieja configurada en Vercel.
+  return DEFAULT_ANON_KEY;
 }
 
 /** True si definiste ambas vars en el entorno (override explícito). */
