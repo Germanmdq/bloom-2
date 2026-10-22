@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { createClient } from "@/lib/supabase/server";
+import { requireDashboardAdmin } from "@/lib/dashboard/require-admin-api";
 
 export async function GET() {
     try {
-        const svc = createServiceRoleClient();
+        if (!await requireDashboardAdmin()) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+        const svc = await createClient();
         const { data, error } = await svc
             .from("delivery_persons")
             .select("*")
@@ -19,7 +21,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
      try {
-        const svc = createServiceRoleClient();
+        if (!await requireDashboardAdmin()) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+        const svc = await createClient();
         const { name } = await req.json();
         const { data, error } = await svc
             .from("delivery_persons")

@@ -1,25 +1,28 @@
 import { NextResponse } from "next/server";
-import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { createClient } from "@/lib/supabase/server";
+import { requireDashboardAdmin } from "@/lib/dashboard/require-admin-api";
 
 export async function POST(req: Request) {
     try {
         const { clientId, amount, method, orderId } = await req.json();
         if (!clientId) return NextResponse.json({ error: "Client ID required" }, { status: 400 });
+        const adminUser = await requireDashboardAdmin();
+        if (!adminUser) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
-        const svc = createServiceRoleClient();
+        const svc = await createClient();
 
         let orderToPay: any = null;
         if (orderId) {
             const { data: order, error: orderError } = await svc
                 .from("orders")
-                .select("id, customer_id, total, paid, status, payment_method")
+                .select("id, customer_id, total, paid, status, payment_method, cuenta_corriente")
                 .eq("id", orderId)
                 .maybeSingle();
 
             if (orderError) throw orderError;
             if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
             if (order.customer_id !== clientId) return NextResponse.json({ error: "Order does not belong to client" }, { status: 400 });
-            if (order.payment_method !== "CUENTA_CORRIENTE") return NextResponse.json({ error: "Order is not current account debt" }, { status: 400 });
+            if (order.cuenta_corriente !== true && order.payment_method !== "CUENTA_CORRIENTE") return NextResponse.json({ error: "Order is not current account debt" }, { status: 400 });
             if (order.paid === true) return NextResponse.json({ error: "Order already paid" }, { status: 400 });
             orderToPay = order;
         }
@@ -30,9 +33,12 @@ export async function POST(req: Request) {
             .eq("id", clientId)
             .single();
 
-        const currentBalance = Number(profile?.balance || 0);
+        const currentBalance = Math.max(0, Number(profile?.balance || 0));
         const paidAmount = amount !== undefined ? Number(amount) : orderToPay ? Number(orderToPay.total || 0) : currentBalance;
-        const newBalance = currentBalance - paidAmount;
+        if (!Number.isFinite(paidAmount) || paidAmount <= 0 || paidAmount > currentBalance) {
+            return NextResponse.json({ error: "El importe debe ser mayor a cero y no superar la deuda pendiente" }, { status: 400 });
+        }
+        const newBalance = Math.max(0, currentBalance - paidAmount);
 
         const { error } = await svc
             .from("profiles")
@@ -55,15 +61,14 @@ export async function POST(req: Request) {
         } else {
             const { data: ccOrders, error: ccOrdersError } = await svc
                 .from("orders")
-                .select("id, total, paid, status")
+                .select("id, total, paid, status, payment_method, cuenta_corriente")
                 .eq("customer_id", clientId)
-                .eq("payment_method", "CUENTA_CORRIENTE")
                 .order("created_at", { ascending: true });
 
             if (ccOrdersError) throw ccOrdersError;
 
             let remainingToApply = paidAmount;
-            for (const order of ccOrders ?? []) {
+            for (const order of (ccOrders ?? []).filter((order: any) => order.cuenta_corriente === true || order.payment_method === "CUENTA_CORRIENTE")) {
                 const alreadyPaid = order.paid === true;
                 if (alreadyPaid) continue;
                 const orderTotal = Number(order.total || 0);

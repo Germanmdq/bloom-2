@@ -23,7 +23,15 @@ export default async function DashboardLayout({
     .eq("id", user.id)
     .single();
 
-  const isStaff = !profile?.is_customer && (profile?.role === "ADMIN" || profile?.role === "WAITER" || profile?.role === "KITCHEN" || isAdminEmail(user.email));
+  // Un MANAGER es personal operativo igual que un administrador. Antes quedaba
+  // fuera de este control y era redirigido a /acceso aun con una sesión válida.
+  const isStaff = !profile?.is_customer && (
+    profile?.role === "ADMIN" ||
+    profile?.role === "MANAGER" ||
+    profile?.role === "WAITER" ||
+    profile?.role === "KITCHEN" ||
+    isAdminEmail(user.email)
+  );
 
   if (!isStaff) {
     redirect("/acceso");

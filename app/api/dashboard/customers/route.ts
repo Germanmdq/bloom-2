@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
-import type { User } from "@supabase/supabase-js";
 import { requireDashboardAdmin } from "@/lib/dashboard/require-admin-api";
-import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { createClient } from "@/lib/supabase/server";
 import type { DashboardCustomerRow } from "@/lib/types/dashboard-customers";
 
-function metaString(u: User, key: string): string {
-  const v = u.user_metadata?.[key];
-  return typeof v === "string" ? v.trim() : "";
-}
-
-/** Lista clientes (auth + pedidos); solo admin + service role. */
+/** Lista clientes y pedidos usando la sesión de personal, sin service role. */
 export async function GET() {
   try {
     const adminUser = await requireDashboardAdmin();
@@ -17,11 +11,11 @@ export async function GET() {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
-    const svc = createServiceRoleClient();
+    const svc = await createClient();
 
     const { data: profiles, error: pErr } = await svc
       .from("profiles")
-      .select("id, full_name, balance, coffee_stamps, customer_number")
+      .select("id, full_name, phone, birthdate, default_address, balance, coffee_stamps, customer_number")
       .eq("is_customer", true);
     if (pErr) {
       console.error("[dashboard/customers] profiles", pErr);
@@ -35,7 +29,7 @@ export async function GET() {
 
     const { data: orders, error: oErr } = await svc
       .from("orders")
-      .select("customer_id, created_at, paid, payment_method")
+      .select("customer_id, created_at, paid, cuenta_corriente")
       .not("customer_id", "is", null);
     if (oErr) {
       console.error("[dashboard/customers] orders", oErr);
@@ -57,29 +51,17 @@ export async function GET() {
       agg.total += 1;
       const created = row.created_at as string | null;
       if (created) agg.dates.push(created);
-      const paid = Boolean(row.paid) || row.payment_method === 'CUENTA_CORRIENTE';
+      const paid = Boolean(row.paid);
       if (paid) agg.paidCount += 1;
     }
 
-    const allUsers: User[] = [];
-    let page = 1;
-    const perPage = 200;
-    for (;;) {
-      const { data, error: listErr } = await svc.auth.admin.listUsers({ page, perPage });
-      if (listErr) {
-        console.error("[dashboard/customers] listUsers", listErr);
-        return NextResponse.json({ error: listErr.message }, { status: 500 });
-      }
-      allUsers.push(...data.users);
-      const next = data.nextPage;
-      if (next == null) break;
-      page = next;
-    }
-
-    const profileDataById = new Map<string, { name: string; balance: number; stamps: number; customer_number: string }>();
+    const profileDataById = new Map<string, { name: string; phone: string; birthdate: string; defaultAddress: string; balance: number; stamps: number; customer_number: string }>();
     for (const pr of profiles ?? []) {
       profileDataById.set(pr.id as string, {
         name: String(pr.full_name ?? "").trim(),
+        phone: String(pr.phone ?? "").trim(),
+        birthdate: String(pr.birthdate ?? "").trim(),
+        defaultAddress: String(pr.default_address ?? "").trim(),
         balance: Number(pr.balance || 0),
         stamps: Number(pr.coffee_stamps || 0),
         customer_number: String(pr.customer_number ?? "")
@@ -88,8 +70,6 @@ export async function GET() {
 
     const customers: DashboardCustomerRow[] = [];
     for (const id of customerIdSet) {
-      const user = allUsers.find((u) => u.id === id);
-      if (!user) continue;
       const agg = byCustomer.get(id);
       const dates = agg?.dates ?? [];
       const last =
@@ -97,20 +77,17 @@ export async function GET() {
           ? dates.reduce((a, b) => (new Date(a) > new Date(b) ? a : b))
           : null;
       const paidCount = agg?.paidCount ?? 0;
-      const birthRaw = metaString(user, "birthdate");
       const pInfo = profileDataById.get(id);
 
       customers.push({
         id,
         displayName:
           pInfo?.name ||
-          metaString(user, "full_name") ||
-          metaString(user, "name") ||
           "—",
-        email: user.email ?? "—",
-        phone: metaString(user, "phone") || (user.phone ?? "").trim() || "—",
-        birthdate: birthRaw || null,
-        defaultAddress: metaString(user, "default_address") || "—",
+        email: "—",
+        phone: pInfo?.phone || "—",
+        birthdate: pInfo?.birthdate || null,
+        defaultAddress: pInfo?.defaultAddress || "—",
         orderCount: agg?.total ?? 0,
         lastOrderAt: last,
         customer_number: pInfo?.customer_number ?? "",

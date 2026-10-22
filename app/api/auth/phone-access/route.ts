@@ -7,6 +7,16 @@ import { supabaseSessionCookieOptions } from "@/lib/supabase/cookie-options";
 
 const normalizePhone = (value: string) => value.replace(/\D/g, "");
 
+// Acepta el mismo número ingresado como 223..., +54 223... o +54 9 223...
+// sin hacer coincidir por los últimos seis dígitos (que son solo la clave
+// interna y no identifican de forma segura a un teléfono).
+function samePhone(left: string, right: string) {
+  const a = normalizePhone(left);
+  const b = normalizePhone(right);
+  if (a === b) return true;
+  return a.length >= 10 && b.length >= 10 && a.slice(-10) === b.slice(-10);
+}
+
 type CustomerProfile = {
   id: string;
   full_name: string | null;
@@ -61,7 +71,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No pudimos verificar el número. Intentá de nuevo." }, { status: 500 });
   }
 
-  const profile = ((profiles ?? []) as CustomerProfile[]).find((candidate) => normalizePhone(candidate.phone ?? "") === phone);
+  const profile = ((profiles ?? []) as CustomerProfile[]).find((candidate) => samePhone(candidate.phone ?? "", phone));
 
   if (profile && !profile.is_customer) {
     return NextResponse.json({ error: "El acceso del personal se realiza desde el panel interno." }, { status: 403 });
@@ -75,7 +85,7 @@ export async function POST(request: NextRequest) {
   // formada por sus últimos seis dígitos. Este camino no usa service_role.
   if (profile) {
     const response = NextResponse.json({ status: "ok", name: profile.full_name?.trim() || "", created: false });
-    const { error: signInError } = await startCustomerSession(request, response, phone);
+    const { error: signInError } = await startCustomerSession(request, response, profile.phone || phone);
     if (signInError) {
       console.error("[phone-access] sign in", signInError);
       return NextResponse.json({ error: "No pudimos iniciar tu sesión. Intentá de nuevo." }, { status: 401 });

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireDashboardAdmin } from "@/lib/dashboard/require-admin-api";
-import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { createClient } from "@/lib/supabase/server";
 
 /** Pedidos en `orders` que aún requieren atención (web y similares). */
 function isPendingOrderStatus(status: unknown): boolean {
@@ -33,7 +33,7 @@ export async function GET() {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
-    const svc = createServiceRoleClient();
+    const svc = await createClient();
 
     const [{ data: allOrders, error: oErr }, { data: tickets, error: tErr }] = await Promise.all([
       svc.from("orders").select("*").order("created_at", { ascending: true }).limit(500),

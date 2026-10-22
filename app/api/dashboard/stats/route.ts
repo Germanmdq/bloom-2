@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireDashboardAdmin } from "@/lib/dashboard/require-admin-api";
-import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { createClient } from "@/lib/supabase/server";
 
 const TERMINAL_STATUSES = new Set([
   "entregado",
@@ -23,7 +23,9 @@ export async function GET() {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
-    const svc = createServiceRoleClient();
+    // Los datos del panel se leen con la sesión del personal. Así no quedan
+    // bloqueados por una service role vieja o mal configurada en Vercel.
+    const svc = await createClient();
 
     const { count: registeredCustomerCount, error: cErr } = await svc
       .from("profiles")
