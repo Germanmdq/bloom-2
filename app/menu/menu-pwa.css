@@ -5,12 +5,14 @@
 .app-shell {
   min-height: 100vh;
   min-height: 100dvh;
+  width: 100%;
+  overflow-x: clip;
   background-color: #f7f5ef;
   color: #4b4e38;
 }
 
 .page-content {
-  padding-bottom: 120px;
+  padding-bottom: calc(120px + env(safe-area-inset-bottom));
 }
 
 /* ================================
@@ -215,7 +217,7 @@
   grid-template-columns: repeat(4, 1fr);
   align-items: center;
 
-  padding: 7px 8px;
+  padding: 7px 8px max(7px, env(safe-area-inset-bottom));
 
   border-radius: 26px;
   background: rgba(119, 123, 91, 0.92);

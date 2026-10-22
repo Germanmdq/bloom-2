@@ -345,8 +345,8 @@ export function VoiceOrderAssistant({
 
   return (
     <div className="fixed inset-0 z-[210] flex items-end justify-center bg-black/45 p-0 backdrop-blur-sm sm:items-center sm:p-6">
-      <section className="flex h-full w-full flex-col overflow-hidden bg-[#fffdf8] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-[32px]">
-      <div className="flex items-center gap-3 bg-[#777b5b] px-5 py-4 text-[#f5e8ca]">
+      <section className="flex h-[100dvh] w-full min-h-0 flex-col overflow-hidden bg-[#fffdf8] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-[32px]">
+      <div className="flex shrink-0 items-center gap-3 bg-[#777b5b] px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))] text-[#f5e8ca]">
         <RobotHead state={state} shape="circle" size={68} color="#c4b896" trimColor="#f5e8ca" screenColor="#4b4e38" antenna />
         <div className="min-w-0 flex-1">
           <p className="text-lg font-extrabold">Bloom por voz</p>
@@ -354,13 +354,13 @@ export function VoiceOrderAssistant({
         </div>
         <button type="button" onClick={closeAssistant} className="rounded-full p-2 hover:bg-white/10" aria-label="Cerrar asistente"><X size={22} /></button>
       </div>
-      <div className="flex flex-1 flex-col justify-center space-y-5 p-5 sm:p-7">
+      <div className="flex min-h-0 flex-1 flex-col justify-center space-y-5 overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-7">
         <p className="rounded-3xl bg-[#f2f0e6] p-5 text-base leading-relaxed text-[#4b4e38]">{reply}</p>
         {pendingItems.length ? (
           <div className="space-y-3">
             <div className="rounded-2xl border border-[#c4b896]/45 bg-white px-4 py-3 text-sm font-semibold text-[#4b4e38]">{pendingDescription}</div>
             <button type="button" onClick={continuePendingOrder} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#777b5b] px-4 font-extrabold text-[#f5e8ca]"><Mic size={21} />Seguir agregando</button>
-            <button type="button" onClick={confirmPendingOrder} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#777b5b]/45 px-4 text-sm font-bold text-[#4b4e38]"><Check size={18} />Confirmar pedido y ver carrito</button>
+            <button type="button" onClick={confirmPendingOrder} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#777b5b]/45 px-4 py-3 text-center text-sm font-bold leading-tight text-[#4b4e38]"><Check size={18} className="shrink-0" />Confirmar pedido y ver carrito</button>
             <button type="button" onClick={revisePendingOrder} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#777b5b]/45 px-4 text-sm font-bold text-[#4b4e38]"><RotateCcw size={17} />Cambiar pedido</button>
           </div>
         ) : (

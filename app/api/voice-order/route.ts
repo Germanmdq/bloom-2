@@ -13,6 +13,11 @@ const QUANTITY_WORDS: Record<string, number> = {
   un: 1, una: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5,
   seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10,
 };
+const REQUEST_STOP_WORDS = new Set([
+  "a", "al", "con", "de", "del", "el", "la", "las", "los", "me", "mi", "para", "por",
+  "quiero", "quisiera", "dame", "agrega", "agregame", "sumame", "un", "una", "uno", "dos",
+  "tres", "cuatro", "cinco", "seis", "siete", "o", "y",
+]);
 
 const isQuestion = (value: string) =>
   /[?¿]/.test(value)
@@ -80,10 +85,29 @@ function fallbackMatch(transcript: string, catalog: CatalogItem[]) {
     if (milkCoffee) return milkCoffee;
   }
 
-  return catalog.find((item) => {
+  const exactName = catalog.find((item) => {
     const name = normalize(item.name);
     return name.length >= 4 && request.includes(name);
   });
+  if (exactName) return exactName;
+
+  // Si el modelo no pudo responder, resolvemos nombres parciales sin adivinar.
+  // Esto cubre pedidos naturales como "dos milanesas de pollo" o "un Aquarius".
+  const requestTerms = words(transcript).filter((word) => !REQUEST_STOP_WORDS.has(word));
+  if (!requestTerms.length) return undefined;
+  const ranked = catalog
+    .map((item) => {
+      const nameTerms = new Set(words(item.name));
+      const descriptionTerms = new Set(words(item.description || ""));
+      const score = requestTerms.reduce((total, term) =>
+        total + (nameTerms.has(term) ? 4 : descriptionTerms.has(term) ? 2 : 0), 0);
+      return { item, score };
+    })
+    .sort((a, b) => b.score - a.score);
+  const [best, second] = ranked;
+  // Un único término fuerte (marca o nombre) alcanza; ante empate pedimos aclaración.
+  if (!best || best.score < 4 || best.score === second?.score) return undefined;
+  return best.item;
 }
 
 export async function POST(request: Request) {
@@ -133,13 +157,21 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: "qwen/qwen3.8-27b",
-        reasoning_effort: "none",
+        // Qwen puede razonar sin mostrar su cadena interna. En pedidos ambiguos
+        // privilegia el contexto de la conversación antes de elegir un producto.
+        reasoning_effort: "low",
+        reasoning_format: "hidden",
         temperature: 0.35,
+        max_completion_tokens: 700,
         response_format: { type: "json_object" },
         messages: [
           {
-            role: "system",
-            content: `Sos Bloom, el asistente conversacional de una cafetería argentina. Podés responder preguntas breves sobre el menú, precios, ingredientes, opciones y recomendaciones usando exclusivamente el catálogo y el historial de esta conversación. También interpretás pedidos naturales, diminutivos y referencias al contexto como "café con leche", "unas medialunas", "lo de siempre", "uno de esos" o "coso". Si "coso" o una referencia no se puede deducir con seguridad del último pedido mencionado, preguntá cuál producto quiere y devolvé items []. REGLA CRÍTICA: nunca reemplaces una característica explícita por otra. Pollo no es jamón ni queso; Aquarius no es otra gaseosa; una marca, sabor, carne o ingrediente mencionado debe coincidir en el producto o su descripción. Si no existe el producto exacto, decilo y no devuelvas items. Cuando sea una pregunta, respondé claro y amable, y devolvé items []. Cuando el cliente pida productos de forma clara, devolvé esos productos con la cantidad solicitada. Nunca inventes productos, precios ni IDs, ni digas que un pedido ya fue agregado: la app va a pedir confirmación antes. Respondé JSON estricto: {"reply":"frase breve en español rioplatense","items":[{"id":"id exacto del catálogo","quantity":1}]}.`,
+            role: "user",
+            content: `Instrucciones internas de Bloom: sos un asistente conversacional de una cafetería argentina. Respondé preguntas sobre el menú, precios, ingredientes, opciones y recomendaciones usando sólo el catálogo y el historial. Entendé lenguaje cotidiano, faltas leves, diminutivos y sinónimos: "mila" significa milanesa y "Aqua" puede referirse a Aquarius si existe en el catálogo. Para referencias como "otro", "uno de esos", "al final agregá", "lo mismo" o "coso", resolvelas con el último producto inequívoco del historial; si hay dos o más candidatos, preguntá cuál es y devolvé items []. Conservá siempre los productos ya mencionados en la conversación: no confirmes ni cierres un pedido por tu cuenta.
+
+REGLA CRÍTICA: nunca reemplaces una característica explícita. Pollo no es jamón ni queso; Aquarius no es otra gaseosa; una marca, sabor, carne o ingrediente mencionado debe coincidir en el producto o su descripción. Si no existe la opción exacta, decilo y no devuelvas items. Cuando sea una pregunta, devolvé items []. Para un pedido claro, devolvé todos los productos solicitados con su cantidad. Nunca inventes productos, precios ni IDs, ni digas que un pedido ya fue agregado: la app pide confirmación después.
+
+Respondé solamente JSON estricto: {"reply":"frase breve en español rioplatense","items":[{"id":"id exacto del catálogo","quantity":1}]}.`,
           },
           ...history.map((turn) => ({ role: turn.role, content: turn.content })),
           {
@@ -158,7 +190,16 @@ export async function POST(request: Request) {
 
     const payload = await response.json();
     const raw = payload?.choices?.[0]?.message?.content;
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : null;
+    let parsed: { reply?: unknown; items?: unknown } | null = null;
+    if (typeof raw === "string") {
+      try {
+        parsed = JSON.parse(raw) as { reply?: unknown; items?: unknown };
+      } catch {
+        // Una respuesta malformada no debe cortar la conversación: el fallback
+        // de catálogo de abajo puede todavía resolver el pedido.
+        parsed = null;
+      }
+    }
     const catalogById = new Map(catalog.map((item: CatalogItem) => [item.id, item]));
     const items = Array.isArray(parsed?.items)
       ? parsed.items

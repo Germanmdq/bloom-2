@@ -721,8 +721,8 @@ function MenuContent() {
     <div className="app-shell" suppressHydrationWarning>
       {/* HEADER SUPERIOR */}
       <header className="sticky top-0 z-40 bg-[#fffdf8]/90 backdrop-blur-md border-b border-[#c4b896]/20 px-4 py-3 sm:px-8">
-        <div className="max-w-[1180px] mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-[1180px] mx-auto flex min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             {activeTab === "menu" && (
               <button
                 type="button"
@@ -752,7 +752,7 @@ function MenuContent() {
               <div className="w-9 h-9 rounded-xl bg-[#1a3028] flex items-center justify-center text-[#f5e8ca] shadow-sm">
                 <Coffee size={19} />
               </div>
-              <div>
+              <div className="min-w-0">
                 <span className="font-extrabold text-base tracking-tight text-[#1a3028] block leading-none">
                   BLOOM
                 </span>
@@ -763,9 +763,9 @@ function MenuContent() {
             </Link>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {tableLabel && (
-              <span className="bg-[#1a3028] text-[#f5e8ca] text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
+              <span className="max-w-24 truncate bg-[#1a3028] text-[#f5e8ca] text-xs font-bold px-3 py-1.5 rounded-full shadow-sm sm:max-w-none">
                 {tableLabel}
               </span>
             )}
@@ -872,12 +872,12 @@ function MenuContent() {
                     className="w-full bg-white rounded-[22px] border border-[#c4b896]/25 overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow"
                   >
                     {/* Franja superior destacada para el badge sin superposición */}
-                    <div className="bg-[#777b5b] px-4 py-2.5 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-[#f5e8ca] text-xs font-extrabold uppercase tracking-wider">
+                    <div className="bg-[#777b5b] px-4 py-2.5 flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2 text-[#f5e8ca] text-xs font-extrabold uppercase tracking-wider">
                         <span>⭐</span>
                         <span>Plato del Día</span>
                       </div>
-                      <span className="text-[11px] text-[#c4b896] font-semibold">
+                      <span className="min-w-0 truncate text-right text-[11px] text-[#c4b896] font-semibold">
                         Recomendación del chef
                       </span>
                     </div>
@@ -1194,7 +1194,7 @@ function MenuContent() {
                     {cart.map((item) => (
                       <div
                         key={item.id}
-                        className="bg-white p-3.5 rounded-2xl border border-[#c4b896]/25 flex items-center justify-between gap-3 shadow-sm"
+                        className="bg-white p-3.5 rounded-2xl border border-[#c4b896]/25 flex min-w-0 items-center justify-between gap-2.5 shadow-sm"
                       >
                         <div className="flex-1 min-w-0">
                           <h4 className="font-bold text-sm text-[#1a3028] truncate">{item.name}</h4>
@@ -1223,7 +1223,7 @@ function MenuContent() {
                           </button>
                         </div>
 
-                        <span className="font-extrabold text-sm text-[#1a3028] min-w-[65px] text-right">
+                        <span className="shrink-0 font-extrabold text-xs text-[#1a3028] sm:text-sm min-w-[58px] text-right">
                           {formatCurrency(item.price * item.quantity)}
                         </span>
                       </div>
