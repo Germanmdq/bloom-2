@@ -94,7 +94,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No pudimos verificar el número. Intentá de nuevo." }, { status: 500 });
   }
 
-  const profile = ((profiles ?? []) as CustomerProfile[]).find((candidate) => samePhone(candidate.phone ?? "", phone));
+  const matchingProfiles = ((profiles ?? []) as CustomerProfile[]).filter((candidate) =>
+    samePhone(candidate.phone ?? "", phone),
+  );
+  // Si el mismo teléfono también pertenece a un administrador, el acceso de
+  // clientes no debe intentar reutilizar ni modificar esa cuenta. Priorizamos
+  // siempre la cuenta marcada como cliente y dejamos crear una separada.
+  const profile = matchingProfiles.find((candidate) => candidate.is_customer)
+    ?? matchingProfiles.find((candidate) => candidate.role !== "ADMIN");
 
   if (!profile && !fullName) {
     return NextResponse.json({ status: "needs_name" });
@@ -111,9 +118,14 @@ export async function POST(request: NextRequest) {
     );
     if (signInError) {
       console.error("[phone-access] sign in", signInError);
-      return NextResponse.json({ error: "No pudimos abrir tu cuenta con ese número. Si es la primera vez, ingresá tu nombre para crearla." }, { status: 401 });
+      if (!fullName) {
+        return NextResponse.json({ status: "needs_name" });
+      }
+      // Si existe un perfil antiguo sin identidad de acceso compatible,
+      // continuar con el alta crea una cuenta de cliente independiente.
+      // No se toca la cuenta de personal o administración existente.
     }
-    return response;
+    if (!signInError) return response;
   }
 
   if (!hasServiceRole) {
@@ -125,35 +137,31 @@ export async function POST(request: NextRequest) {
 
   const service = createServiceRoleClient();
 
-  let customerName = fullName;
-  if (!profile) {
-    const { data: created, error: createError } = await service.auth.admin.createUser({
-      email: customerLoginEmail(phone),
-      password: customerPasswords(phone)[0],
-      email_confirm: true,
-      user_metadata: { full_name: fullName, is_customer: true },
-    });
+  const { data: created, error: createError } = await service.auth.admin.createUser({
+    email: customerLoginEmail(phone),
+    password: customerPasswords(phone)[0],
+    email_confirm: true,
+    user_metadata: { full_name: fullName, is_customer: true },
+  });
 
-    if (createError || !created.user) {
-      console.error("[phone-access] customer creation", createError);
-      return NextResponse.json({ error: "No pudimos crear tu cuenta. Intentá de nuevo." }, { status: 500 });
-    }
-
-    const { error: profileError } = await service.from("profiles").upsert({
-      id: created.user.id,
-      full_name: fullName,
-      phone,
-      is_customer: true,
-    }, { onConflict: "id" });
-
-    if (profileError) {
-      console.error("[phone-access] profile update", profileError);
-      return NextResponse.json({ error: "Tu cuenta se creó, pero no pudimos completar tus datos. Intentá nuevamente." }, { status: 500 });
-    }
-    customerName = fullName;
+  if (createError || !created.user) {
+    console.error("[phone-access] customer creation", createError);
+    return NextResponse.json({ error: "No pudimos crear tu cuenta. Intentá de nuevo." }, { status: 500 });
   }
 
-  const response = NextResponse.json({ status: "ok", name: customerName, created: !profile });
+  const { error: profileError } = await service.from("profiles").upsert({
+    id: created.user.id,
+    full_name: fullName,
+    phone,
+    is_customer: true,
+  }, { onConflict: "id" });
+
+  if (profileError) {
+    console.error("[phone-access] profile update", profileError);
+    return NextResponse.json({ error: "Tu cuenta se creó, pero no pudimos completar tus datos. Intentá nuevamente." }, { status: 500 });
+  }
+
+  const response = NextResponse.json({ status: "ok", name: fullName, created: true });
   const { error: signInError } = await startCustomerSession(
     request,
     response,
