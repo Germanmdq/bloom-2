@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { MercadoPagoConfig, MerchantOrder, Payment } from "mercadopago";
 import { getMercadoPagoAccessToken } from "@/lib/mercadopago-access-token";
 import { getSupabaseUrl } from "@/lib/supabase/env";
-import { applyDebtPayment, creditedMatchesDeclared, parseCcReference } from "@/lib/cuenta-corriente";
+import { applyDebtPayment } from "@/lib/cuenta-corriente";
 
 function parseNotificationPayload(raw: string, url: URL) {
   let topic = url.searchParams.get("topic") || url.searchParams.get("type");
@@ -129,34 +129,6 @@ async function markOrderPaid(orderId: string, payment: { id: string; amount: num
   return true;
 }
 
-/** Pago de saldo de cuenta corriente (referencia CCPAY armada por /api/cuenta/pagar). */
-async function applyCcPayment(payment: ApprovedPayment) {
-  const ref = parseCcReference(payment.externalRef);
-  if (!ref) return;
-  if (payment.currency && payment.currency !== "ARS") {
-    console.error("[payments/webhook] moneda inesperada", payment.currency, payment.id);
-    return;
-  }
-  // El monto realmente acreditado debe coincidir con el declarado al crear la preferencia.
-  if (!creditedMatchesDeclared(payment.amount, ref.cents)) {
-    console.error(`[payments/webhook] CCPAY monto acreditado ${payment.amount} != declarado ${ref.cents / 100}; ignorado`, payment.id);
-    return;
-  }
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (!serviceKey) {
-    console.error("[payments/webhook] Falta SUPABASE_SERVICE_ROLE_KEY");
-    return;
-  }
-  const result = await applyDebtPayment(createClient(getSupabaseUrl(), serviceKey), ref.customerId, payment.amount, {
-    method: "MERCADO_PAGO",
-    reference: `MP:${payment.id}`,
-  });
-  if (result.status === "error") console.error("[payments/webhook] CCPAY", result.message, payment.id);
-  else if (result.status === "no_debt" || (result.status === "applied" && result.excess > 0)) {
-    console.error("[payments/webhook] CCPAY pagó de más / sin deuda: revisar devolución", payment.id, JSON.stringify(result));
-  }
-}
-
 export async function GET() {
   return NextResponse.json({ ok: true }, { status: 200 });
 }
@@ -208,8 +180,7 @@ export async function POST(request: NextRequest) {
 
     for (const p of approved) {
       const ref = p.externalRef ?? merchantOrderRef ?? "";
-      if (parseCcReference(ref)) await applyCcPayment({ ...p, externalRef: ref });
-      else if (/^[0-9a-f-]{36}$/i.test(ref)) {
+      if (/^[0-9a-f-]{36}$/i.test(ref)) {
         // Para merchant_order se acumula lo acreditado entre todos los pagos aprobados de la orden.
         await markOrderPaid(ref, { id: p.id, amount: topic.includes("merchant_order") ? merchantOrderPaid : p.amount });
       }

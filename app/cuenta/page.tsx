@@ -11,6 +11,7 @@ type PaymentStatus = "pagado" | "pendiente" | "parcial" | "cancelado";
 type CuentaData = {
   profile: { fullName: string; phone: string; phoneFormatted: string; address: string };
   balance: number;
+  paymentsEnabled: boolean;
   orders: Array<{
     id: string;
     createdAt: string;
@@ -100,7 +101,7 @@ export default function CuentaPage() {
         setPayMessage({ ok: false, text: json.error ?? "No pudimos iniciar el pago." });
         return;
       }
-      window.location.assign(json.init_point);
+      window.location.assign(json.redirect_url);
     } catch {
       setPayMessage({ ok: false, text: "No pudimos conectarnos." });
     } finally {
@@ -178,7 +179,7 @@ export default function CuentaPage() {
           <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
             <p className="text-xs font-bold uppercase tracking-widest text-amber-700">Saldo de cuenta corriente</p>
             <p className="mt-1 text-3xl font-black text-amber-900">{money(data.balance)}</p>
-            <p className="mt-1 text-sm font-medium text-amber-800">Es lo que tenés pendiente de pago. Podés pagarlo ahora con Mercado Pago o abonarlo en el local.</p>
+            <p className="mt-1 text-sm font-medium text-amber-800">Es lo que tenés pendiente de pago. Podés pagarlo online con tarjeta o QR (Getnet) o abonarlo en el local.</p>
             <div className="mt-4 flex gap-2">
               {(["total", "parcial"] as const).map((m) => (
                 <button
@@ -203,11 +204,14 @@ export default function CuentaPage() {
             <button
               type="button"
               onClick={pay}
-              disabled={paying}
-              className="mt-3 flex min-h-[50px] w-full items-center justify-center rounded-2xl bg-[#009ee3] text-sm font-black text-white disabled:opacity-60"
+              disabled={paying || !data.paymentsEnabled}
+              className="mt-3 flex min-h-[50px] w-full items-center justify-center rounded-2xl bg-[#1a3028] text-sm font-black text-white disabled:opacity-60"
             >
-              {paying ? <IconLoader2 className="h-5 w-5 animate-spin" /> : "PAGAR CON MERCADO PAGO"}
+              {paying ? <IconLoader2 className="h-5 w-5 animate-spin" /> : data.paymentsEnabled ? "PAGAR" : "PAGO ONLINE PRÓXIMAMENTE"}
             </button>
+            {!data.paymentsEnabled && (
+              <p className="mt-2 text-center text-xs font-semibold text-amber-800">Por ahora podés abonar tu saldo en el local.</p>
+            )}
           </section>
         )}
 

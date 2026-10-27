@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { formatPhone, normalizePhone, PHONE_ERROR } from "@/lib/phone";
+import { getnetConfig, simulationEnabled } from "@/lib/getnet";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,16 @@ type OrderRow = {
   payment_method: string | null;
   delivery_type: string | null;
   order_type: string | null;
+};
+
+const METHOD_LABEL: Record<string, string> = {
+  GETNET: "Getnet",
+  MERCADO_PAGO: "Mercado Pago",
+  CASH: "efectivo",
+  CARD: "tarjeta",
+  TRANSFER: "transferencia",
+  BANK_TRANSFER: "transferencia",
+  SIMULADO: "demo",
 };
 
 type PaymentStatus = "pagado" | "pendiente" | "parcial" | "cancelado";
@@ -130,7 +141,8 @@ export async function GET() {
       date: p.created_at as string,
       type: "pago" as const,
       amount: Number(p.amount) || 0,
-      detail: p.notes || `Pago (${p.method})`,
+      // notes guarda la referencia técnica del pago (GN:/MP:/SIM:); al cliente se le muestra el medio.
+      detail: `Pago (${METHOD_LABEL[String(p.method)] ?? p.method})`,
     })),
     ...abonoOrders.map((o) => ({ id: `a-${o.id}`, date: o.created_at, type: "pago" as const, amount: Number(o.total) || 0, detail: `Pago (${o.payment_method ?? "efectivo"})` })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -143,6 +155,8 @@ export async function GET() {
       address: profileRes.data.default_address ?? "",
     },
     balance,
+    // El botón Pagar solo se habilita cuando Getnet tiene sus credenciales cargadas (o en modo demo fuera de producción).
+    paymentsEnabled: getnetConfig().enabled || simulationEnabled(),
     orders,
     movements,
   });

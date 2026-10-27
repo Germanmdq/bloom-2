@@ -6,27 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * misma regla que el panel de clientes).
  */
 
-const CC_PREFIX = "CCPAY";
-
 export const round2 = (n: number) => Math.round(n * 100) / 100;
-
-/** external_reference de la preferencia de pago de saldo. Lo arma SOLO el servidor autenticado. */
-export function buildCcReference(customerId: string, amount: number) {
-  return `${CC_PREFIX}:${customerId}:${Math.round(amount * 100)}`;
-}
-
-export function parseCcReference(ref: string | null | undefined): { customerId: string; cents: number } | null {
-  const m = String(ref ?? "").match(/^CCPAY:([0-9a-f-]{36}):(\d{1,12})$/i);
-  if (!m) return null;
-  const cents = Number(m[2]);
-  return cents > 0 ? { customerId: m[1].toLowerCase(), cents } : null;
-}
-
-/** ¿El monto realmente acreditado por Mercado Pago coincide con el declarado en la referencia? */
-export function creditedMatchesDeclared(credited: number | null | undefined, declaredCents: number) {
-  const c = Number(credited);
-  return Number.isFinite(c) && Math.abs(Math.round(c * 100) - declaredCents) <= 1;
-}
 
 type OpenOrder = { id: string; total: number };
 

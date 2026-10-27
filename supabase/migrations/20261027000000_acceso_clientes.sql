@@ -109,10 +109,11 @@ ALTER TABLE public.profiles
 CREATE UNIQUE INDEX IF NOT EXISTS profiles_customer_phone_uniq
   ON public.profiles (phone) WHERE is_customer AND phone IS NOT NULL;
 
--- 5. Idempotencia de pagos de Mercado Pago: un mismo pago (notes = 'MP:<id>') no se registra dos veces,
+-- 5. Idempotencia de pagos online: un mismo pago (notes = 'GN:<payment_intent_id>' de Getnet, 'MP:<id>' de
+--    Mercado Pago en pedidos) no se registra dos veces,
 --    aunque el webhook llegue repetido o en simultáneo.
 CREATE UNIQUE INDEX IF NOT EXISTS payments_history_mp_ref_uniq
-  ON public.payments_history (profile_id, notes) WHERE notes LIKE 'MP:%';
+  ON public.payments_history (profile_id, notes) WHERE notes LIKE 'GN:%' OR notes LIKE 'MP:%';
 
 COMMIT;
 
