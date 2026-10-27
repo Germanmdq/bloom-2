@@ -1,8 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
+import { requireDashboardAdmin } from "@/lib/dashboard/require-admin-api";
 
 export async function DELETE(request: Request) {
+    // Solo personal logueado.
+    if (!(await requireDashboardAdmin())) {
+        return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
     try {
         const { searchParams } = new URL(request.url);
         const id = searchParams.get("id");

@@ -1,4 +1,6 @@
 "use client";
+
+import { normalizePhone, PHONE_ERROR } from "@/lib/phone";
 import { useState, useEffect } from "react";
 import { IconUsers, IconSearch, IconLoader2, IconStar, IconTrendingUp, IconCalendar, IconArrowsUpDown, IconX, IconPhone, IconMail, IconShoppingBag, IconCircleCheck, IconAlertCircle, IconHistory, IconReceipt, IconEdit, IconDeviceFloppy, IconUserPlus, IconChevronDown } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/client";
@@ -17,10 +19,6 @@ export default function ClientesPage() {
     const [isPaying, setIsPaying] = useState(false);
     const [paymentAmount, setPaymentAmount] = useState("");
     const [paymentMethod, setPaymentMethod] = useState<"CASH" | "MERCADO_PAGO" | "SANTANDER_RIO">("CASH");
-    const [resettingPwd, setResettingPwd] = useState(false);
-    const [resetMsg, setResetMsg] = useState<string | null>(null);
-    const [migratingPwds, setMigratingPwds] = useState(false);
-    const [migrateResult, setMigrateResult] = useState<string | null>(null);
     const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
     const [isOrdersHistoryOpen, setIsOrdersHistoryOpen] = useState(false);
 
@@ -34,6 +32,7 @@ export default function ClientesPage() {
 
     async function handleCreateClient() {
         if (!newName.trim() || !newPhone.trim()) { setCreateMsg("Nombre y teléfono son obligatorios."); return; }
+        if (!normalizePhone(newPhone)) { setCreateMsg(PHONE_ERROR); return; }
         setIsCreating(true);
         setCreateMsg(null);
         const res = await fetch('/api/auth/register-phone', {
@@ -50,8 +49,7 @@ export default function ClientesPage() {
         if (newAddress.trim()) {
             await supabase.from('profiles').update({ default_address: newAddress.trim() }).eq('id', json.id);
         }
-        const pwd = newPhone.replace(/\D/g, '').slice(-4);
-        setCreateMsg(`✓ Cliente creado. Contraseña: ${pwd}`);
+        setCreateMsg('✓ Cliente creado. Entra solo con su teléfono.');
         setIsCreating(false);
         setNewName(""); setNewPhone(""); setNewCuit(""); setNewAddress("");
         fetchClients();
@@ -78,7 +76,6 @@ export default function ClientesPage() {
     useEffect(() => {
         if (selectedClient) {
             setPaymentAmount(selectedClient.balance > 0 ? selectedClient.balance.toString() : "");
-            setResetMsg(null);
             setIsEditing(false);
             setSaveMsg(null);
             setEditName(selectedClient.full_name || "");
@@ -115,11 +112,16 @@ export default function ClientesPage() {
 
     async function handleSaveEdit() {
         if (!selectedClient) return;
+        const phoneNorm = editPhone.trim() ? normalizePhone(editPhone) : null;
+        if (editPhone.trim() && !phoneNorm) {
+            setSaveMsg(PHONE_ERROR);
+            return;
+        }
         setIsSaving(true);
         setSaveMsg(null);
         const { error } = await supabase.from('profiles').update({
             full_name: editName.trim() || null,
-            phone: editPhone.trim() || null,
+            phone: phoneNorm,
             cuit: editCuit.trim() || null,
             birthdate: editBirthdate || null,
         }).eq('id', selectedClient.id);
@@ -129,41 +131,8 @@ export default function ClientesPage() {
         } else {
             setSaveMsg('✓ Guardado');
             setIsEditing(false);
-            setSelectedClient({ ...selectedClient, full_name: editName.trim(), phone: editPhone.trim(), cuit: editCuit.trim() || null, birthdate: editBirthdate });
-            setClients(prev => prev.map(c => c.id === selectedClient.id ? { ...c, full_name: editName.trim(), phone: editPhone.trim(), cuit: editCuit.trim() || null, birthdate: editBirthdate } : c));
-        }
-    }
-
-    async function handleResetPassword(phone: string) {
-        setResettingPwd(true);
-        setResetMsg(null);
-        try {
-            const res = await fetch('/api/admin/reset-customer-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone }),
-            });
-            const data = await res.json();
-            setResetMsg(res.ok ? '✓ Contraseña restablecida al número de celular' : `Error: ${data.error}`);
-        } catch {
-            setResetMsg('Error de conexión');
-        } finally {
-            setResettingPwd(false);
-        }
-    }
-
-    async function handleMigratePasswords() {
-        if (!confirm('¿Migrar contraseñas de todos los clientes a sus últimos 4 dígitos? Esto afecta a todos los usuarios registrados.')) return;
-        setMigratingPwds(true);
-        setMigrateResult(null);
-        try {
-            const res = await fetch('/api/admin/migrate-customer-passwords', { method: 'POST' });
-            const data = await res.json();
-            setMigrateResult(res.ok ? `✓ ${data.updated} actualizados, ${data.skipped} omitidos` : `Error: ${data.error}`);
-        } catch {
-            setMigrateResult('Error de conexión');
-        } finally {
-            setMigratingPwds(false);
+            setSelectedClient({ ...selectedClient, full_name: editName.trim(), phone: phoneNorm ?? '', cuit: editCuit.trim() || null, birthdate: editBirthdate });
+            setClients(prev => prev.map(c => c.id === selectedClient.id ? { ...c, full_name: editName.trim(), phone: phoneNorm ?? '', cuit: editCuit.trim() || null, birthdate: editBirthdate } : c));
         }
     }
 
@@ -366,20 +335,7 @@ export default function ClientesPage() {
                     >
                         <IconUserPlus size={14} /> Nuevo Cliente
                     </button>
-                    <button
-                        onClick={handleMigratePasswords}
-                        disabled={migratingPwds}
-                        className="flex items-center gap-2 bg-gray-100 text-gray-600 px-5 py-3 rounded-[1.5rem] text-xs font-black uppercase tracking-widest shadow-sm hover:opacity-80 transition-all disabled:opacity-50 whitespace-nowrap"
-                    >
-                        {migratingPwds ? <IconLoader2 size={14} className="animate-spin" /> : null}
-                        Migrar contraseñas
-                    </button>
                 </div>
-                {migrateResult && (
-                    <p className={`text-xs font-bold mt-2 ${migrateResult.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>
-                        {migrateResult}
-                    </p>
-                )}
             </div>
 
             {loading ? (
@@ -830,22 +786,6 @@ export default function ClientesPage() {
                                             </div>
                                         </div>
                                     </div>
-                                    {selectedClient.phone && (
-                                        <div className="space-y-2">
-                                            <button
-                                                onClick={() => handleResetPassword(selectedClient.phone)}
-                                                disabled={resettingPwd}
-                                                className="w-full py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-black uppercase tracking-widest transition-all disabled:opacity-50"
-                                            >
-                                                {resettingPwd ? 'Restableciendo...' : '🔑 Restablecer contraseña al celular'}
-                                            </button>
-                                            {resetMsg && (
-                                                <p className={`text-xs font-bold text-center ${resetMsg.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>
-                                                    {resetMsg}
-                                                </p>
-                                            )}
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </motion.div>
@@ -874,7 +814,7 @@ export default function ClientesPage() {
                             />
                             <input
                                 value={newPhone} onChange={e => setNewPhone(e.target.value)}
-                                placeholder="Teléfono * (últimos 4 = contraseña)"
+                                placeholder="Teléfono * (ej. 223 615 1152)"
                                 className="w-full bg-gray-50 rounded-2xl px-5 py-4 font-bold outline-none focus:ring-2 focus:ring-black/10 text-sm"
                             />
                             <input
@@ -887,12 +827,6 @@ export default function ClientesPage() {
                                 placeholder="Dirección (opcional)"
                                 className="w-full bg-gray-50 rounded-2xl px-5 py-4 font-bold outline-none focus:ring-2 focus:ring-black/10 text-sm"
                             />
-
-                            {newPhone.replace(/\D/g, '').length >= 4 && (
-                                <p className="text-xs font-bold text-gray-400 -mt-2 px-1">
-                                    Contraseña: <span className="text-black font-black">{newPhone.replace(/\D/g, '').slice(-4)}</span>
-                                </p>
-                            )}
 
                             {createMsg && (
                                 <p className={`text-sm font-bold rounded-2xl px-4 py-3 ${createMsg.startsWith('✓') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>{createMsg}</p>

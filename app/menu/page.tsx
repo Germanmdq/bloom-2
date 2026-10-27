@@ -1,5 +1,6 @@
 "use client";
 
+import { normalizePhoneOrKeep } from "@/lib/phone";
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -594,7 +595,7 @@ function MenuContent() {
       delivery_type: orderModality === "mesa" ? "salon" : (orderModality === "delivery" ? "delivery" : "takeaway"),
       delivery_info: orderModality === "delivery" ? deliveryAddress.trim() : null,
       customer_name: computedCustomerName,
-      customer_phone: customerPhone.trim() || null,
+      customer_phone: normalizePhoneOrKeep(customerPhone),
       notes: orderNotes.trim() || null,
       items: cart.map((i) => ({
         id: i.id,
@@ -654,7 +655,7 @@ function MenuContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             order_id: data.orderId,
-            customer: { name: computedCustomerName, phone: customerPhone.trim() },
+            customer: { name: computedCustomerName, phone: normalizePhoneOrKeep(customerPhone) ?? "" },
           }),
         });
         const paymentData = await paymentRes.json();
@@ -769,6 +770,14 @@ function MenuContent() {
                 {tableLabel}
               </span>
             )}
+            <Link
+              href="/cuenta"
+              className="flex items-center gap-1.5 rounded-xl border border-[#c4b896]/30 bg-white p-2 text-sm font-bold text-[#1a3028] shadow-sm transition-colors hover:bg-[#f2f0e6] sm:px-3"
+              aria-label="Mi cuenta"
+            >
+              <User size={19} />
+              <span className="hidden sm:inline">Mi cuenta</span>
+            </Link>
             <button
               type="button"
               onClick={enableNotifications}
@@ -1548,7 +1557,7 @@ function MenuContent() {
 
           <Link href="/cuenta" className="dock-item">
             <User size={22} />
-            <span>{tableLabel ? "Mesa" : "Cuenta"}</span>
+            <span>Mi cuenta</span>
           </Link>
         </nav>
       </div>

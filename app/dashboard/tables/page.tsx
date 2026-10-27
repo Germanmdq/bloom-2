@@ -1,5 +1,6 @@
 "use client";
 
+import { normalizePhone, PHONE_ERROR } from "@/lib/phone";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Table, TableStatus } from "@/lib/types";
@@ -112,27 +113,25 @@ export default function TablesPage() {
             return;
         }
 
+        const phoneClean = normalizePhone(newCustomerPhone);
+        if (!phoneClean) {
+            alert(PHONE_ERROR);
+            return;
+        }
+
         setIsRegisteringCustomer(true);
         try {
             const res = await fetch('/api/auth/register-phone', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ full_name: customerSearch.trim(), phone: newCustomerPhone.trim(), birthdate: null }),
+                body: JSON.stringify({ full_name: customerSearch.trim(), phone: phoneClean, birthdate: null }),
             });
             const json = await res.json() as { id?: string; customer_number?: string; name?: string; error?: string };
 
             if (!res.ok) {
                 if (json.error === 'already_exists') {
-                    // Cliente ya existe — buscarlo por teléfono (formato limpio o con formato)
-                    const phoneClean = newCustomerPhone.replace(/\D/g, '');
-                    let existing: { id: string; full_name: string } | null = null;
-                    const { data: byRaw } = await supabase.from('profiles').select('id, full_name').eq('phone', newCustomerPhone.trim()).maybeSingle();
-                    if (byRaw) {
-                        existing = byRaw;
-                    } else {
-                        const { data: byClean } = await supabase.from('profiles').select('id, full_name').eq('phone', phoneClean).maybeSingle();
-                        existing = byClean;
-                    }
+                    // Cliente ya existe — buscarlo por su teléfono normalizado
+                    const { data: existing } = await supabase.from('profiles').select('id, full_name').eq('phone', phoneClean).eq('is_customer', true).maybeSingle();
                     if (existing) {
                         setNewTableCustomerId(existing.id);
                         setNewTableName(existing.full_name);

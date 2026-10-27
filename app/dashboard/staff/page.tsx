@@ -15,7 +15,7 @@ export default function StaffPage() {
     const [isAddingDelivery, setIsAddingDelivery] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
-    const [newStaff, setNewStaff] = useState({ email: "", phone: "", fullName: "", role: "WAITER" });
+    const [newStaff, setNewStaff] = useState({ email: "", phone: "", fullName: "", role: "WAITER", password: "" });
     const [newDelivery, setNewDelivery] = useState({ name: "" });
 
     const supabase = createClient();
@@ -67,7 +67,7 @@ export default function StaffPage() {
 
             if (res.ok) {
                 setIsAdding(false);
-                setNewStaff({ email: "", phone: "", fullName: "", role: "WAITER" });
+                setNewStaff({ email: "", phone: "", fullName: "", role: "WAITER", password: "" });
                 fetchEverything();
             } else {
                 if (result.message?.includes("IconUser already registered")) {
@@ -274,7 +274,16 @@ export default function StaffPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Celular (será su contraseña)</label>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Contraseña (mín. 10 caracteres)</label>
+                                    <input
+                                        type="password" required minLength={10} autoComplete="new-password"
+                                        value={newStaff.password}
+                                        onChange={e => setNewStaff({ ...newStaff, password: e.target.value })}
+                                        className="w-full bg-white/60 border border-black/5 rounded-2xl px-6 py-4 focus:ring-4 focus:ring-black/5 outline-none transition-all font-bold"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Celular</label>
                                     <PhoneInput
                                         value={newStaff.phone}
                                         onChange={v => setNewStaff({ ...newStaff, phone: v })}

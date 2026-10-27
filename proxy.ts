@@ -32,7 +32,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!user && pathname.startsWith("/cuenta")) {
-    return NextResponse.redirect(new URL("/auth", request.url));
+    return NextResponse.redirect(new URL("/acceso?redirect=/cuenta", request.url));
   }
 
   if (pathname.startsWith("/dashboard")) {
@@ -44,10 +44,11 @@ export async function proxy(request: NextRequest) {
     // integrante del equipo que tenga un rol operativo en su perfil.
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, is_customer")
       .eq("id", user.id)
       .maybeSingle();
-    const isStaff = isAdminEmail(user.email) || ["ADMIN", "WAITER", "KITCHEN", "MANAGER"].includes(profile?.role ?? "");
+    // Un cliente (is_customer) nunca es personal, aunque su rol por defecto sea WAITER.
+    const isStaff = isAdminEmail(user.email) || (profile?.is_customer !== true && ["ADMIN", "WAITER", "KITCHEN", "MANAGER"].includes(profile?.role ?? ""));
     if (!isStaff) {
       return NextResponse.redirect(new URL("/auth", request.url));
     }
