@@ -80,10 +80,10 @@ export async function POST(request: NextRequest) {
   }
 
   const hasServiceRole = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
-  // Con service role el lookup incluye todos los perfiles migrados aunque RLS
-  // sea más restrictivo; sin esa clave todavía permite reconocer clientes.
-  const lookup = hasServiceRole ? createServiceRoleClient() : publicClient();
-  const { data: profiles, error: lookupError } = await lookup
+  // El proyecto permite esta lectura para reconocer clientes. No usamos la
+  // clave de servicio en este paso: una clave vieja o de otro proyecto no
+  // puede impedir que un cliente existente entre a su cuenta.
+  const { data: profiles, error: lookupError } = await publicClient()
     .from("profiles")
     .select("id, full_name, phone, is_customer, role")
     .not("phone", "is", null)
