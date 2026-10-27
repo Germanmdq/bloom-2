@@ -43,3 +43,6 @@ next-env.d.ts
 services/whatsapp/.wwebjs_auth
 bloom-desktop/dist/
 /certs
+
+# exportaciones locales (imágenes, datos): nunca subir
+/export/
