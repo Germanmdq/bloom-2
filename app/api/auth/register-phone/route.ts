@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { customerLoginEmail, customerPasswords, phoneDigits } from "@/lib/auth/customer-phone";
 
 export async function POST(req: Request) {
     try {
@@ -15,14 +16,17 @@ export async function POST(req: Request) {
         }
 
         const svc = createServiceRoleClient();
-        const phoneClean = phone.replace(/\D/g, "");
-        const password = phoneClean.slice(-4);
+        const phoneClean = phoneDigits(phone);
+        if (phoneClean.length < 7 || phoneClean.length > 15) {
+            return NextResponse.json({ error: "Ingresá un número de teléfono válido." }, { status: 400 });
+        }
+        const password = customerPasswords(phoneClean)[0];
         const customerNumber = String(Math.floor(Math.random() * 900000) + 100000);
 
         const { data, error } = await svc.auth.admin.createUser({
-            phone: phoneClean,
+            email: customerLoginEmail(phoneClean),
             password,
-            phone_confirm: true,
+            email_confirm: true,
             user_metadata: {
                 full_name: full_name.trim(),
                 phone: phone.trim(),
@@ -49,7 +53,7 @@ export async function POST(req: Request) {
 
         await svc.from("profiles").update({
             full_name: full_name.trim(),
-            phone: phone.trim(),
+            phone: phoneClean,
             cuit: cuit?.trim() || null,
             customer_number: customerNumber,
             is_customer: true,

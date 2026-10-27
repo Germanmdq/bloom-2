@@ -4,8 +4,9 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 import { supabaseSessionCookieOptions } from "@/lib/supabase/cookie-options";
+import { argentinaE164, customerLoginEmail, customerPasswords, phoneDigits, uniquePhoneVariants } from "@/lib/auth/customer-phone";
 
-const normalizePhone = (value: string) => value.replace(/\D/g, "");
+const normalizePhone = phoneDigits;
 
 // Acepta el mismo número ingresado como 223..., +54 223... o +54 9 223...
 // sin hacer coincidir por los últimos seis dígitos (que son solo la clave
@@ -22,11 +23,8 @@ type CustomerProfile = {
   full_name: string | null;
   phone: string | null;
   is_customer: boolean | null;
+  role: string | null;
 };
-
-function passwordForPhone(phone: string) {
-  return phone.slice(-6);
-}
 
 function sessionClient(request: NextRequest, response: NextResponse) {
   return createServerClient(getSupabaseUrl(), getSupabaseAnonKey(), {
@@ -38,9 +36,32 @@ function sessionClient(request: NextRequest, response: NextResponse) {
   });
 }
 
-async function startCustomerSession(request: NextRequest, response: NextResponse, phone: string) {
+async function startCustomerSession(
+  request: NextRequest,
+  response: NextResponse,
+  phones: string[],
+  emails: string[],
+) {
   const client = sessionClient(request, response);
-  return client.auth.signInWithPassword({ phone, password: passwordForPhone(phone) });
+  let lastError: { message?: string } | null = null;
+
+  // Bloom ya tenía clientes migrados con `numero@bloom.local`; las cuentas
+  // creadas en una versión intermedia usaron identidad de teléfono. Probamos
+  // ambos formatos internamente para que el cliente siempre vea un solo campo.
+  for (const password of customerPasswords(phones[0] ?? "")) {
+    for (const email of emails) {
+      const { error } = await client.auth.signInWithPassword({ email, password });
+      if (!error) return { error: null };
+      lastError = error;
+    }
+    for (const phone of phones) {
+      const { error } = await client.auth.signInWithPassword({ phone: argentinaE164(phone), password });
+      if (!error) return { error: null };
+      lastError = error;
+    }
+  }
+
+  return { error: lastError };
 }
 
 function publicClient() {
@@ -58,11 +79,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Ingresá un número de teléfono válido." }, { status: 400 });
   }
 
-  // `profiles` tiene una política de lectura pública. No dependemos de la
-  // service_role para reconocer a los clientes ya migrados.
-  const { data: profiles, error: lookupError } = await publicClient()
+  const hasServiceRole = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+  // Con service role el lookup incluye todos los perfiles migrados aunque RLS
+  // sea más restrictivo; sin esa clave todavía permite reconocer clientes.
+  const lookup = hasServiceRole ? createServiceRoleClient() : publicClient();
+  const { data: profiles, error: lookupError } = await lookup
     .from("profiles")
-    .select("id, full_name, phone, is_customer")
+    .select("id, full_name, phone, is_customer, role")
     .not("phone", "is", null)
     .limit(1000);
 
@@ -73,27 +96,27 @@ export async function POST(request: NextRequest) {
 
   const profile = ((profiles ?? []) as CustomerProfile[]).find((candidate) => samePhone(candidate.phone ?? "", phone));
 
-  if (profile && !profile.is_customer) {
-    return NextResponse.json({ error: "El acceso del personal se realiza desde el panel interno." }, { status: 403 });
-  }
-
   if (!profile && !fullName) {
     return NextResponse.json({ status: "needs_name" });
   }
 
-  // Los clientes ya migrados entran con el teléfono y la contraseña interna
-  // formada por sus últimos seis dígitos. Este camino no usa service_role.
   if (profile) {
     const response = NextResponse.json({ status: "ok", name: profile.full_name?.trim() || "", created: false });
-    const { error: signInError } = await startCustomerSession(request, response, profile.phone || phone);
+    const variants = uniquePhoneVariants(phone, profile.phone);
+    const { error: signInError } = await startCustomerSession(
+      request,
+      response,
+      variants,
+      variants.map(customerLoginEmail),
+    );
     if (signInError) {
       console.error("[phone-access] sign in", signInError);
-      return NextResponse.json({ error: "No pudimos iniciar tu sesión. Intentá de nuevo." }, { status: 401 });
+      return NextResponse.json({ error: "No pudimos abrir tu cuenta con ese número. Si es la primera vez, ingresá tu nombre para crearla." }, { status: 401 });
     }
     return response;
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+  if (!hasServiceRole) {
     return NextResponse.json(
       { error: "El alta de clientes todavía no está configurada. Intentá más tarde." },
       { status: 503 },
@@ -105,9 +128,9 @@ export async function POST(request: NextRequest) {
   let customerName = fullName;
   if (!profile) {
     const { data: created, error: createError } = await service.auth.admin.createUser({
-      phone,
-      password: passwordForPhone(phone),
-      phone_confirm: true,
+      email: customerLoginEmail(phone),
+      password: customerPasswords(phone)[0],
+      email_confirm: true,
       user_metadata: { full_name: fullName, is_customer: true },
     });
 
@@ -116,11 +139,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No pudimos crear tu cuenta. Intentá de nuevo." }, { status: 500 });
     }
 
-    const { error: profileError } = await service.from("profiles").update({
+    const { error: profileError } = await service.from("profiles").upsert({
+      id: created.user.id,
       full_name: fullName,
       phone,
       is_customer: true,
-    }).eq("id", created.user.id);
+    }, { onConflict: "id" });
 
     if (profileError) {
       console.error("[phone-access] profile update", profileError);
@@ -130,7 +154,12 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ status: "ok", name: customerName, created: !profile });
-  const { error: signInError } = await startCustomerSession(request, response, phone);
+  const { error: signInError } = await startCustomerSession(
+    request,
+    response,
+    [phone],
+    [customerLoginEmail(phone)],
+  );
   if (signInError) {
     console.error("[phone-access] sign in", signInError);
     return NextResponse.json({ error: "No pudimos iniciar tu sesión. Intentá de nuevo." }, { status: 500 });

@@ -113,14 +113,13 @@ export default function RegistroPage() {
                             {customerNumber}
                         </div>
                         <p className="text-[13px] font-medium text-neutral-500 leading-relaxed">
-                            Guardá este número. Lo vas a necesitar junto con tu teléfono para entrar a tu cuenta.
+                            Guardalo para tus beneficios y consultas del Club Bloom.
                         </p>
                     </div>
 
                     <div className="rounded-2xl border border-white/20 bg-white/10 px-5 py-4 text-left mb-8">
                         <p className="text-white font-bold text-sm mb-1">Para ingresar a tu cuenta:</p>
-                        <p className="text-white/80 text-sm">👤 Usuario: <span className="font-bold text-white">{phone}</span></p>
-                        <p className="text-white/80 text-sm">🔑 Contraseña: <span className="font-bold text-white">{phone}</span></p>
+                        <p className="text-white/80 text-sm">Ingresá solamente tu número de teléfono.</p>
                     </div>
 
                     <button
