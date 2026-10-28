@@ -1,6 +1,22 @@
-/* Dashboard Font Overrides */
+/* Dashboard del staff — mismo sistema que la parte de clientes (paleta Bloom, Poppins, bordes en degradé),
+   con menos efectos: superficies sólidas, sin blur en tarjetas y transiciones de 150 ms para que
+   las computadoras del local no se resientan. Solo cambia el aspecto, no la lógica. */
 .dashboard-scope {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --ui-primary: #777b5b;
+    --ui-primary-strong: #5f5c46;
+    --ui-secondary: #1a3028;
+    --ui-tertiary: #a39a7f;
+    --ui-accent: #c4b896;
+    --ui-background: #f7f5ef;
+    --ui-surface: #fffdf8;
+    --ui-text-primary: #1a3028;
+    --ui-text-secondary: #6b6756;
+    --ui-border: #e4dfcf;
+    --ui-shadow: rgba(26, 48, 40, 0.18) 0 18px 32px -22px, rgba(26, 48, 40, 0.08) 0 4px 10px -6px;
+
+    font-family: var(--font-poppins), var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ui-text-primary);
+    background: var(--ui-background);
 }
 
 .dashboard-scope h1,
@@ -9,5 +25,72 @@
 .dashboard-scope h4,
 .dashboard-scope h5,
 .dashboard-scope h6 {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-family: var(--font-poppins), var(--font-inter), system-ui, sans-serif !important;
+}
+
+/* Superficies: blanco y grises neutros → crema de la marca */
+.dashboard-scope .bg-white { background-color: var(--ui-surface); }
+.dashboard-scope .bg-gray-50,
+.dashboard-scope .bg-slate-50 { background-color: #f3f0e6; }
+.dashboard-scope .bg-gray-100,
+.dashboard-scope .bg-slate-100 { background-color: #ebe7d9; }
+.dashboard-scope .bg-gray-200 { background-color: #ddd8c8; }
+.dashboard-scope .bg-gray-900,
+.dashboard-scope .bg-gray-800 { background-color: var(--ui-secondary); }
+
+/* Bordes */
+.dashboard-scope .border-gray-50,
+.dashboard-scope .border-gray-100,
+.dashboard-scope .border-gray-200,
+.dashboard-scope .border-slate-100 { border-color: var(--ui-border); }
+
+/* Texto: contraste mínimo AA sobre crema y blanco */
+.dashboard-scope .text-gray-900,
+.dashboard-scope .text-gray-800,
+.dashboard-scope .text-gray-950,
+.dashboard-scope .text-slate-900 { color: var(--ui-text-primary); }
+.dashboard-scope .text-gray-700,
+.dashboard-scope .text-gray-600,
+.dashboard-scope .text-gray-500 { color: var(--ui-text-secondary); }
+.dashboard-scope .text-gray-400,
+.dashboard-scope .text-slate-400 { color: #7f7a62; }
+
+/* Tarjetas principales: filo en degradé (técnica padding-box / border-box), sin blur */
+.dashboard-scope .bg-white.rounded-2xl,
+.dashboard-scope .bg-white.rounded-3xl,
+.dashboard-scope .bg-white.rounded-\[2rem\],
+.dashboard-scope .bg-white.rounded-\[32px\] {
+    background:
+        linear-gradient(var(--ui-surface), var(--ui-surface)) padding-box,
+        linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(228, 223, 207, 0.6) 45%, rgba(163, 154, 127, 0.5)) border-box;
+    border: 1px solid transparent;
+    box-shadow: var(--ui-shadow);
+}
+
+/* Controles: transición corta y foco visible */
+.dashboard-scope button,
+.dashboard-scope a,
+.dashboard-scope input,
+.dashboard-scope select,
+.dashboard-scope textarea {
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dashboard-scope :focus-visible {
+    outline: 2px solid var(--ui-primary);
+    outline-offset: 2px;
+}
+.dashboard-scope input:not([type="checkbox"]):not([type="radio"]):focus,
+.dashboard-scope select:focus,
+.dashboard-scope textarea:focus {
+    border-color: var(--ui-primary);
+    box-shadow: 0 0 0 3px rgba(196, 184, 150, 0.4);
+}
+
+/* Cabecera y barra lateral */
+.dashboard-scope .dashboard-header { background: rgba(247, 245, 239, 0.94); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-color: var(--ui-border); }
+.dashboard-scope .dashboard-sidebar { background: var(--ui-surface); border-color: var(--ui-border); }
+
+@media (prefers-reduced-motion: reduce) {
+    .dashboard-scope * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }

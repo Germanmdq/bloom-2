@@ -243,7 +243,7 @@ export default function KitchenPage() {
                             initial={{ opacity: 0, scale: 0.9, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.8, x: -50 }}
-                            className={`bg-white rounded-[2.5rem] p-6 sm:p-7 shadow-sm border-2 transition-all flex flex-col justify-between ${
+                            className={`bg-white rounded-[32px] p-6 sm:p-7 shadow-sm border-[3px] transition-all flex flex-col justify-between ${
                                 ticket.status === 'READY' ? 'border-green-500 bg-green-50/20' :
                                 ticket.status === 'PREPARING' ? 'border-bloom-500 bg-bloom-50/20' :
                                 'border-transparent shadow-xl hover:shadow-chocolate/10'
@@ -252,23 +252,23 @@ export default function KitchenPage() {
                             <div>
                                 <div className="flex justify-between items-start mb-6">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 bg-piedra text-crema rounded-2xl flex items-center justify-center text-2xl font-black shadow-inner">
+                                        <div className="w-16 h-16 bg-piedra text-crema rounded-2xl flex items-center justify-center text-3xl font-black shadow-inner">
                                             {ticket.table_id ? ticket.table_id : 'W'}
                                         </div>
                                         <div>
-                                            <h3 className="font-black text-xl text-piedra">
+                                            <h3 className="font-black text-2xl text-piedra">
                                                 {ticket.table_id ? `Mesa ${ticket.table_id}` : 'Pedido Web / Retiro'}
                                             </h3>
-                                            <p className="text-[10px] font-black text-gris uppercase tracking-widest flex items-center gap-1">
-                                                <IconClock size={12} />
+                                            <p className="text-sm font-black text-gris uppercase tracking-wider flex items-center gap-1">
+                                                <IconClock size={16} />
                                                 {new Date(ticket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </p>
                                         </div>
                                     </div>
-                                    <span className={`shrink-0 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-center min-w-[95px] leading-tight flex items-center justify-center ${
+                                    <span className={`shrink-0 px-3 py-2 rounded-xl text-sm font-black uppercase tracking-wide text-center min-w-[120px] leading-tight flex items-center justify-center ${
                                         ticket.status === 'READY' ? 'bg-green-500 text-white' :
                                         ticket.status === 'PREPARING' ? 'bg-amber-500 text-white' :
-                                        'bg-gray-100 text-gray-500'
+                                        'bg-[#c4b896] text-[#1a3028]'
                                     }`}>
                                         {ticket.status === 'PENDING' ? 'Pendiente' :
                                          ticket.status === 'PREPARING' ? 'Preparando' : '¡Listo!'}
@@ -279,12 +279,12 @@ export default function KitchenPage() {
                                     {ticket.items.map((item, idx) => (
                                         <div key={idx} className="flex justify-between items-center bg-gray-50/70 p-3.5 rounded-2xl border border-chocolate/5 gap-3">
                                             <div className="flex-1">
-                                                <span className="font-extrabold text-piedra leading-tight text-sm block">{item.name}</span>
+                                                <span className="font-extrabold text-piedra leading-tight text-xl block">{item.name}</span>
                                                 {item.notes && (
-                                                    <span className="text-[11px] text-amber-700 italic font-semibold mt-0.5 block">↳ {item.notes}</span>
+                                                    <span className="text-base text-amber-800 italic font-bold mt-1 block">↳ {item.notes}</span>
                                                 )}
                                             </div>
-                                            <span className="bg-chocolate text-crema w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0">
+                                            <span className="bg-chocolate text-crema w-11 h-11 rounded-full flex items-center justify-center text-xl font-black shrink-0">
                                                 {item.quantity}
                                             </span>
                                         </div>
@@ -294,7 +294,7 @@ export default function KitchenPage() {
                                 {ticket.notes && (
                                     <div className="mb-6 p-3.5 bg-yellow-50 rounded-2xl border border-yellow-200 flex gap-2.5">
                                         <IconMessage size={16} className="text-yellow-600 shrink-0 mt-0.5" />
-                                        <p className="text-xs font-bold text-yellow-900 leading-snug">{ticket.notes}</p>
+                                        <p className="text-base font-bold text-yellow-900 leading-snug">{ticket.notes}</p>
                                     </div>
                                 )}
                             </div>
@@ -312,7 +312,7 @@ export default function KitchenPage() {
                                 {/* Botón Estado */}
                                 <button
                                     onClick={() => updateStatus(ticket.id, ticket.status)}
-                                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2 px-4 text-center text-sm ${
+                                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2 px-4 text-center text-base ${
                                         ticket.status === 'READY' ? 'bg-green-600 text-white hover:bg-green-700' :
                                         ticket.status === 'PREPARING' ? 'bg-chocolate text-crema hover:opacity-90' :
                                         'bg-piedra text-crema hover:opacity-90'
