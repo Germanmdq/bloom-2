@@ -13,6 +13,8 @@ import {
   signDraft,
   summaryText,
   humanizeReply,
+  signOrderRef,
+  confirmationText,
   verifyDraft,
   type Draft,
   type OrderType,
@@ -167,25 +169,23 @@ export async function POST(request: Request) {
     if (unchanged && missingFields(draft).length === 0 && verifyDraft(secret, draft, priced.total, token)) {
       try {
         const { orderId } = await createAgentOrder(db, { draft, lines: priced.lines, total: priced.total, customerId });
-        const number = (orderId ?? "").slice(0, 6).toUpperCase();
-        const how = draft.orderType === "delivery" ? `Te lo llevamos a ${draft.address}.` : "Lo podés retirar por el local cuando esté listo.";
         const pay = draft.orderType === "delivery" ? "Se paga al recibirlo." : "Se paga al retirar.";
         return NextResponse.json({
-          // El código del pedido se muestra en pantalla; no se lee en voz alta (son letras y números sueltos).
-          reply: `Listo, ${draft.name}. Tu pedido quedó confirmado por ${Math.round(priced.total).toLocaleString("es-AR")} pesos y ya está en cocina. ${how} ${pay}`,
+          // Sin códigos ni números internos: solo el detalle, el total y la modalidad.
+          reply: `${confirmationText(priced.lines, priced.total, draft)} ¿Cómo querés pagar?`,
           confirmation: {
-            number,
             total: priced.total,
             orderType: draft.orderType,
             address: draft.orderType === "delivery" ? draft.address : null,
-            name: draft.name,
+            summary: confirmationText(priced.lines, priced.total, draft),
             payment: pay,
+            orderId,
+            payToken: orderId ? signOrderRef(secret, orderId) : null,
           },
           draft: emptyDraft(),
           lines: priced.lines,
           total: priced.total,
-          orderId,
-          orderNumber: number,
+          orderId: orderId ? true : undefined,
         });
       } catch (e) {
         console.error("[agent/chat] crear pedido", e instanceof Error ? e.message : e);

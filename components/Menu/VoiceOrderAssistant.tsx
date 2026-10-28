@@ -9,7 +9,7 @@ type VoiceTurn = { role: "user" | "assistant"; content: string };
 type DraftState = Record<string, unknown>;
 type PricedLine = { id: string; name: string; quantity: number; unitPrice: number; subtotal: number; notes?: string };
 
-type Confirmation = { number: string; total: number; orderType: "retiro" | "delivery" | null; address: string | null; name: string | null; payment: string };
+type Confirmation = { total: number; orderType: "retiro" | "delivery" | null; address: string | null; summary: string; payment: string; orderId: string | null; payToken: string | null };
 
 const money = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
 
@@ -24,6 +24,8 @@ export function VoiceOrderAssistant({ isOverlayOpen }: { isOverlayOpen: boolean 
   const [token, setToken] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [payMessage, setPayMessage] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
   const [typed, setTyped] = useState("");
   const [history, setHistory] = useState<VoiceTurn[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -208,7 +210,29 @@ export function VoiceOrderAssistant({ isOverlayOpen }: { isOverlayOpen: boolean 
 
   const hasOrder = lines.length > 0 && !orderNumber;
 
+  const payCash = async () => {
+    if (!confirmation?.orderId || !confirmation.payToken || paying) return;
+    setPaying(true);
+    try {
+      const res = await fetch("/api/agent/pago", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: confirmation.orderId, token: confirmation.payToken, method: "cash" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      const message = res.ok ? String(data.message ?? "Perfecto, pagás en efectivo.") : String(data.error ?? "No pude registrar el medio de pago.");
+      setPayMessage(message);
+      setReply(message);
+      speak(message);
+    } catch {
+      setPayMessage("No pude registrar el medio de pago. Avisale al local que pagás en efectivo.");
+    } finally {
+      setPaying(false);
+    }
+  };
+
   const newOrder = () => {
+    setPayMessage(null);
     setConfirmation(null);
     setOrderNumber(null);
     setLines([]);
@@ -266,17 +290,35 @@ export function VoiceOrderAssistant({ isOverlayOpen }: { isOverlayOpen: boolean 
           <div className="glass-card overflow-hidden" role="status" aria-live="polite">
             <div className="flex items-center gap-3 bg-gradient-to-br from-[#777b5b] to-[#5f5c46] px-4 py-3 text-[#f5e8ca]">
               <span className="grid h-9 w-9 place-items-center rounded-full bg-white/20"><Check size={20} /></span>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold leading-tight">Pedido confirmado</p>
-                {confirmation.number && <p className="text-xs opacity-90">N.º #{confirmation.number}</p>}
-              </div>
+              <p className="text-sm font-semibold leading-tight">Pedido confirmado</p>
             </div>
             <dl className="space-y-2 px-4 py-3 text-sm text-[#4b4e38]">
               <div className="flex justify-between gap-3"><dt className="text-[#6b6756]">Total</dt><dd className="text-lg font-bold text-[#1a3028]">{money(confirmation.total)}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-[#6b6756]">Modalidad</dt><dd className="font-semibold">{confirmation.orderType === "delivery" ? "Delivery" : "Retiro en el local"}</dd></div>
               {confirmation.address && <div className="flex justify-between gap-3"><dt className="text-[#6b6756]">Dirección</dt><dd className="text-right font-semibold">{confirmation.address}</dd></div>}
-              <p className="border-t border-[#c4b896]/40 pt-2 text-xs text-[#6b6756]">Ya está en cocina. {confirmation.payment}</p>
+              <p className="border-t border-[#c4b896]/40 pt-2 text-xs text-[#6b6756]">Ya está en cocina.</p>
             </dl>
+          </div>
+        )}
+        {confirmation && (
+          <div className="space-y-2">
+            {payMessage ? (
+              <p className="glass-card px-4 py-3 text-center text-sm font-semibold text-[#1a3028]" role="status">{payMessage}</p>
+            ) : (
+              <>
+                <p className="text-center text-sm font-semibold text-[#1a3028]">¿Cómo querés pagar?</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button type="button" disabled className="btn btn-glass h-14 flex-col !gap-0 text-sm" aria-describedby="pay-online-hint">
+                    Pagar online
+                    <span id="pay-online-hint" className="text-[11px] font-medium text-[#6b6756]">Próximamente</span>
+                  </button>
+                  <button type="button" onClick={payCash} disabled={paying} className="btn btn-primary h-14 flex-col !gap-0 text-sm">
+                    Pagar en efectivo
+                    <span className="text-[11px] font-medium opacity-90">{confirmation.orderType === "delivery" ? "al recibir" : "al retirar"}</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
         {confirmation ? (

@@ -20,7 +20,7 @@ export default function LoginPage() {
 
         const rawInput = email.trim().toLowerCase();
         const finalEmail = rawInput.includes("@") ? rawInput : `${rawInput}@bloom.com`;
-        const finalPassword = password === "123" ? "123456" : password;
+        const finalPassword = password; // sin atajos: la contraseña se envía tal cual
 
         const { error: loginError } = await supabase.auth.signInWithPassword({
             email: finalEmail,
@@ -61,7 +61,7 @@ export default function LoginPage() {
                             onChange={(e) => setEmail(e.target.value)}
                             required
                             className="w-full bg-white/50 border border-black/5 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-black/5 outline-none transition-all placeholder:text-gray-300 font-medium"
-                            placeholder="admin o tu@email.com"
+                            placeholder="tu@email.com"
                             autoCapitalize="none"
                             autoCorrect="off"
                         />
