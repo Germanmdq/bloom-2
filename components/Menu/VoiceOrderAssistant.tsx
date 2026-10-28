@@ -9,6 +9,8 @@ type VoiceTurn = { role: "user" | "assistant"; content: string };
 type DraftState = Record<string, unknown>;
 type PricedLine = { id: string; name: string; quantity: number; unitPrice: number; subtotal: number; notes?: string };
 
+type Confirmation = { number: string; total: number; orderType: "retiro" | "delivery" | null; address: string | null; name: string | null; payment: string };
+
 const money = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
 
 export function VoiceOrderAssistant({ isOverlayOpen }: { isOverlayOpen: boolean }) {
@@ -21,6 +23,7 @@ export function VoiceOrderAssistant({ isOverlayOpen }: { isOverlayOpen: boolean 
   const [total, setTotal] = useState(0);
   const [token, setToken] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [typed, setTyped] = useState("");
   const [history, setHistory] = useState<VoiceTurn[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -82,6 +85,7 @@ export function VoiceOrderAssistant({ isOverlayOpen }: { isOverlayOpen: boolean 
       setTotal(Number(data.total) || 0);
       setToken(typeof data.token === "string" ? data.token : null);
       setOrderNumber(data.orderId ? String(data.orderNumber ?? "") || "ok" : null);
+      setConfirmation(data.orderId && data.confirmation ? (data.confirmation as Confirmation) : null);
       setReply(message);
       setState(data.orderId ? "happy" : "speaking");
       speak(message);
@@ -204,6 +208,17 @@ export function VoiceOrderAssistant({ isOverlayOpen }: { isOverlayOpen: boolean 
 
   const hasOrder = lines.length > 0 && !orderNumber;
 
+  const newOrder = () => {
+    setConfirmation(null);
+    setOrderNumber(null);
+    setLines([]);
+    setTotal(0);
+    setToken(null);
+    setHistory([]);
+    setReply("¡Hola! Tocá el micrófono y pedime lo que quieras de la carta.");
+    setState("idle");
+  };
+
   if (!open) {
     // El acceso queda fijo mientras se navega, pero no puede tapar ninguna vista de acción.
     if (isOverlayOpen) return null;
@@ -212,7 +227,7 @@ export function VoiceOrderAssistant({ isOverlayOpen }: { isOverlayOpen: boolean 
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[120] flex items-center gap-2 rounded-full bg-[#777b5b] py-2 pl-2 pr-3 text-sm font-bold text-[#f5e8ca] shadow-xl transition hover:scale-[1.02] sm:bottom-8 sm:right-6 sm:z-[120]"
+        className="btn btn-primary fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[120] !min-h-0 !rounded-full py-2 pl-2 pr-4 text-sm sm:bottom-8 sm:right-6 sm:z-[120]"
         aria-label="Abrir asistente de pedidos por voz"
       >
         <RobotHead state="idle" shape="circle" size={42} color="#c4b896" trimColor="#f5e8ca" screenColor="#4b4e38" antenna={false} />
@@ -223,7 +238,7 @@ export function VoiceOrderAssistant({ isOverlayOpen }: { isOverlayOpen: boolean 
 
   return (
     <div className="fixed inset-0 z-[210] flex items-end justify-center bg-black/45 p-0 backdrop-blur-sm sm:items-center sm:p-6">
-      <section className="flex h-[100dvh] w-full min-h-0 flex-col overflow-hidden bg-[#fffdf8] shadow-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-[32px]">
+      <section className="bloom-ui flex h-[100dvh] w-full min-h-0 flex-col overflow-hidden shadow-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-[32px]">
       <div className="flex shrink-0 items-center gap-3 bg-[#777b5b] px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))] text-[#f5e8ca]">
         <RobotHead state={state} shape="circle" size={68} color="#c4b896" trimColor="#f5e8ca" screenColor="#4b4e38" antenna />
         <div className="min-w-0 flex-1">
@@ -233,9 +248,9 @@ export function VoiceOrderAssistant({ isOverlayOpen }: { isOverlayOpen: boolean 
         <button type="button" onClick={closeAssistant} className="rounded-full p-2 hover:bg-white/10" aria-label="Cerrar asistente"><X size={22} /></button>
       </div>
       <div className="flex min-h-0 flex-1 flex-col space-y-4 overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-7">
-        <p className="rounded-3xl bg-[#f2f0e6] p-5 text-base leading-relaxed text-[#4b4e38]">{reply}</p>
+        <p className="glass-card p-5 text-base leading-relaxed text-[#1a3028]">{reply}</p>
         {hasOrder && (
-          <div className="rounded-2xl border border-[#c4b896]/45 bg-white px-4 py-3 text-sm font-semibold text-[#4b4e38]">
+          <div className="glass-card px-4 py-3 text-sm font-semibold text-[#4b4e38]">
             <ul className="space-y-1">
               {lines.map((l) => (
                 <li key={`${l.id}-${l.notes ?? ""}`} className="flex justify-between gap-3">
@@ -247,16 +262,32 @@ export function VoiceOrderAssistant({ isOverlayOpen }: { isOverlayOpen: boolean 
             <p className="mt-2 flex justify-between border-t border-[#c4b896]/40 pt-2 text-base font-extrabold"><span>Total</span><span>{money(total)}</span></p>
           </div>
         )}
-        {orderNumber && (
-          <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-center text-sm font-bold text-emerald-800">Pedido registrado{orderNumber !== "ok" ? ` #${orderNumber}` : ""}. Ya está en cocina.</p>
+        {confirmation && (
+          <div className="glass-card overflow-hidden" role="status" aria-live="polite">
+            <div className="flex items-center gap-3 bg-gradient-to-br from-[#777b5b] to-[#5f5c46] px-4 py-3 text-[#f5e8ca]">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-white/20"><Check size={20} /></span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold leading-tight">Pedido confirmado</p>
+                {confirmation.number && <p className="text-xs opacity-90">N.º #{confirmation.number}</p>}
+              </div>
+            </div>
+            <dl className="space-y-2 px-4 py-3 text-sm text-[#4b4e38]">
+              <div className="flex justify-between gap-3"><dt className="text-[#6b6756]">Total</dt><dd className="text-lg font-bold text-[#1a3028]">{money(confirmation.total)}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-[#6b6756]">Modalidad</dt><dd className="font-semibold">{confirmation.orderType === "delivery" ? "Delivery" : "Retiro en el local"}</dd></div>
+              {confirmation.address && <div className="flex justify-between gap-3"><dt className="text-[#6b6756]">Dirección</dt><dd className="text-right font-semibold">{confirmation.address}</dd></div>}
+              <p className="border-t border-[#c4b896]/40 pt-2 text-xs text-[#6b6756]">Ya está en cocina. {confirmation.payment}</p>
+            </dl>
+          </div>
         )}
-        {token ? (
+        {confirmation ? (
+          <button type="button" onClick={newOrder} className="btn btn-glass h-12 w-full text-sm">Hacer otro pedido</button>
+        ) : token ? (
           <div className="space-y-3">
-            <button type="button" onClick={confirmOrder} disabled={state === "thinking"} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#777b5b] px-4 font-extrabold text-[#f5e8ca] disabled:opacity-60"><Check size={20} /> Confirmar y enviar el pedido</button>
-            <button type="button" onClick={reviseOrder} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#777b5b]/45 px-4 text-sm font-bold text-[#4b4e38]"><RotateCcw size={18} /> Quiero cambiar algo</button>
+            <button type="button" onClick={confirmOrder} disabled={state === "thinking"} className="btn btn-primary h-14 w-full"><Check size={20} /> Confirmar y enviar el pedido</button>
+            <button type="button" onClick={reviseOrder} className="btn btn-glass h-12 w-full text-sm"><RotateCcw size={18} /> Quiero cambiar algo</button>
           </div>
         ) : (
-          <button type="button" onClick={() => { if (!listening) void startListening(); }} disabled={listening || state === "thinking"} className={`flex h-14 w-full items-center justify-center gap-2 rounded-2xl px-4 font-bold ${listening ? "bg-red-600 text-white" : "bg-[#777b5b] text-[#f5e8ca]"} disabled:opacity-80`}>
+          <button type="button" onClick={() => { if (!listening) void startListening(); }} disabled={listening || state === "thinking"} className={`btn h-14 w-full ${listening ? "btn-danger" : "btn-primary"}`}>
             <Mic size={22} />
             {listening ? "Escuchando" : state === "thinking" ? "Pensando…" : "Hablar ahora"}
           </button>
@@ -269,9 +300,9 @@ export function VoiceOrderAssistant({ isOverlayOpen }: { isOverlayOpen: boolean 
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
             placeholder="O escribí tu pedido…"
-            className="min-h-11 min-w-0 flex-1 rounded-2xl border border-[#c4b896]/60 bg-white px-4 text-base outline-none focus:border-[#777b5b]"
+            className="glass-input min-h-11 min-w-0 flex-1 px-4 text-base"
           />
-          <button type="submit" disabled={!typed.trim() || state === "thinking"} className="rounded-2xl bg-[#4b4e38] px-4 text-sm font-bold text-[#f5e8ca] disabled:opacity-50">Enviar</button>
+          <button type="submit" disabled={!typed.trim() || state === "thinking"} className="btn btn-primary px-4 text-sm">Enviar</button>
         </form>
       </div>
       </section>

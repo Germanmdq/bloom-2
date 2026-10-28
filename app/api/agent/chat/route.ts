@@ -12,6 +12,7 @@ import {
   sanitizeDraft,
   signDraft,
   summaryText,
+  humanizeReply,
   verifyDraft,
   type Draft,
   type OrderType,
@@ -52,7 +53,7 @@ const SYSTEM = `Sos el asistente de pedidos por voz de Bloom Café (Mar del Plat
 Tu trabajo: ayudar a elegir y armar el pedido con la carta de abajo, y tomar los datos para entregarlo.
 
 REGLAS:
-1. Usá SOLO productos de la carta y referilos por su número (#n). Nunca inventes productos, precios, ingredientes ni promociones. Si piden algo que no está, decilo y ofrecé algo parecido de la carta.
+1. Usá SOLO productos de la carta. En "items" referilos por su número (#n), pero en "reply" NUNCA digas ni escribas esos números: nombrá siempre el producto exactamente como figura en la carta (ej. "la Milanesa Napolitana", jamás "la oferta número 12"). Nunca inventes productos, precios, ingredientes ni promociones. Si piden algo que no está, decilo y ofrecé algo parecido de la carta.
 2. Los productos marcados AGOTADO no se pueden pedir: avisalo y ofrecé alternativas disponibles.
 3. Respetá lo que el cliente pide. Una característica explícita (pollo, jamón, una marca, una guarnición) debe coincidir con el producto; si no hay coincidencia exacta, decilo, no reemplaces en silencio.
 4. Si un producto tiene opciones (salsa, guarnición, tipo...), preguntá cuál quiere y guardala en "notes" del ítem.
@@ -170,7 +171,16 @@ export async function POST(request: Request) {
         const how = draft.orderType === "delivery" ? `Te lo llevamos a ${draft.address}.` : "Lo podés retirar por el local cuando esté listo.";
         const pay = draft.orderType === "delivery" ? "Se paga al recibirlo." : "Se paga al retirar.";
         return NextResponse.json({
-          reply: `Listo, ${draft.name}. Tu pedido ${number ? `número ${number} ` : ""}quedó registrado por ${Math.round(priced.total).toLocaleString("es-AR")} pesos y ya está en cocina. ${how} ${pay}`,
+          // El código del pedido se muestra en pantalla; no se lee en voz alta (son letras y números sueltos).
+          reply: `Listo, ${draft.name}. Tu pedido quedó confirmado por ${Math.round(priced.total).toLocaleString("es-AR")} pesos y ya está en cocina. ${how} ${pay}`,
+          confirmation: {
+            number,
+            total: priced.total,
+            orderType: draft.orderType,
+            address: draft.orderType === "delivery" ? draft.address : null,
+            name: draft.name,
+            payment: pay,
+          },
           draft: emptyDraft(),
           lines: priced.lines,
           total: priced.total,
@@ -237,7 +247,7 @@ Hora local: ${new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: 
   const priced = priceDraft(next, menu.byId);
   const normalized: Draft = { ...next, items: priced.lines.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.notes ? { notes: l.notes } : {}) })) };
   const problems = priced.problems.length ? `${[...new Set(priced.problems)].join(" ")} ` : "";
-  const modelReply = text(out.reply, 400) ?? "Contame qué querés pedir.";
+  const modelReply = humanizeReply(text(out.reply, 400) ?? "", (n) => menu.byNumber.get(n)?.name) || "Contame qué querés pedir.";
 
   if (out.done === true && normalized.items.length) {
     const missing = missingFields(normalized);

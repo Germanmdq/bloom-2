@@ -837,7 +837,7 @@ function MenuContent() {
 
             {/* Video destacado: mantiene el contenido principal centrado antes de las categorías */}
             <div className="px-4 md:px-0 mb-7">
-              <div className="home-feature-video rounded-[24px] overflow-hidden bg-[#1a3028] border border-[#c4b896]/25 shadow-md">
+              <div className="home-feature-video relative rounded-[24px] overflow-hidden bg-[#1a3028] border border-[#c4b896]/25 shadow-md">
                 <AutoplayVideo
                   className="w-full h-full object-cover"
                   src="/videos/yogurt-pouring.mp4"

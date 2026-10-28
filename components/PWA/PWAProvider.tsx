@@ -99,6 +99,16 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
 
     // 3. Register Service Worker
     if ("serviceWorker" in navigator) {
+      // Si ya había una versión instalada y toma el control una nueva, se recarga una vez para no seguir con el JS viejo.
+      const hadController = Boolean(navigator.serviceWorker.controller);
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!hadController) return;
+        try {
+          if (sessionStorage.getItem("bloom_sw_reloaded") === "1") return;
+          sessionStorage.setItem("bloom_sw_reloaded", "1");
+        } catch {}
+        window.location.reload();
+      });
       const registerServiceWorker = () => {
         navigator.serviceWorker
           .register("/sw.js", { updateViaCache: "none" })

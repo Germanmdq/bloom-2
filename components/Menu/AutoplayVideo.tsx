@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Props = { src: string; poster?: string; className?: string; label?: string };
 
@@ -11,6 +11,7 @@ type Props = { src: string; poster?: string; className?: string; label?: string 
  */
 export default function AutoplayVideo({ src, poster, className, label }: Props) {
   const ref = useRef<HTMLVideoElement>(null);
+  const [blocked, setBlocked] = useState(false);
 
   useEffect(() => {
     const v = ref.current;
@@ -21,8 +22,10 @@ export default function AutoplayVideo({ src, poster, className, label }: Props) 
     v.setAttribute("playsinline", "");
     v.setAttribute("webkit-playsinline", "");
     const tryPlay = () => {
-      if (v.paused) v.play().catch(() => {});
+      if (v.paused) v.play().then(() => setBlocked(false)).catch(() => setBlocked(true));
     };
+    const onPlaying = () => setBlocked(false);
+    v.addEventListener("playing", onPlaying);
     tryPlay();
     const onVisible = () => document.visibilityState === "visible" && tryPlay();
     // Modo ahorro de batería / primer toque: si el navegador bloqueó el autoplay, arranca con la primera interacción.
@@ -36,10 +39,12 @@ export default function AutoplayVideo({ src, poster, className, label }: Props) 
       window.removeEventListener("touchstart", onInteract);
       window.removeEventListener("click", onInteract);
       v.removeEventListener("canplay", tryPlay);
+      v.removeEventListener("playing", onPlaying);
     };
   }, []);
 
   return (
+    <>
     <video
       ref={ref}
       className={className}
@@ -55,5 +60,17 @@ export default function AutoplayVideo({ src, poster, className, label }: Props) 
     >
       <source src={src} type="video/mp4" />
     </video>
+    {blocked && (
+      // Con el autoplay bloqueado (ahorro de batería en iPhone) queda la imagen de portada y un toque lo inicia.
+      <button
+        type="button"
+        onClick={() => ref.current?.play().then(() => setBlocked(false)).catch(() => {})}
+        className="absolute inset-0 grid place-items-center bg-black/10"
+        aria-label="Reproducir video"
+      >
+        <span className="grid h-14 w-14 place-items-center rounded-full bg-white/80 text-2xl text-[#1a3028] shadow-lg">▶</span>
+      </button>
+    )}
+    </>
   );
 }
