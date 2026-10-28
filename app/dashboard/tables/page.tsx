@@ -803,7 +803,7 @@ export default function TablesPage() {
                                         <span className="text-sm font-black text-white truncate">✓ {newTableName}</span>
                                         {Number(newTableCustomerBalance) > 0 && (
                                             <span className="shrink-0 text-[10px] font-black text-red-400 bg-red-400/10 px-2 py-0.5 rounded border border-red-400/20">
-                                                DEUDA: ${Number(newTableCustomerBalance).toLocaleString()}
+                                                DEUDA: ${Number(newTableCustomerBalance).toLocaleString('es-AR')}
                                             </span>
                                         )}
                                     </div>
@@ -876,7 +876,7 @@ export default function TablesPage() {
                                                     {Number(c.balance || 0) > 0 && (
                                                         <div className="shrink-0 ml-2">
                                                             <span className="text-[10px] font-black text-red-500 bg-red-50 px-2 py-1 rounded-lg border border-red-100">
-                                                                DEUDA: ${Number(c.balance).toLocaleString()}
+                                                                DEUDA: ${Number(c.balance).toLocaleString('es-AR')}
                                                             </span>
                                                         </div>
                                                     )}
@@ -996,7 +996,7 @@ export default function TablesPage() {
                                                     </div>
                                                     {Number(c.balance || 0) > 0 && (
                                                         <span className="shrink-0 text-[10px] font-black text-red-500 bg-red-50 px-2 py-1 rounded-lg border border-red-100">
-                                                            DEUDA: ${Number(c.balance).toLocaleString()}
+                                                            DEUDA: ${Number(c.balance).toLocaleString('es-AR')}
                                                         </span>
                                                     )}
                                                 </button>
@@ -1020,7 +1020,7 @@ export default function TablesPage() {
                                                     </div>
                                                     {Number(p.saldo_cc || 0) > 0 && (
                                                         <span className="shrink-0 text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
-                                                            SALDO: ${Number(p.saldo_cc).toLocaleString()}
+                                                            SALDO: ${Number(p.saldo_cc).toLocaleString('es-AR')}
                                                         </span>
                                                     )}
                                                 </button>
@@ -1040,7 +1040,7 @@ export default function TablesPage() {
                                                 >
                                                     <div className="flex-1 min-w-0 pr-2">
                                                         <p className="text-sm font-bold text-gray-800 truncate">{p.name}</p>
-                                                        <p className="text-xs text-indigo-600 font-black">${p.price?.toLocaleString()}</p>
+                                                        <p className="text-xs text-indigo-600 font-black">${p.price?.toLocaleString('es-AR')}</p>
                                                     </div>
                                                     <div className="w-8 h-8 rounded-lg bg-gray-50 overflow-hidden shrink-0">
                                                         {p.image_url ? (

@@ -575,7 +575,7 @@ export default function SettingsPage() {
                                 <div className="p-4 flex-1 flex flex-col justify-center">
                                     <h3 className="font-black text-gray-900 mb-1">{promo.name}</h3>
                                     <p className="text-[11px] font-medium text-gray-500 leading-tight mb-2 line-clamp-2">{promo.description}</p>
-                                    <span className="font-black text-indigo-600">${promo.price?.toLocaleString()}</span>
+                                    <span className="font-black text-indigo-600">${promo.price?.toLocaleString('es-AR')}</span>
                                 </div>
                                 <div className="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={(e) => { e.stopPropagation(); setPromoForm({ id: promo.id, name: promo.name, description: promo.description, price: promo.price || '', image_url: promo.image_url || '' }); setShowPromoModal(true); }} className="w-8 h-8 rounded-full bg-white/90 backdrop-blur shadow-sm flex items-center justify-center text-gray-600 hover:text-black">
@@ -642,7 +642,7 @@ export default function SettingsPage() {
                                     const headers = ["ID", "Fecha", "Total", "Estado", "Mesa"];
                                     const rows = sales.map(sale => [
                                         sale.id,
-                                        new Date(sale.created_at).toLocaleString(),
+                                        new Date(sale.created_at).toLocaleString('es-AR'),
                                         sale.total,
                                         sale.status,
                                         sale.table_id || '-'

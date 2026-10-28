@@ -521,11 +521,11 @@ export default function ReportsPage() {
                             <div className="space-y-8 flex-1">
                                 <div className="flex justify-between items-center group">
                                     <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Ingresos</span>
-                                    <span className="text-lg font-black text-gray-900 flex items-center gap-2"><IconArrowUpRight size={16} className="text-emerald-500" /> ${stats.totalSales.toLocaleString()}</span>
+                                    <span className="text-lg font-black text-gray-900 flex items-center gap-2"><IconArrowUpRight size={16} className="text-emerald-500" /> ${stats.totalSales.toLocaleString('es-AR')}</span>
                                 </div>
                                 <div className="flex justify-between items-center group">
                                     <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Egresos</span>
-                                    <span className="text-lg font-bold text-red-500 flex items-center gap-2"><IconArrowDownRight size={16} className="text-red-500" /> -${(stats.totalExpenses + stats.totalPurchases).toLocaleString()}</span>
+                                    <span className="text-lg font-bold text-red-500 flex items-center gap-2"><IconArrowDownRight size={16} className="text-red-500" /> -${(stats.totalExpenses + stats.totalPurchases).toLocaleString('es-AR')}</span>
                                 </div>
                                 <div className="h-px bg-gray-50" />
                                 <div className="flex justify-between items-center py-4 rounded-3xl bg-gray-50/50 px-6">
@@ -860,7 +860,7 @@ export default function ReportsPage() {
                                         <h4 className="text-sm font-black uppercase tracking-widest text-gray-900">💵 Efectivo</h4>
                                         <div className="text-right">
                                             <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Esperado</p>
-                                            <p className="text-xl font-black text-gray-900">${((apertura?.efectivo || 0) + stats.cash - (stats.totalExpenses + stats.totalPurchases)).toLocaleString()}</p>
+                                            <p className="text-xl font-black text-gray-900">${((apertura?.efectivo || 0) + stats.cash - (stats.totalExpenses + stats.totalPurchases)).toLocaleString('es-AR')}</p>
                                         </div>
                                     </div>
                                     <div className="flex gap-4 items-center">
@@ -880,7 +880,7 @@ export default function ReportsPage() {
                                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'
                                             }`}>
                                                 <p className="text-[9px] font-black uppercase tracking-widest mb-0.5">Dif.</p>
-                                                <p className="text-lg font-black">${(parseFloat(rendicionForm.efectivoReal) - ((apertura?.efectivo || 0) + stats.cash - (stats.totalExpenses + stats.totalPurchases))).toLocaleString()}</p>
+                                                <p className="text-lg font-black">${(parseFloat(rendicionForm.efectivoReal) - ((apertura?.efectivo || 0) + stats.cash - (stats.totalExpenses + stats.totalPurchases))).toLocaleString('es-AR')}</p>
                                             </div>
                                         )}
                                     </div>
@@ -892,7 +892,7 @@ export default function ReportsPage() {
                                         <h4 className="text-sm font-black uppercase tracking-widest text-sky-900">📱 Mercado Pago</h4>
                                         <div className="text-right">
                                             <p className="text-[9px] font-black text-sky-400 uppercase tracking-widest">Esperado</p>
-                                            <p className="text-xl font-black text-sky-900">${((apertura?.mercadoPago || 0) + stats.mercadoPago).toLocaleString()}</p>
+                                            <p className="text-xl font-black text-sky-900">${((apertura?.mercadoPago || 0) + stats.mercadoPago).toLocaleString('es-AR')}</p>
                                         </div>
                                     </div>
                                     <div className="flex gap-4 items-center">
@@ -912,7 +912,7 @@ export default function ReportsPage() {
                                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'
                                             }`}>
                                                 <p className="text-[9px] font-black uppercase tracking-widest mb-0.5">Dif.</p>
-                                                <p className="text-lg font-black">${(parseFloat(rendicionForm.mercadoPagoReal) - ((apertura?.mercadoPago || 0) + stats.mercadoPago)).toLocaleString()}</p>
+                                                <p className="text-lg font-black">${(parseFloat(rendicionForm.mercadoPagoReal) - ((apertura?.mercadoPago || 0) + stats.mercadoPago)).toLocaleString('es-AR')}</p>
                                             </div>
                                         )}
                                     </div>
@@ -924,7 +924,7 @@ export default function ReportsPage() {
                                         <h4 className="text-sm font-black uppercase tracking-widest text-red-900">🏦 Santander</h4>
                                         <div className="text-right">
                                             <p className="text-[9px] font-black text-red-400 uppercase tracking-widest">Esperado</p>
-                                            <p className="text-xl font-black text-red-900">${((apertura?.santander || 0) + stats.santanderRio).toLocaleString()}</p>
+                                            <p className="text-xl font-black text-red-900">${((apertura?.santander || 0) + stats.santanderRio).toLocaleString('es-AR')}</p>
                                         </div>
                                     </div>
                                     <div className="flex gap-4 items-center">
@@ -944,7 +944,7 @@ export default function ReportsPage() {
                                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'
                                             }`}>
                                                 <p className="text-[9px] font-black uppercase tracking-widest mb-0.5">Dif.</p>
-                                                <p className="text-lg font-black">${(parseFloat(rendicionForm.santanderReal) - ((apertura?.santander || 0) + stats.santanderRio)).toLocaleString()}</p>
+                                                <p className="text-lg font-black">${(parseFloat(rendicionForm.santanderReal) - ((apertura?.santander || 0) + stats.santanderRio)).toLocaleString('es-AR')}</p>
                                             </div>
                                         )}
                                     </div>
@@ -1029,7 +1029,7 @@ function SummaryCard({ title, amount, subtitle, icon: Icon, color, dark }: any) 
                 <Icon size={24} />
             </div>
             <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${dark ? "text-gray-500" : "text-gray-400"}`}>{title}</p>
-            <h4 className="text-3xl font-black tracking-tighter">${amount.toLocaleString()}</h4>
+            <h4 className="text-3xl font-black tracking-tighter">${amount.toLocaleString('es-AR')}</h4>
             <p className={`text-xs font-bold mt-2 ${dark ? "text-gray-500" : "text-gray-400"}`}>{subtitle}</p>
             {dark && <div className="absolute top-[-20%] right-[-10%] opacity-5"><Icon size={120} /></div>}
         </motion.div>
@@ -1050,7 +1050,7 @@ function PaymentRow({ label, amount, percentage, icon: Icon, color, textColor, b
                     </div>
                 </div>
                 <div className="text-right">
-                    <p className="text-2xl font-black text-gray-900 tracking-tighter">${amount.toLocaleString()}</p>
+                    <p className="text-2xl font-black text-gray-900 tracking-tighter">${amount.toLocaleString('es-AR')}</p>
                 </div>
             </div>
             <div className="h-2 w-full bg-gray-50 rounded-full overflow-hidden">

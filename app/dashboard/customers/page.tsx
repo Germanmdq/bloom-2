@@ -234,7 +234,7 @@ export default function DashboardCustomersPage() {
                     <td className="px-4 py-3 text-center tabular-nums font-black whitespace-nowrap">
                         <div className="flex flex-col items-center gap-1">
                             <span className={r.balance > 0 ? 'text-red-600' : 'text-gray-400'}>
-                                {r.balance > 0 ? `-$${r.balance.toLocaleString()}` : `$${r.balance.toLocaleString()}`}
+                                {r.balance > 0 ? `-$${r.balance.toLocaleString('es-AR')}` : `$${r.balance.toLocaleString('es-AR')}`}
                             </span>
                             {r.balance > 0 && (
                                 <button 

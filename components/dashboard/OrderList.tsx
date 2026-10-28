@@ -482,7 +482,7 @@ export function OrderList() {
                             <div className="space-y-1">
                                 <div className="flex justify-between items-baseline">
                                     <span className="text-[11px] font-bold text-gray-400 uppercase">Ventas</span>
-                                    <span className="text-2xl font-black text-gray-900">${Number(group.total || 0).toLocaleString()}</span>
+                                    <span className="text-2xl font-black text-gray-900">${Number(group.total || 0).toLocaleString('es-AR')}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-[11px] font-bold text-gray-400 uppercase">Órdenes</span>
@@ -513,7 +513,7 @@ export function OrderList() {
                                     <div className="flex items-center gap-3 mt-3">
                                         <div className="bg-black text-white px-3 py-1.5 rounded-xl">
                                             <p className="text-[9px] font-black uppercase opacity-60">Total</p>
-                                            <p className="text-lg font-black">${Number(selectedGroup.total || 0).toLocaleString()}</p>
+                                            <p className="text-lg font-black">${Number(selectedGroup.total || 0).toLocaleString('es-AR')}</p>
                                         </div>
                                         <div className="bg-white/60 px-3 py-1.5 rounded-xl">
                                             <p className="text-[9px] font-black uppercase opacity-60">Órdenes</p>
@@ -580,7 +580,7 @@ export function OrderList() {
                                                     </p>
                                                 </div>
                                                 <div className="text-right shrink-0">
-                                                    <p className={`font-black text-lg ${paid ? "text-gray-950" : "text-red-700"}`}>${Number(o.total).toLocaleString()}</p>
+                                                    <p className={`font-black text-lg ${paid ? "text-gray-950" : "text-red-700"}`}>${Number(o.total).toLocaleString('es-AR')}</p>
                                                     {!paid && <p className="text-[9px] font-black uppercase tracking-widest text-red-500">Sin cobrar</p>}
                                                 </div>
                                             </button>
@@ -693,7 +693,7 @@ export function OrderList() {
                                                     </p>
                                                 )}
                                             </div>
-                                            <p className="text-sm font-black text-gray-700 shrink-0">${((item.price || 0) * (item.quantity || 1)).toLocaleString()}</p>
+                                            <p className="text-sm font-black text-gray-700 shrink-0">${((item.price || 0) * (item.quantity || 1)).toLocaleString('es-AR')}</p>
                                         </div>
                                     ))
                                 )}
@@ -710,7 +710,7 @@ export function OrderList() {
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-2xl font-black text-gray-900">${Number(selectedOrder.total).toLocaleString()}</p>
+                                    <p className="text-2xl font-black text-gray-900">${Number(selectedOrder.total).toLocaleString('es-AR')}</p>
                                 </div>
                                 <div className="flex flex-col gap-3">
                                     {isDeliveryOrder(selectedOrder as Order) && (

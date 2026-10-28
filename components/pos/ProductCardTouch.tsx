@@ -48,7 +48,7 @@ export function ProductCardTouch({ product, onAdd }: ProductCardTouchProps) {
             {/* Bottom: Price & Action */}
             <div className="z-10 flex items-end justify-between mt-4">
                 <span className="text-3xl font-black text-bloom-600 tracking-tight">
-                    ${Number(product.price || 0).toLocaleString()}
+                    ${Number(product.price || 0).toLocaleString('es-AR')}
                 </span>
 
                 <div className={`

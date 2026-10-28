@@ -91,7 +91,7 @@ export function WebOrderList({ tableId, webOrders, onSelectOrder, onClose }: Web
                                     {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </div>
                                 <div className="text-2xl font-black text-gray-900">
-                                    ${Number(order.total).toLocaleString()}
+                                    ${Number(order.total).toLocaleString('es-AR')}
                                 </div>
                             </div>
 

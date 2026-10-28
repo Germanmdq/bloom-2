@@ -392,7 +392,7 @@ export default function HomePage() {
                   <h3 className="text-3xl md:text-4xl font-bold tracking-tight text-ink-800 leading-snug mb-4">{platoDelDia.name}</h3>
                   <p className="text-lg text-ink-500 leading-relaxed mb-8">{platoDelDia.description || "Nuestra recomendación especial preparada hoy con ingredientes frescos."}</p>
                   <div className="flex flex-col sm:flex-row items-center gap-6">
-                    <span className="text-4xl font-black text-bloom-600">${platoDelDia.price?.toLocaleString() || "0"}</span>
+                    <span className="text-4xl font-black text-bloom-600">${platoDelDia.price?.toLocaleString('es-AR') || "0"}</span>
                     <button
                       type="button"
                       onClick={() => bloomChatRef.current?.openWithCategoryMessage({ categoryId: '', displayName: 'Sugerencias', productIds: [platoDelDia.id], fromHomeFeatured: true })}
@@ -451,7 +451,7 @@ export default function HomePage() {
                         <h3 className="text-2xl font-bold tracking-tight text-ink-800 leading-snug mb-3">{promo.name}</h3>
                         <p className="text-[15px] text-ink-500 leading-relaxed mb-6 flex-1">{promo.description}</p>
                         <div className="flex items-center justify-between mt-auto pt-6 border-t border-black/[0.04]">
-                          <span className="text-2xl font-black text-indigo-600">${promo.price?.toLocaleString()}</span>
+                          <span className="text-2xl font-black text-indigo-600">${promo.price?.toLocaleString('es-AR')}</span>
                           <button onClick={() => bloomChatRef.current?.openWithCategoryMessage({ categoryId: '', displayName: 'Promociones', productIds: [promo.id], fromHomeFeatured: true })} className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors duration-300">
                             <IconArrowRight size={20} />
                           </button>

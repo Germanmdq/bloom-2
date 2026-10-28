@@ -466,7 +466,7 @@ export function VariantSelector({ product, isOpen, onClose, onAddToOrder: _onAdd
                                                 <div className="min-w-0">
                                                     <span className="font-bold text-sm text-gray-800 block">{option.name}</span>
                                                     {option.price ? (
-                                                        <span className="text-xs text-gray-400">+${option.price.toLocaleString()} c/u</span>
+                                                        <span className="text-xs text-gray-400">+${option.price.toLocaleString('es-AR')} c/u</span>
                                                     ) : null}
                                                 </div>
                                                 <div className="flex items-center gap-2 shrink-0">
@@ -507,7 +507,7 @@ export function VariantSelector({ product, isOpen, onClose, onAddToOrder: _onAdd
                                             >
                                                 {isSelected && <div className="absolute left-0 top-0 bottom-0 w-1 bg-bloom-500" />}
                                                 <span className="font-bold">{option.name}</span>
-                                                {option.price ? <span className="text-xs text-gray-400">+${option.price.toLocaleString()}</span> : null}
+                                                {option.price ? <span className="text-xs text-gray-400">+${option.price.toLocaleString('es-AR')}</span> : null}
                                             </button>
                                         );
                                     })}
@@ -596,7 +596,7 @@ export function VariantSelector({ product, isOpen, onClose, onAddToOrder: _onAdd
                     {totalExtra > 0 && (
                         <div className="flex justify-between text-sm px-1 mb-1">
                             <span className="text-gray-400 font-medium">Extra</span>
-                            <span className="font-black text-bloom-600">+${totalExtra.toLocaleString()}</span>
+                            <span className="font-black text-bloom-600">+${totalExtra.toLocaleString('es-AR')}</span>
                         </div>
                     )}
 

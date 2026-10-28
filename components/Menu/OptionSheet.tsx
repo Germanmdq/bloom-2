@@ -1,5 +1,6 @@
 "use client";
 
+import { arsFormatter } from "@/lib/format";
 import { useEffect, useState } from "react";
 import { motion, useDragControls, PanInfo } from "framer-motion";
 import { X, Minus, Plus, ShoppingBag } from "lucide-react";
@@ -10,11 +11,7 @@ const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop";
 
 const formatCurrency = (val: number) =>
-  new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    maximumFractionDigits: 0,
-  }).format(val);
+  arsFormatter.format(val);
 
 export interface SheetLine {
   id: string;

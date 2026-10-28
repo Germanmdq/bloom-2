@@ -1,5 +1,6 @@
 "use client";
 
+import { arsFormatter } from "@/lib/format";
 import Link from "next/link";
 import IconPhoto from "next/image";
 import { useRouter } from "next/navigation";
@@ -138,7 +139,7 @@ export type BloomChatHandle = {
 };
 
 function formatArs(n: number) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
+  return arsFormatter.format(n);
 }
 
 function timeGreeting(): "Buenos días" | "Buenas tardes" | "Buenas noches" {

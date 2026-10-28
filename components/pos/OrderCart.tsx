@@ -93,12 +93,12 @@ export function OrderCart({
                                     )}
 
                                     <div className="text-xs font-medium text-gray-400 mt-1">
-                                        ${Number(item.price || 0).toLocaleString()} u.
+                                        ${Number(item.price || 0).toLocaleString('es-AR')} u.
                                     </div>
                                 </div>
                                 <div className="text-right">
                                     <div className="font-black text-lg text-gray-900">
-                                        ${(Number(item.price || 0) * item.quantity).toLocaleString()}
+                                        ${(Number(item.price || 0) * item.quantity).toLocaleString('es-AR')}
                                     </div>
                                 </div>
                             </div>
@@ -139,7 +139,7 @@ export function OrderCart({
                 <div className="flex justify-between items-end mb-4">
                     <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Total a Pagar</span>
                     <span className="text-4xl font-black text-gray-900 tracking-tight leading-none">
-                        ${Number(total || 0).toLocaleString()}
+                        ${Number(total || 0).toLocaleString('es-AR')}
                     </span>
                 </div>
 
