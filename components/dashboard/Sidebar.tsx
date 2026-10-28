@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconLayoutDashboard, IconLayoutGrid, IconCoffee, IconListCheck, IconSettings, IconUsers, IconChartPie, IconToolsKitchen, IconPackage, IconMessageCircle, IconBriefcase, IconX, IconLogout, IconHome, IconQrcode} from "@tabler/icons-react";
+import { IconLayoutDashboard, IconLayoutGrid, IconCoffee, IconListCheck, IconSettings, IconUsers, IconChartPie, IconToolsKitchen, IconPackage, IconMessageCircle, IconBriefcase, IconX, IconLogout, IconHome, IconQrcode, IconKey} from "@tabler/icons-react";
 import { useUserRole } from "@/lib/hooks/use-pos-data";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -20,6 +20,7 @@ const links = [
     { href: "/dashboard/whatsapp", label: "WhatsApp",  icon: IconMessageCircle },
     { href: "/dashboard/qr",       label: "QR Mesas",  icon: IconQrcode },
     { href: "/dashboard/settings", label: "Ajustes",   icon: IconSettings },
+    { href: "/dashboard/password", label: "Mi contraseña", icon: IconKey },
 ];
 
 const HIDDEN_SECTIONS = ["Cocina", "WhatsApp"];

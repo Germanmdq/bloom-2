@@ -173,3 +173,21 @@ export function humanizeReply(text: string, nameOf: (n: number) => string | unde
   out = out.replace(/\(\s*\)/g, "").replace(/\s{2,}/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim();
   return out;
 }
+
+/** Firma que acompaña a un pedido recién creado: permite elegir el medio de pago de ESE pedido sin exponer nada más. */
+export function signOrderRef(secret: string, orderId: string) {
+  return createHmac("sha256", secret).update(`pay:${orderId}`).digest("hex");
+}
+export function verifyOrderRef(secret: string, orderId: string, token: string | null | undefined) {
+  if (!secret || !orderId || !token || !/^[0-9a-f]{64}$/.test(token)) return false;
+  const a = Buffer.from(signOrderRef(secret, orderId));
+  const b = Buffer.from(token);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+/** Texto de la confirmación: sin códigos, con el detalle del pedido, el total y la modalidad. */
+export function confirmationText(lines: PricedLine[], total: number, draft: Draft) {
+  const detalle = lines.map((l) => `${l.quantity > 1 ? `${l.quantity} ` : ""}${l.name}${l.notes ? ` (${l.notes})` : ""}`).join(", ");
+  const destino = draft.orderType === "delivery" ? `para delivery a ${draft.address}` : "para retirar";
+  return `Listo, tu pedido está confirmado. ${detalle}, $${Math.round(total).toLocaleString("es-AR")}, ${destino}.`;
+}
