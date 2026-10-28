@@ -1,5 +1,6 @@
 "use client";
 
+import { arsFormatter } from "@/lib/format";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RobotHead } from "robot-heads";
 import { Check, Mic, RotateCcw, X } from "lucide-react";
@@ -11,7 +12,7 @@ type PricedLine = { id: string; name: string; quantity: number; unitPrice: numbe
 
 type Confirmation = { total: number; orderType: "retiro" | "delivery" | null; address: string | null; summary: string; payment: string; orderId: string | null; payToken: string | null };
 
-const money = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
+const money = (n: number) => arsFormatter.format(n);
 
 export function VoiceOrderAssistant({ isOverlayOpen }: { isOverlayOpen: boolean }) {
   const [open, setOpen] = useState(false);

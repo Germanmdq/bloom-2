@@ -1,5 +1,6 @@
 "use client"; 
 
+import { arsFormatter } from "@/lib/format";
 import { useState, useEffect, Suspense, useCallback, useRef, useMemo } from "react";
 import IconPhoto from "next/image";
 import Link from "next/link";
@@ -40,7 +41,7 @@ const MENU_PRODUCT_SELECT =
 
 // --- HELPERS ---
 const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(value);
+    arsFormatter.format(value);
 
 function categoryLabel(c: { name: string }) {
     return c.name.replace(/^\p{Extended_Pictographic}\s*/u, "").trim() || c.name;
@@ -571,7 +572,7 @@ function PublicMenuPage() {
                                                     </div>
                                                     
                                                     <div className="flex items-center justify-between w-full">
-                                                        <span className="text-4xl font-black tracking-tighter text-black">${Number(p.price).toLocaleString()}</span>
+                                                        <span className="text-4xl font-black tracking-tighter text-black">${Number(p.price).toLocaleString('es-AR')}</span>
                                                         <span className="text-[10px] font-black text-white bg-black px-4 py-2 rounded-full uppercase tracking-widest shadow-lg flex items-center gap-2">
                                                             Poner <IconPlus size={14} strokeWidth={3} />
                                                         </span>

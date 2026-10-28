@@ -188,7 +188,7 @@ export default function ProductsClient({ initialProducts, initialCategories, raw
                                         <div className="flex justify-between items-start mb-2">
                                             <h4 className="font-bold flex-1 pr-2">{formatName(product.name)}</h4>
                                             {!isQuickPricing ? (
-                                                <span className="font-black text-sm shrink-0">${product.price?.toLocaleString()}</span>
+                                                <span className="font-black text-sm shrink-0">${product.price?.toLocaleString('es-AR')}</span>
                                             ) : (
                                                 <input
                                                     type="number"

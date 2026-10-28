@@ -51,7 +51,7 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
 
                 {/* Price IconTag Overlay */}
                 <div className="absolute bottom-2 right-2 bg-white/95 backdrop-blur shadow-sm px-2.5 py-1 rounded-lg text-sm font-black text-gray-900 border border-gray-100 group-hover:border-bloom-600 group-hover:text-bloom-600 transition-colors">
-                    ${Number(product.price || 0).toLocaleString()}
+                    ${Number(product.price || 0).toLocaleString('es-AR')}
                 </div>
             </div>
 

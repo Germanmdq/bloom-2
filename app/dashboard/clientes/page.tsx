@@ -166,7 +166,7 @@ export default function ClientesPage() {
             return;
         }
 
-        if (!confirm(`¿Confirmas el pago de $${amountToPay.toLocaleString()}?`)) return;
+        if (!confirm(`¿Confirmas el pago de $${amountToPay.toLocaleString('es-AR')}?`)) return;
         
         setIsPaying(true);
         try {
@@ -194,7 +194,7 @@ export default function ClientesPage() {
         if (!selectedClient) return;
         const amount = Number(order.total || 0);
         if (!amount || amount <= 0) return;
-        if (!confirm(`¿Confirmas el pago de esta comanda por $${amount.toLocaleString()}?`)) return;
+        if (!confirm(`¿Confirmas el pago de esta comanda por $${amount.toLocaleString('es-AR')}?`)) return;
 
         setIsPaying(true);
         try {
@@ -384,7 +384,7 @@ export default function ClientesPage() {
                                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                                 {group.clients.length} cliente{group.clients.length === 1 ? "" : "s"}
                                                 {` · ${group.orders} pedido${group.orders === 1 ? "" : "s"} · ${group.quantities} unidades`}
-                                                {group.total > 0 ? ` · $${group.total.toLocaleString()}` : ""}
+                                                {group.total > 0 ? ` · $${group.total.toLocaleString('es-AR')}` : ""}
                                             </p>
                                         </div>
                                     </div>
@@ -425,7 +425,7 @@ export default function ClientesPage() {
                                                             </div>
                                                             <div className="shrink-0 text-right">
                                                                 <p className={`text-[9px] font-black uppercase tracking-widest ${isDebt ? "text-red-400" : "text-gray-400"}`}>Saldo CC</p>
-                                                                <p className={`mt-1 text-sm font-black ${isDebt ? "text-red-600" : "text-gray-900"}`}>{isDebt ? `-$${client.balance.toLocaleString()}` : "$0"}</p>
+                                                                <p className={`mt-1 text-sm font-black ${isDebt ? "text-red-600" : "text-gray-900"}`}>{isDebt ? `-$${client.balance.toLocaleString('es-AR')}` : "$0"}</p>
                                                                 <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-widest ${inactivity.color}`}>{inactivity.label}</span>
                                                             </div>
                                                         </motion.button>
@@ -524,7 +524,7 @@ export default function ClientesPage() {
                                     <div className="bg-gray-50/50 p-5 rounded-[2.5rem] text-center border border-gray-100 group hover:bg-white hover:shadow-xl transition-all">
                                         <IconTrendingUp className="mx-auto mb-3 text-black opacity-20" size={20} />
                                         <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Gasto Total</p>
-                                        <p className="text-xl font-black text-gray-900">${selectedClient.total_spent.toLocaleString()}</p>
+                                        <p className="text-xl font-black text-gray-900">${selectedClient.total_spent.toLocaleString('es-AR')}</p>
                                     </div>
                                     <div className="bg-gray-50/50 p-5 rounded-[2.5rem] text-center border border-gray-100 group hover:bg-white hover:shadow-xl transition-all">
                                         <IconShoppingBag className="mx-auto mb-3 text-black opacity-20" size={20} />
@@ -541,7 +541,7 @@ export default function ClientesPage() {
                                         <IconArrowsUpDown className="mx-auto mb-3 opacity-40" size={20} />
                                         <p className="text-[9px] font-black uppercase tracking-widest opacity-60 mb-1">Saldo CC</p>
                                         <p className="text-xl font-black">
-                                            {selectedClient.balance > 0 ? `-$${selectedClient.balance.toLocaleString()}` : selectedClient.balance < 0 ? `+$${Math.abs(selectedClient.balance).toLocaleString()}` : `$0`}
+                                            {selectedClient.balance > 0 ? `-$${selectedClient.balance.toLocaleString('es-AR')}` : selectedClient.balance < 0 ? `+$${Math.abs(selectedClient.balance).toLocaleString('es-AR')}` : `$0`}
                                         </p>
                                     </div>
                                 </div>
@@ -602,7 +602,7 @@ export default function ClientesPage() {
                                             onClick={() => setPaymentAmount(selectedClient.balance.toString())}
                                             className="text-[10px] font-black text-red-400 uppercase tracking-widest hover:text-red-600 transition-colors mx-auto"
                                         >
-                                            Autocompletar deuda total (${selectedClient.balance.toLocaleString()})
+                                            Autocompletar deuda total (${selectedClient.balance.toLocaleString('es-AR')})
                                         </button>
                                     )}
                                 </div>
@@ -684,7 +684,7 @@ export default function ClientesPage() {
                                                                 </div>
                                                             </div>
                                                             <div className="text-right shrink-0">
-                                                                <p className={`font-black text-base ${isDebtOrder ? "text-red-700" : "text-emerald-700"}`}>${Number(order.total).toLocaleString()}</p>
+                                                                <p className={`font-black text-base ${isDebtOrder ? "text-red-700" : "text-emerald-700"}`}>${Number(order.total).toLocaleString('es-AR')}</p>
                                                                 <p className="text-[9px] font-black text-accent uppercase tracking-tighter">
                                                                     {isExpanded ? "Ocultar detalle" : "Ver comanda"}
                                                                 </p>
@@ -731,8 +731,8 @@ export default function ClientesPage() {
                                                                                             )}
                                                                                         </div>
                                                                                         <div className="text-right shrink-0">
-                                                                                            <p className="text-xs font-black text-gray-900">${subtotal.toLocaleString()}</p>
-                                                                                            <p className="text-[9px] font-bold text-gray-400">${price.toLocaleString()} c/u</p>
+                                                                                            <p className="text-xs font-black text-gray-900">${subtotal.toLocaleString('es-AR')}</p>
+                                                                                            <p className="text-[9px] font-bold text-gray-400">${price.toLocaleString('es-AR')} c/u</p>
                                                                                         </div>
                                                                                     </div>
                                                                                 );

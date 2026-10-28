@@ -166,7 +166,7 @@ export function SalesComparisonPanel({ comparisonType, onClose }: SalesCompariso
                                         Hoy
                                     </p>
                                     <p className="text-4xl font-black text-[#FFD60A]">
-                                        ${todayTotal.toLocaleString()}
+                                        ${todayTotal.toLocaleString('es-AR')}
                                     </p>
                                 </div>
                                 <div className="bg-gray-50 rounded-[2rem] p-7 text-center border border-gray-100">
@@ -174,7 +174,7 @@ export function SalesComparisonPanel({ comparisonType, onClose }: SalesCompariso
                                         {label}
                                     </p>
                                     <p className="text-4xl font-black text-gray-900">
-                                        ${compareTotal.toLocaleString()}
+                                        ${compareTotal.toLocaleString('es-AR')}
                                     </p>
                                 </div>
                             </div>
@@ -210,7 +210,7 @@ export function SalesComparisonPanel({ comparisonType, onClose }: SalesCompariso
                                                     : 'text-red-500'
                                             }`}
                                         >
-                                            {isUp ? '+' : ''}${diff.toLocaleString()}
+                                            {isUp ? '+' : ''}${diff.toLocaleString('es-AR')}
                                         </p>
                                     </div>
                                 </div>

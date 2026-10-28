@@ -142,7 +142,7 @@ export function GlobalOrderNotification() {
 
                                 <div className="flex items-center justify-between bg-gray-50 rounded-2xl p-4 mb-4">
                                     <span className="text-xs font-bold text-gray-400 uppercase tracking-widest italic">ID: {notif.id.slice(0, 8)}</span>
-                                    <span className="text-lg font-black text-gray-900">${Number(notif.total).toLocaleString()}</span>
+                                    <span className="text-lg font-black text-gray-900">${Number(notif.total).toLocaleString('es-AR')}</span>
                                 </div>
 
                                 <div className="mb-4 max-h-[35dvh] overflow-y-auto rounded-2xl border border-gray-100 p-3" aria-label="Productos del pedido">

@@ -95,7 +95,7 @@ export function TableCard({ table, onClick }: TableCardProps) {
                 <div>
                     <div className="flex justify-between items-end mb-2">
                         <span className="text-2xl font-black text-white tracking-tight leading-none">
-                            ${table.total?.toLocaleString() || '0'}
+                            ${table.total?.toLocaleString('es-AR') || '0'}
                         </span>
                     </div>
                     <div className="h-1 w-full bg-white/20 rounded-full overflow-hidden">

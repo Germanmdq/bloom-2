@@ -6,7 +6,7 @@ import {
     IconSearch, IconTrash, IconCreditCard, IconCheck, IconLoader2, IconX, 
     IconChevronLeft, IconPrinter, IconToolsKitchen2, IconStar,
     IconSoup, IconMeat, IconPizza, IconCup, IconIceCream, IconGlassFull,
-    IconBeer, IconCake, IconBread, IconCookie, IconCheese, IconFish, 
+    IconBeer, IconCake, IconBread, IconPlus, IconMinus, IconArrowLeft, IconCookie, IconCheese, IconFish, 
     IconCarrot, IconBottle, IconCoffee, IconGlass, IconSalad, IconBurger,
 } from "@tabler/icons-react";
 import { useEscape } from "@/lib/hooks/useEscape";
@@ -19,6 +19,7 @@ import { ReceiptModal } from "@/components/pos/ReceiptModal";
 import { orderSheetHeaderBorderClass } from "@/lib/dashboard/table-colors";
 import { orderMatchesWebVirtualTable, WEB_ORDER_TABLE_DELIVERY, WEB_ORDER_TABLE_RETIRO } from "@/lib/orders/web-virtual-tables";
 import type { CartItem } from "@/lib/store/order-store";
+import { formatARS } from "@/lib/format";
 
 /** Ítems guardados en salon_tables o JSON de kitchen_tickets → mismo formato que el carrito POS. */
 function normalizeTableItem(raw: any): CartItem {
@@ -76,6 +77,18 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
     const [isPrecuenta, setIsPrecuenta] = useState(false);
     const [extraTotal] = useState(0);
     const [discountAmountInput, setDiscountAmountInput] = useState("");
+
+    // Pantallas angostas (celular y tablet): flujo simple de mesa. En computadora se mantiene el POS completo.
+    const [isNarrow, setIsNarrow] = useState(false);
+    const [showAddProducts, setShowAddProducts] = useState(false);
+    const [showNoteEditor, setShowNoteEditor] = useState(false);
+    useEffect(() => {
+        const mq = window.matchMedia("(max-width: 1023px)");
+        const sync = () => setIsNarrow(mq.matches);
+        sync();
+        mq.addEventListener("change", sync);
+        return () => mq.removeEventListener("change", sync);
+    }, []);
 
     const handleAddVarios = (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -415,7 +428,7 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
     // Auto-limpiar feedback después de 3 segundos
     useEffect(() => {
         if (feedback) {
-            const timer = setTimeout(() => setFeedback(null), 3000);
+            const timer = setTimeout(() => setFeedback(null), isNarrow ? 1200 : 3000);
             return () => clearTimeout(timer);
         }
     }, [feedback]);
@@ -927,7 +940,7 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                             setTimeout(() => {
                                 window.alert(
                                     `⚠️ CUENTA CORRIENTE — SALDO NO IMPUTADO\n\n${msg}\n\n` +
-                                    `La venta ($${capturedTotal.toLocaleString()}) quedó registrada, pero el saldo NO fue cargado a ninguna cuenta.\n\n` +
+                                    `La venta ($${capturedTotal.toLocaleString('es-AR')}) quedó registrada, pero el saldo NO fue cargado a ninguna cuenta.\n\n` +
                                     `Ajustá el balance manualmente en el panel de Clientes.`
                                 );
                             }, 500);
@@ -1010,7 +1023,7 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                             setTimeout(() => {
                                 window.alert(
                                     `⚠️ CUENTA CORRIENTE — SALDO NO IMPUTADO\n\n${msg}\n\n` +
-                                    `La venta ($${capturedTotal.toLocaleString()}) quedó registrada, pero el saldo NO fue cargado a ninguna cuenta.\n\n` +
+                                    `La venta ($${capturedTotal.toLocaleString('es-AR')}) quedó registrada, pero el saldo NO fue cargado a ninguna cuenta.\n\n` +
                                     `Ajustá el balance manualmente en el panel de Clientes.`
                                 );
                             }, 500);
@@ -1397,630 +1410,14 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
         );
     }
 
-    return (
-        <div className="h-full flex flex-col bg-slate-50 overflow-hidden">
+    const applyDiscountPesos = (raw: number) => {
+        const pesos = Math.min(total, Math.max(0, Math.round(raw) || 0));
+        setDiscountAmountInput(pesos ? String(pesos) : "");
+        setDiscount(total > 0 ? Math.round((pesos / total) * 10000) / 100 : 0);
+    };
 
-            {/* ── HEADER: Minimalist & Premium ── */}
-            <div className="px-4 py-3 bg-white border-b border-slate-100 shrink-0 shadow-sm z-20">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                        {isWebTable && currentWebOrderId && (
-                            <button onClick={handleBackToWebList} className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center hover:bg-slate-100 transition-all active:scale-95">
-                                <IconChevronLeft size={22} className="text-slate-900" />
-                            </button>
-                        )}
-                        
-                        <div className="relative group">
-                            <div className="w-16 h-16 bg-slate-900 rounded-[1.5rem] flex items-center justify-center text-white shadow-xl shadow-slate-200 transition-all group-hover:scale-105">
-                                <span className="font-bold text-3xl tracking-tighter">
-                                    {(() => {
-                                        const clean = customerName.replace('Cliente: ', '');
-                                        if (tableId === WEB_ORDER_TABLE_RETIRO) return 'R';
-                                        if (tableId === WEB_ORDER_TABLE_DELIVERY) return 'E';
-                                        if (clean) return clean.charAt(0).toUpperCase();
-                                        return tableId < 100 ? tableId : 'N';
-                                    })()}
-                                </span>
-                            </div>
-                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 border-4 border-white rounded-full" />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                            <div className="flex flex-col relative">
-                                <input
-                                    id="customer-name-input"
-                                    type="text"
-                                    value={customerSearchQuery !== "" ? customerSearchQuery : customerName.replace('Cliente: ', '')}
-                                    onChange={(e) => {
-                                        setCustomerSearchQuery(e.target.value);
-                                        setCustomerName(e.target.value);
-                                        if (!e.target.value) {
-                                            setSelectedCustomerId(null);
-                                            setCustomerResults([]);
-                                        } else {
-                                            handleCustomerSearch(e.target.value);
-                                        }
-                                    }}
-                                    placeholder={tableId < 100 ? `Mesa ${tableId}` : "Nombre del pedido..."}
-                                    className="text-4xl font-black text-slate-900 tracking-tighter leading-none bg-transparent border-none outline-none p-0 w-full placeholder:text-slate-200"
-                                />
-                                {customerResults.length > 0 && customerSearchQuery && (
-                                    <div className="absolute top-full left-0 w-80 mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden divide-y divide-gray-50">
-                                        {customerResults.map(c => (
-                                            <button
-                                                key={c.id}
-                                                onClick={() => {
-                                                    setSelectedCustomerId(c.id);
-                                                    setCustomerName(c.full_name);
-                                                    setSelectedCustomerBalance(c.balance);
-                                                    setCustomerSearchQuery("");
-                                                    setCustomerResults([]);
-                                                }}
-                                                className="w-full px-4 py-3 text-left hover:bg-gray-50 flex flex-col items-start transition-colors"
-                                            >
-                                                <div className="font-bold text-gray-900 leading-tight">{c.full_name}</div>
-                                                <div className="flex justify-between w-full items-center mt-1">
-                                                    <span className="text-[10px] text-gray-400 font-bold tracking-widest">{c.phone || "Sin tel"}</span>
-                                                    {Number(c.balance || 0) > 0 && (
-                                                        <span className="text-[10px] font-black text-red-500">Deuda: ${Number(c.balance).toLocaleString()}</span>
-                                                    )}
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        const cycle: Array<'LOCAL' | 'DELIVERY' | 'TAKEAWAY'> = ['LOCAL', 'DELIVERY', 'TAKEAWAY'];
-                                        const next = cycle[(cycle.indexOf(orderType) + 1) % cycle.length];
-                                        setOrderType(next);
-                                        supabase.from('salon_tables').update({ order_type: next }).eq('id', tableId).then(() => {});
-                                    }}
-                                    className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer ${orderType === 'LOCAL' ? 'bg-slate-100 text-slate-500 hover:bg-slate-200' : orderType === 'DELIVERY' ? 'bg-sky-100 text-sky-600 hover:bg-sky-200' : 'bg-amber-100 text-amber-600 hover:bg-amber-200'}`}
-                                    title="Clic para cambiar"
-                                >
-                                    {orderType === 'LOCAL' ? 'Salón' : orderType === 'DELIVERY' ? 'Delivery' : 'Retiro'}
-                                </button>
-                                <span className="text-[10px] text-slate-400 font-bold">• {cart.reduce((s, i) => s + i.quantity, 0)} ÍTEMS</span>
-                                {Number(selectedCustomerBalance) > 0 && !customerSearchQuery && (
-                                    <span className="text-[10px] font-black text-red-500 bg-red-50 px-2 py-0.5 rounded border border-red-100 ml-1">
-                                        DEUDA: ${Number(selectedCustomerBalance).toLocaleString()}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <select
-                            value={selectedWaiter}
-                            onChange={(e) => setSelectedWaiter(e.target.value)}
-                            className="h-10 px-3 bg-slate-50 border border-transparent rounded-xl text-xs font-bold text-slate-600 outline-none hover:bg-slate-100 transition-colors cursor-pointer"
-                        >
-                            <option value="">Mozo...</option>
-                            {waiters.map(w => <option key={w.id} value={w.id}>{w.full_name}</option>)}
-                        </select>
-
-                        <button
-                            onClick={() => {
-                                setIsKitchenReceipt(false);
-                                setIsPrecuenta(true);
-                                setShowReceiptModal(true);
-                            }}
-                            className="w-11 h-11 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-all active:scale-95"
-                            title="Imprimir Pre-cuenta"
-                        >
-                            <IconPrinter size={20} />
-                        </button>
-                    </div>
-
-                        <div className="h-10 w-[1px] bg-gray-100 mx-2" />
-
-                        <button
-                            onClick={handleFreeTable}
-                            className="h-11 px-5 rounded-xl text-red-500 bg-red-50 hover:bg-red-100 text-xs font-black uppercase tracking-widest transition-all active:scale-95"
-                        >
-                            Liberar
-                        </button>
-                        
-                        <button
-                            onClick={handleClose}
-                            className="w-11 h-11 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-900 transition-all active:scale-90"
-                        >
-                            <IconX size={20} />
-                        </button>
-                    </div>
-                </div>
-
-            {/* ── BODY ── */}
-            <div className="flex-1 flex overflow-hidden">
-
-                {/* ── IZQUIERDA: búsqueda + categorías + productos ── */}
-                <div className="flex-1 flex flex-col overflow-hidden">
-
-                    {/* Barra de búsqueda */}
-                    <div className="px-4 py-3 bg-white border-b border-gray-100 shrink-0 flex gap-2">
-                        <div className="relative flex-1">
-                            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
-                            <input
-                                id="product-search"
-                                type="text"
-                                autoFocus
-                                value={productSearch}
-                                onChange={(e) => { setProductSearch(e.target.value); setActiveCategory(null); }}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && displayProducts.length > 0) {
-                                        handleSelectProduct(displayProducts[0]);
-                                        setProductSearch("");
-                                    }
-                                }}
-                                placeholder="Buscar producto..."
-                                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 rounded-xl text-sm text-gray-800 border border-gray-200 outline-none focus:ring-2 focus:ring-gray-300 transition-all"
-                                autoComplete="off"
-                            />
-                        </div>
-                        <button
-                            onClick={() => {
-                                setVariosName("");
-                                setVariosPrice("");
-                                setVariosQuantity("1");
-                                setShowVariosModal(true);
-                            }}
-                            className="bg-gray-900 text-white px-4 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black active:scale-95 transition-all shadow-md shrink-0 flex items-center"
-                        >
-                            + Varios
-                        </button>
-                    </div>
-
-                    {/* Sub-header: volver a categorías cuando hay una activa */}
-                    {(activeCategory || searchTerm) && (
-                        <div className="px-4 py-2 bg-white border-b border-gray-100 shrink-0 flex items-center gap-2">
-                            <button
-                                onClick={() => { setActiveCategory(null); setProductSearch(''); }}
-                                className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors"
-                            >
-                                <IconChevronLeft size={14} />
-                                {searchTerm
-                                    ? `Resultados para "${productSearch}"`
-                    : (categories.find((c: any) => c.id === activeCategory)?.name ?? 'Categoría')}
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Área principal: categorías o productos */}
-                    <div className="flex-1 overflow-y-auto p-3 no-scrollbar">
-                        {isShowingDailyOffers ? (
-                            <div className="space-y-6">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-xl font-black text-slate-900">Ofertas del Día</h3>
-                                    <button 
-                                        onClick={() => setIsShowingDailyOffers(false)}
-                                        className="text-xs font-bold text-slate-400 hover:text-slate-900"
-                                    >
-                                        Volver ←
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {dailyPromos.map(promo => (
-                                        <button
-                                            key={promo.id}
-                                            onClick={() => {
-                                                const nameLower = (promo.name || "").toLowerCase();
-                                                const isCoffee = nameLower.includes("café") || nameLower.includes("cafe") || 
-                                                               nameLower.includes("jarrito") || nameLower.includes("té") || 
-                                                               nameLower.includes("te") || nameLower.includes("submarino");
-                                                
-                                                if (isCoffee) {
-                                                    addToCart({
-                                                        id: `promo-${promo.id}`,
-                                                        name: promo.name,
-                                                        price: promo.price || 0,
-                                                        quantity: 1
-                                                    });
-                                                    setFeedback({ message: `Agregado: ${promo.name}`, type: 'success' });
-                                                } else {
-                                                    addToCart({
-                                                        id: `promo-${promo.id}`,
-                                                        name: promo.name,
-                                                        price: promo.price || 0,
-                                                        quantity: 1
-                                                    });
-                                                    setFeedback({ message: `Agregado: ${promo.name}`, type: 'success' });
-                                                }
-                                            }}
-                                            className="p-6 rounded-[2rem] bg-white border border-slate-100 shadow-sm text-left hover:scale-[1.02] active:scale-98 transition-all group"
-                                        >
-                                            <h4 className="text-lg font-black text-slate-900 mb-1 group-hover:text-blue-600">{promo.name}</h4>
-                                            <p className="text-2xl font-black text-slate-900">${(promo.price || 0).toLocaleString()}</p>
-                                        </button>
-                                    ))}
-                                    {dailyPromos.length === 0 && (
-                                        <div className="col-span-2 py-12 text-center">
-                                            <p className="text-slate-400 font-bold">No hay ofertas cargadas hoy.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ) : !searchTerm && !activeCategory ? (
-                            <div className="flex flex-col gap-4">
-                                {/* ── Accesos rápidos — barra Bloom ── */}
-                                <div className="flex gap-2.5 mb-4">
-
-                                    {/* Plato del Día — pill verde inglés destacado */}
-                                    <button
-                                        onClick={() => {
-                                            if (featuredProduct) {
-                                                setPendingProduct(featuredProduct);
-                                                const nameLower = featuredProduct.name.toLowerCase();
-                                                const platoDiaHasGarnish = nameLower.includes("guarnicion") || nameLower.includes("guarnición") ||
-                                                                            nameLower.includes("c/guarn") || nameLower.includes("con guarn");
-                                                setConfigStep('drink-detail');
-                                                setSelectedDrinkGroup(null);
-                                                setSelectedDrink(null);
-                                                setSelectedGarnish(null);
-                                                setSelectedFlavor(null);
-                                                setConfigNotes("");
-                                                setShouldSkipGarnish(!platoDiaHasGarnish);
-                                                setIsEspecialContext(true);
-                                                setIsPlatoDiaContext(true);
-                                                setShowConfigurator(true);
-                                            } else {
-                                                const cat = categories.find(c => c.name.toLowerCase().includes('plato'));
-                                                if (cat) setActiveCategory(cat.id);
-                                            }
-                                        }}
-                                        className="flex-[1.3] flex items-center px-4 py-3 rounded-xl bg-english-700 text-bloom-cream text-left hover:bg-english-600 active:scale-[0.98] transition-all min-h-[60px]"
-                                    >
-                                        <div className="flex flex-col min-w-0 flex-1">
-                                            <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-bloom-gold/70 mb-0.5">Plato del Día</span>
-                                            <span className="text-[13px] font-bold leading-tight text-bloom-cream truncate">
-                                                {featuredProduct ? featuredProduct.name : "Sin configurar →"}
-                                            </span>
-                                            {featuredProduct && (
-                                                <span className="text-[10px] text-bloom-gold font-bold mt-0.5">
-                                                    {appSettings?.plato_dia_price && Number(appSettings.plato_dia_price) > 0
-                                                        ? `$${Number(appSettings.plato_dia_price).toLocaleString()} · c/bebida`
-                                                        : `$${Number(featuredProduct.price).toLocaleString()}`}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </button>
-
-                                    {/* Ofertas del Día — pill crema con borde dorado */}
-                                    <button
-                                        onClick={() => {
-                                            setIsShowingDailyOffers(true);
-                                            setActiveCategory(null);
-                                            setProductSearch("");
-                                        }}
-                                        className="flex-1 flex items-center px-4 py-3 rounded-xl bg-bloom-cream border border-bloom-gold/30 text-left hover:bg-bloom-100 hover:border-bloom-gold/60 active:scale-[0.98] transition-all min-h-[60px]"
-                                    >
-                                        <div className="flex flex-col min-w-0">
-                                            <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-bloom-gold-dark mb-0.5">Acceso rápido</span>
-                                            <span className="text-[13px] font-bold text-english-700 leading-tight">Ofertas del Día</span>
-                                        </div>
-                                    </button>
-
-                                    {/* Platos Diarios — pill crema con borde dorado */}
-                                    <button
-                                        onClick={() => {
-                                            const cat = categories.find(c => c.name.toLowerCase().includes('plato') && !c.name.toLowerCase().includes('día'));
-                                            if (cat) setActiveCategory(cat.id);
-                                        }}
-                                        className="flex-1 flex items-center px-4 py-3 rounded-xl bg-bloom-cream border border-bloom-gold/30 text-left hover:bg-bloom-100 hover:border-bloom-gold/60 active:scale-[0.98] transition-all min-h-[60px]"
-                                    >
-                                        <div className="flex flex-col min-w-0">
-                                            <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-bloom-gold-dark mb-0.5">Menú</span>
-                                            <span className="text-[13px] font-bold text-english-700 leading-tight">Platos Diarios</span>
-                                        </div>
-                                    </button>
-
-                                </div>
-
-                                {/* Grilla de Categorías — paleta Bloom */}
-                                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2.5">
-                                {(() => {
-                                    const priorityOrder = (name: string): number => {
-                                        const n = name.toLowerCase().trim();
-                                        if (n.includes('plato')) return 0;
-                                        if (n.includes('promoci') || n.includes('oferta')) return 1;
-                                        if (n.includes('desayuno') || n.includes('merienda')) return 2;
-                                        return 99;
-                                    };
-                                    const getCategoryIcon = (name: string) => {
-                                        const n = name.toLowerCase();
-                                        const props = { size: 20, stroke: 1.5 };
-                                        if (n.includes('ensala') || n.includes('vegeta'))                                                                              return <IconSalad {...props} />;
-                                        if (n.includes('carne') || n.includes('mila') || n.includes('bife') || n.includes('lomo') || n.includes('parri') || n.includes('poll')) return <IconMeat {...props} />;
-                                        if (n.includes('pizza') || n.includes('muzza') || n.includes('fuga'))                                                          return <IconPizza {...props} />;
-                                        if (n.includes('hamb') || n.includes('burg'))                                                                                  return <IconBurger {...props} />;
-                                        if (n.includes('desayuno') || n.includes('merienda') || n.includes('caf') || n.includes('latte') || n.includes('capu'))        return <IconCoffee {...props} />;
-                                        if (n.includes('infus') || n.includes('te '))                                                                                  return <IconCup {...props} />;
-                                        if (n.includes('helad') || n.includes('postr'))                                                                                return <IconIceCream {...props} />;
-                                        if (n.includes('torta') || n.includes('dulc') || n.includes('cake'))                                                           return <IconCake {...props} />;
-                                        if (n.includes('soda') || n.includes('agua') || n.includes('gaseosa') || n.includes('bebida'))                                 return <IconBottle {...props} />;
-                                        if (n.includes('cerve') || n.includes('pinta') || n.includes('alco'))                                                          return <IconBeer {...props} />;
-                                        if (n.includes('vino') || n.includes('copa'))                                                                                  return <IconGlass {...props} />;
-                                        if (n.includes('pan') || n.includes('factu') || n.includes('medialun') || n.includes('sandwich'))                              return <IconBread {...props} />;
-                                        if (n.includes('pasta') || n.includes('fideo') || n.includes('sopa'))                                                          return <IconSoup {...props} />;
-                                        if (n.includes('empa'))                                                                                                        return <IconCookie {...props} />;
-                                        if (n.includes('queso') || n.includes('tabla'))                                                                                return <IconCheese {...props} />;
-                                        if (n.includes('pescado') || n.includes('maris'))                                                                              return <IconFish {...props} />;
-                                        if (n.includes('verdura') || n.includes('vegano'))                                                                             return <IconCarrot {...props} />;
-                                        if (n.includes('promo') || n.includes('oferta'))                                                                               return <IconStar {...props} />;
-                                        return <IconToolsKitchen2 {...props} />;
-                                    };
-                                    return categories.filter(c =>
-                                        !c.name.toLowerCase().includes('plato') &&
-                                        !c.name.toLowerCase().includes('menú')
-                                    ).sort((a: any, b: any) => {
-                                        const prioA = priorityOrder(a.name);
-                                        const prioB = priorityOrder(b.name);
-                                        if (prioA !== prioB) return prioA - prioB;
-                                        return (a.sort_order || 0) - (b.sort_order || 0);
-                                    }).map((cat: any) => (
-                                        <button
-                                            key={cat.id}
-                                            onClick={() => setActiveCategory(cat.id)}
-                                            className="group relative h-20 bg-bloom-cream border border-bloom-gold/20 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1.5 hover:bg-english-600 hover:border-english-600 active:scale-95 transition-all"
-                                        >
-                                            <div className="text-english-600 group-hover:text-bloom-cream transition-colors">
-                                                {getCategoryIcon(cat.name)}
-                                            </div>
-                                            <span className="text-[9px] font-bold uppercase tracking-tight text-english-700 group-hover:text-bloom-cream text-center leading-tight line-clamp-2 transition-colors">
-                                                {cat.name}
-                                            </span>
-                                        </button>
-                                    ));
-                                })()}
-                                </div>
-                            </div>
-                        ) : (
-                            /* Productos: grilla Bloom */
-                            <div className="grid gap-3 w-full pb-20 [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))]">
-                                {displayProducts.map((item: any) => {
-                                    const getSmartIcon = (name: string, cat: string) => {
-                                        const n = (name + " " + cat).toLowerCase();
-                                        const props = { size: 22, stroke: 1.5 };
-                                        if (n.includes('rucula') || n.includes('ensala') || n.includes('vegeta')) return <IconSalad {...props} />;
-                                        if (n.includes('mila') || n.includes('carne') || n.includes('bife') || n.includes('lomo') || n.includes('parri') || n.includes('beef')) return <IconMeat {...props} />;
-                                        if (n.includes('poll') || n.includes('supre') || n.includes('alitas')) return <IconMeat {...props} />;
-                                        if (n.includes('piz') || n.includes('muzza') || n.includes('fuga')) return <IconPizza {...props} />;
-                                        if (n.includes('ham') || n.includes('burg')) return <IconBurger {...props} />;
-                                        if (n.includes('caf') || n.includes('latte') || n.includes('capu')) return <IconCoffee {...props} />;
-                                        if (n.includes('te ') || n.includes('infus')) return <IconCup {...props} />;
-                                        if (n.includes('helad') || n.includes('postr')) return <IconIceCream {...props} />;
-                                        if (n.includes('torta') || n.includes('dulc') || n.includes('cake')) return <IconCake {...props} />;
-                                        if (n.includes('soda') || n.includes('agua') || n.includes('coca')) return <IconBottle {...props} />;
-                                        if (n.includes('jug') || n.includes('batid')) return <IconGlassFull {...props} />;
-                                        if (n.includes('cerve') || n.includes('pinta')) return <IconBeer {...props} />;
-                                        if (n.includes('vino')) return <IconGlass {...props} />;
-                                        if (n.includes('papa') || n.includes('frit')) return <IconToolsKitchen2 {...props} />;
-                                        if (n.includes('factu') || n.includes('media') || n.includes('pan')) return <IconBread {...props} />;
-                                        if (n.includes('pasta') || n.includes('fideo')) return <IconSoup {...props} />;
-                                        if (n.includes('empa')) return <IconCookie {...props} />;
-                                        return <IconToolsKitchen2 {...props} />;
-                                    };
-
-                                    const catName = categoryMap[item.category_id] || "";
-                                    const IconComponent = getSmartIcon(item.name, catName);
-
-                                    return (
-                                        <button
-                                            key={item.id}
-                                            onClick={() => handleSelectProduct(item)}
-                                            className="group relative bg-bloom-cream border border-bloom-gold/20 rounded-2xl p-4 hover:shadow-md hover:border-english-600 hover:-translate-y-0.5 transition-all flex flex-col items-center justify-center gap-3 overflow-hidden min-h-[130px]"
-                                        >
-                                            <div className="w-11 h-11 bg-white rounded-xl flex items-center justify-center text-english-600 group-hover:bg-english-700 group-hover:text-bloom-cream transition-all shadow-sm">
-                                                {IconComponent}
-                                            </div>
-
-                                            <div className="text-center">
-                                                <p className="text-[9px] font-bold text-bloom-gold-dark uppercase tracking-[0.12em] mb-1">{catName}</p>
-                                                <p className="text-[12px] font-bold text-english-900 leading-tight tracking-tight mb-2 line-clamp-2 group-hover:text-english-700">
-                                                    {item.name}
-                                                </p>
-                                                <span className="inline-block px-3 py-1 bg-white border border-bloom-gold/30 text-english-700 group-hover:bg-english-700 group-hover:text-bloom-cream group-hover:border-english-700 rounded-lg text-[11px] font-bold tracking-tight transition-all">
-                                                    ${Number(item.price || 0).toLocaleString()}
-                                                </span>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* ── DERECHA: Datos Cliente + Carrito ── */}
-                <div className="w-72 xl:w-96 min-h-0 flex flex-col bg-white border-l border-bloom-gold/20 shrink-0">
-
-                    {/* Banner de Entrega / Contacto si corresponde */}
-                    {(customerAddress || customerPhone) && (
-                        <div className="mx-4 mt-3 p-3 bg-red-50 border border-red-200/70 rounded-2xl text-xs flex flex-col gap-1 shadow-sm shrink-0">
-                            {customerAddress && (
-                                <div className="font-bold text-red-950 flex items-start gap-1.5 leading-snug">
-                                    <span className="shrink-0 text-sm">📍</span>
-                                    <span>{customerAddress}</span>
-                                </div>
-                            )}
-                            {customerPhone && (
-                                <div className="text-[11px] font-bold text-red-800 flex items-center gap-1.5">
-                                    <span className="shrink-0">📞</span>
-                                    <span>{customerPhone}</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Lista de Productos en el Carrito */}
-                    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2 scroll-smooth">
-                        {cart.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center opacity-20 py-10">
-                                <IconToolsKitchen2 size={40} className="mb-2" />
-                                <p className="text-xs font-bold uppercase tracking-widest">Carrito Vacío</p>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col gap-2">
-                                {cart.map((item, index) => (
-                                    <div key={index} className="group relative bg-white border border-gray-100 p-3 rounded-2xl grid grid-cols-[auto_minmax(0,1fr)] gap-3 items-center hover:border-black transition-all">
-                                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-black group-hover:text-white transition-all shrink-0">
-                                            <IconToolsKitchen2 size={18} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-bold text-gray-900 break-words uppercase tracking-tight">{item.name}</p>
-                                            <p className="text-[10px] font-black text-slate-400 mt-0.5">
-                                                ${Number(item.price).toLocaleString()} x {item.quantity}
-                                            </p>
-                                            {item.notes && <p className="text-[9px] text-slate-900 font-bold mt-1 leading-tight">{item.notes}</p>}
-                                        </div>
-                                        <div className="col-span-2 flex items-center justify-end gap-1.5">
-                                            <div className="flex items-center bg-slate-50 rounded-xl p-1 px-1.5 gap-2">
-                                                <button
-                                                    onClick={() => updateQuantity(index, -1)}
-                                                    className="w-6 h-6 flex items-center justify-center bg-white rounded shadow-sm text-slate-600 hover:text-red-500 active:scale-95 disabled:opacity-50"
-                                                >
-                                                    <span className="font-bold text-sm leading-none">-</span>
-                                                </button>
-                                                <span className="text-xs font-black text-slate-700 w-4 text-center">{item.quantity}</span>
-                                                <button
-                                                    onClick={() => updateQuantity(index, 1)}
-                                                    className="w-6 h-6 flex items-center justify-center bg-white rounded shadow-sm text-slate-600 hover:text-emerald-500 active:scale-95"
-                                                >
-                                                    <span className="font-bold text-sm leading-none">+</span>
-                                                </button>
-                                            </div>
-                                            <span className="text-xs font-black text-slate-900 tracking-tight w-16 text-right">
-                                                ${(Number(item.price || 0) * Number(item.quantity || 1)).toLocaleString()}
-                                            </span>
-                                            <button
-                                                onClick={() => removeFromCart(index)}
-                                                className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-300 hover:bg-red-50 hover:text-red-500 active:scale-90 transition-all"
-                                                title="Quitar"
-                                            >
-                                                <IconTrash size={16} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Footer del carrito — paleta Bloom */}
-                    <details open className="max-h-[45%] overflow-y-auto bg-bloom-cream border-t border-bloom-gold/30 shrink-0">
-<summary className="sticky top-0 z-10 cursor-pointer bg-bloom-cream px-4 py-3 font-bold text-english-900">Total ${finalTotal.toLocaleString()} · Notas y cobro</summary>
-<div className="flex flex-col gap-2 p-4 pt-1">
-                        <div className="relative">
-                            <input
-                                type="text"
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                                placeholder="Notas de cocina..."
-                                className="w-full px-5 py-3.5 bg-white border border-bloom-gold/30 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-english-600/10 focus:border-english-600 transition-all placeholder:text-bloom-300 shadow-sm"
-                            />
-                        </div>
-
-                        <div className="flex items-center justify-between px-2">
-                            <span className="text-[10px] font-bold text-bloom-600 uppercase tracking-widest">Subtotal</span>
-                            <span className="text-2xl font-bold text-english-900 tracking-tighter">${total.toLocaleString()}</span>
-                        </div>
-
-                        {/* Descuento en pesos */}
-                        <div className="flex items-center gap-4 px-2">
-                            <span className="text-[10px] font-bold text-bloom-600 uppercase tracking-widest shrink-0">Descuento $</span>
-                            <input
-                                type="text"
-                                inputMode="numeric"
-                                pattern="[0-9]*"
-                                value={discountAmountInput}
-                                onChange={(e) => {
-                                    const rawValue = e.target.value.replace(/\D/g, "");
-                                    if (rawValue === "") {
-                                        setDiscountAmountInput("");
-                                        setDiscount(0);
-                                        return;
-                                    }
-                                    const pesos = Math.min(total, Math.max(0, Number(rawValue)));
-                                    setDiscountAmountInput(String(pesos));
-                                    const pct = total > 0 ? (pesos / total) * 100 : 0;
-                                    setDiscount(Math.round(pct * 100) / 100);
-                                }}
-                                placeholder="0"
-                                className="w-full bg-white border border-bloom-gold/30 rounded-xl px-4 py-2 text-sm font-black text-right outline-none focus:border-english-600 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            />
-                        </div>
-
-                        <div className="flex items-center justify-between px-2 pt-1 border-t border-bloom-gold/20">
-                            <span className={`text-[10px] font-bold uppercase tracking-widest ${discount > 0 ? 'text-emerald-500' : 'text-bloom-600'}`}>
-                                {discount > 0 ? 'Total con descuento' : 'Total Final'}
-                            </span>
-                            <span className={`text-4xl font-bold tracking-tighter ${discount > 0 ? 'text-emerald-600' : 'text-english-900'}`}>
-                                ${finalTotal.toLocaleString()}
-                            </span>
-                        </div>
-
-                        {/* Delivery Person Selector */}
-                        {(orderType === 'DELIVERY' || orderType === 'TAKEAWAY') && (
-                            <div className="mt-2">
-                                <label className="block text-[10px] font-black text-bloom-600 uppercase tracking-widest mb-1.5 ml-1">Repartidor (opcional)</label>
-                                <select
-                                    value={selectedDeliveryPerson}
-                                    onChange={(e) => setSelectedDeliveryPerson(e.target.value)}
-                                    className="w-full bg-white border border-bloom-gold/30 rounded-xl px-4 py-2.5 text-xs font-bold text-english-700 outline-none focus:ring-4 focus:ring-english-600/10 focus:border-english-600 transition-all"
-                                >
-                                    <option value="">-- Sin asignar --</option>
-                                    {deliveryPersons.map((p: any) => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-
-                        <button
-                            onClick={() => webOrderIsPaid ? finishOrder() : setShowPaymentModal(true)}
-                            disabled={finalTotal === 0 || isFinishing}
-                            className={`w-full h-16 rounded-[1.5rem] font-bold text-lg transition-all disabled:cursor-not-allowed ${
-                                finalTotal === 0 || isFinishing
-                                    ? 'bg-bloom-cream border border-bloom-gold/20 text-gris shadow-none'
-                                    : webOrderIsPaid
-                                        ? 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95 shadow-xl shadow-emerald-200'
-                                        : 'bg-english-700 text-bloom-cream hover:bg-english-600 active:scale-95 shadow-xl shadow-english-900/20'
-                            }`}
-                        >
-                            {webOrderIsPaid
-                                ? `Finalizar Pago`
-                                : `Ir a Cobrar`
-                            }
-                        </button>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                onClick={() => sendToKitchen()}
-                                disabled={cart.length === 0 || isFinishing}
-                                className="h-14 bg-bloom-cream border border-bloom-gold/30 text-english-700 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-bloom-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
-                            >
-                                Enviar pedido
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    setIsKitchenReceipt(true); // Es comanda mozo
-                                    await sendToKitchen(true, true); // Enviamos a cocina sin cerrar todavía (esperamos al modal)
-                                    setShowReceiptModal(true); // Abrimos el ticket para imprimir
-                                }}
-                                disabled={cart.length === 0 || isFinishing}
-                                className="h-14 bg-bloom-cream border border-bloom-gold/30 text-english-700 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-bloom-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center gap-2"
-                            >
-                                <IconPrinter size={16} /> Comanda Mozo
-                            </button>
-                        </div>
-                </div></details>
-            </div>
-
-
+    const modalsJsx = (
+        <>
             {/* ── MODALES ── */}
             {showReceiptModal && (
                 <ReceiptModal
@@ -2068,6 +1465,8 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                         setMpPosOrderId(null);
                     }}
                     onConfirm={finishOrder}
+                    discountPesos={Math.round(total * (discount / 100))}
+                    onDiscountPesos={applyDiscountPesos}
                     onMpOrderReady={onMpOrderReady}
                     waiterId={selectedWaiter || null}
                     selectedCustomerId={selectedCustomerId}
@@ -2430,6 +1829,864 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                     </div>
                 )}
             </AnimatePresence>
+        </>
+    );
+
+    const orderTypeLabel = orderType === 'LOCAL' ? 'Salón' : orderType === 'DELIVERY' ? 'Delivery' : 'Retiro';
+    const cycleOrderType = () => {
+        const cycle: Array<'LOCAL' | 'DELIVERY' | 'TAKEAWAY'> = ['LOCAL', 'DELIVERY', 'TAKEAWAY'];
+        const next = cycle[(cycle.indexOf(orderType) + 1) % cycle.length];
+        setOrderType(next);
+        supabase.from('salon_tables').update({ order_type: next }).eq('id', tableId).then(() => {});
+    };
+
+    if (isNarrow) {
+        const sortedCategories = [...categories].sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0));
+        const itemsCount = cart.reduce((n, i) => n + i.quantity, 0);
+
+        return (
+            <>
+            <div className="fixed inset-x-0 top-0 bottom-16 md:bottom-0 z-[40] flex flex-col bg-[#f7f5ef] text-[#1a3028]">
+                {/* ── PANTALLA DE LA MESA ── */}
+                <header className="relative flex h-14 shrink-0 items-center gap-2 border-b border-[#c4b896]/50 bg-white px-2.5">
+                    <button
+                        onClick={isWebTable && currentWebOrderId ? handleBackToWebList : handleClose}
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f7f5ef] active:scale-95"
+                        aria-label="Volver"
+                    >
+                        <IconArrowLeft size={20} />
+                    </button>
+                    <input
+                        type="text"
+                        value={customerSearchQuery !== "" ? customerSearchQuery : customerName.replace('Cliente: ', '')}
+                        onChange={(e) => {
+                            setCustomerSearchQuery(e.target.value);
+                            setCustomerName(e.target.value);
+                            if (!e.target.value) { setSelectedCustomerId(null); setCustomerResults([]); }
+                            else handleCustomerSearch(e.target.value);
+                        }}
+                        placeholder={tableId < 100 ? `Mesa ${tableId}` : "Pedido"}
+                        className="min-w-0 flex-1 bg-transparent text-lg font-black leading-tight outline-none placeholder:text-[#1a3028]"
+                    />
+                    <button
+                        type="button"
+                        onClick={cycleOrderType}
+                        className="shrink-0 rounded-lg bg-[#c4b896]/30 px-2 py-1 text-[11px] font-black uppercase tracking-wide text-[#6b6756] active:scale-95"
+                    >
+                        {orderTypeLabel}
+                    </button>
+                    <select
+                        value={selectedWaiter}
+                        onChange={(e) => setSelectedWaiter(e.target.value)}
+                        className="h-9 w-[88px] shrink-0 rounded-lg border border-[#c4b896]/50 bg-white px-1.5 text-xs font-bold text-[#6b6756] outline-none"
+                        aria-label="Mozo"
+                    >
+                        <option value="">Mozo</option>
+                        {waiters.map(w => <option key={w.id} value={w.id}>{w.full_name}</option>)}
+                    </select>
+                    {customerResults.length > 0 && customerSearchQuery && (
+                        <div className="absolute left-2 right-2 top-full z-50 mt-1 divide-y divide-gray-50 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-2xl">
+                            {customerResults.map(c => (
+                                <button
+                                    key={c.id}
+                                    onClick={() => {
+                                        setSelectedCustomerId(c.id);
+                                        setCustomerName(c.full_name);
+                                        setSelectedCustomerBalance(c.balance);
+                                        setCustomerSearchQuery("");
+                                        setCustomerResults([]);
+                                    }}
+                                    className="flex w-full flex-col items-start px-4 py-3 text-left"
+                                >
+                                    <span className="font-bold leading-tight">{c.full_name}</span>
+                                    <span className="text-[11px] font-bold text-[#6b6756]">
+                                        {c.phone || "Sin tel"}{Number(c.balance || 0) > 0 ? ` · Deuda ${formatARS(c.balance)}` : ""}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </header>
+
+                <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+                    {cart.length === 0 ? (
+                        <div className="flex h-full flex-col items-center justify-center gap-2 py-10 text-[#6b6756]">
+                            <IconToolsKitchen2 size={36} className="opacity-40" />
+                            <p className="text-sm font-bold">Todavía no hay productos</p>
+                            <p className="text-xs">Tocá "Agregar productos"</p>
+                        </div>
+                    ) : (
+                        <ul className="flex flex-col gap-2">
+                            {cart.map((item, index) => (
+                                <li key={index} className="rounded-2xl border border-[#c4b896]/50 bg-white p-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <p className="min-w-0 flex-1 break-words text-[15px] font-bold leading-snug">{item.name}</p>
+                                        <button
+                                            onClick={() => removeFromCart(index)}
+                                            className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[#6b6756] active:bg-red-50 active:text-red-600"
+                                            aria-label="Quitar"
+                                        >
+                                            <IconTrash size={18} />
+                                        </button>
+                                    </div>
+                                    {item.notes && <p className="mt-0.5 text-xs font-semibold text-[#6b6756]">{item.notes}</p>}
+                                    <div className="mt-2 flex items-center justify-between">
+                                        <div className="flex items-center gap-1 rounded-xl bg-[#f7f5ef] p-1">
+                                            <button onClick={() => updateQuantity(index, -1)} className="flex h-9 w-9 items-center justify-center rounded-lg bg-white shadow-sm active:scale-95" aria-label="Menos">
+                                                <IconMinus size={16} />
+                                            </button>
+                                            <span className="w-8 text-center text-base font-black">{item.quantity}</span>
+                                            <button onClick={() => updateQuantity(index, 1)} className="flex h-9 w-9 items-center justify-center rounded-lg bg-white shadow-sm active:scale-95" aria-label="Más">
+                                                <IconPlus size={16} />
+                                            </button>
+                                        </div>
+                                        <span className="text-lg font-black">{formatARS(Number(item.price || 0) * Number(item.quantity || 1))}</span>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+
+                    <div className="mt-3">
+                        {showNoteEditor || notes ? (
+                            <input
+                                type="text"
+                                value={notes}
+                                autoFocus={showNoteEditor && !notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                                onBlur={() => setShowNoteEditor(false)}
+                                placeholder="Nota para cocina"
+                                className="w-full rounded-xl border border-[#c4b896]/60 bg-white px-3 py-2.5 text-sm font-semibold outline-none focus:border-[#777b5b]"
+                            />
+                        ) : (
+                            <button onClick={() => setShowNoteEditor(true)} className="text-sm font-bold text-[#777b5b] underline underline-offset-2">
+                                Agregar nota
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── Barra fija: total + acciones ── */}
+                <div className="shrink-0 border-t border-[#c4b896]/50 bg-white px-3 pb-3 pt-2 shadow-[0_-6px_20px_rgba(26,48,40,0.08)]">
+                    <div className="flex items-end justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wide text-[#6b6756]">
+                            Total · {itemsCount} {itemsCount === 1 ? "ítem" : "ítems"}
+                        </span>
+                        <span className="text-3xl font-black leading-none">{formatARS(finalTotal)}</span>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                        <button
+                            onClick={() => setShowAddProducts(true)}
+                            className="h-14 rounded-2xl border border-[#c4b896] bg-white text-[15px] font-black active:scale-[0.98]"
+                        >
+                            Agregar productos
+                        </button>
+                        <button
+                            onClick={() => setShowPaymentModal(true)}
+                            disabled={cart.length === 0 || isFinishing}
+                            className="h-14 rounded-2xl bg-[#5f5c46] text-[15px] font-black text-white shadow-lg active:scale-[0.98] disabled:opacity-40"
+                        >
+                            Cerrar mesa
+                        </button>
+                    </div>
+                    <div className="mt-2 flex items-center justify-center gap-5 text-xs font-bold text-[#6b6756]">
+                        <button onClick={() => sendToKitchen()} disabled={cart.length === 0 || isFinishing} className="underline underline-offset-2 disabled:opacity-40">Enviar a cocina</button>
+                        <button onClick={() => { setIsKitchenReceipt(false); setIsPrecuenta(true); setShowReceiptModal(true); }} className="underline underline-offset-2">Pre-cuenta</button>
+                        <button onClick={handleFreeTable} className="underline underline-offset-2 text-red-700">Liberar</button>
+                    </div>
+                </div>
+
+                {/* ── AGREGAR PRODUCTOS (pantalla completa) ── */}
+                {showAddProducts && (
+                    <div className="absolute inset-0 z-[45] flex flex-col bg-[#f7f5ef]">
+                        <div className="flex shrink-0 items-center gap-2 border-b border-[#c4b896]/50 bg-white p-2.5">
+                            <div className="relative min-w-0 flex-1">
+                                <IconSearch size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6b6756]" />
+                                <input
+                                    type="search"
+                                    value={productSearch}
+                                    onChange={(e) => setProductSearch(e.target.value)}
+                                    placeholder="Buscar producto"
+                                    className="h-11 w-full rounded-xl border border-[#c4b896]/60 bg-[#f7f5ef] pl-10 pr-3 text-[15px] font-semibold outline-none focus:border-[#777b5b]"
+                                />
+                            </div>
+                            <button
+                                onClick={() => { setShowAddProducts(false); setProductSearch(""); }}
+                                className="h-11 shrink-0 rounded-xl bg-[#5f5c46] px-5 text-[15px] font-black text-white active:scale-95"
+                            >
+                                Listo
+                            </button>
+                        </div>
+                        <div className="flex shrink-0 gap-2 overflow-x-auto border-b border-[#c4b896]/40 bg-white px-2.5 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <button
+                                onClick={() => setActiveCategory(null)}
+                                className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-bold ${!activeCategory ? 'border-[#5f5c46] bg-[#5f5c46] text-white' : 'border-[#c4b896]/70 bg-white text-[#1a3028]'}`}
+                            >
+                                Todos
+                            </button>
+                            {sortedCategories.map((c: any) => (
+                                <button
+                                    key={c.id}
+                                    onClick={() => setActiveCategory(c.id)}
+                                    className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm font-bold ${activeCategory === c.id ? 'border-[#5f5c46] bg-[#5f5c46] text-white' : 'border-[#c4b896]/70 bg-white text-[#1a3028]'}`}
+                                >
+                                    {c.name}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
+                            {displayProducts.length === 0 ? (
+                                <p className="py-12 text-center text-sm font-bold text-[#6b6756]">No hay productos para mostrar.</p>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-2">
+                                    {displayProducts.map((item: any) => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => handleSelectProduct(item)}
+                                            className="flex min-h-[84px] flex-col justify-between gap-1 rounded-2xl border border-[#c4b896]/50 bg-white p-3 text-left active:scale-[0.98]"
+                                        >
+                                            <span className="break-words text-[14px] font-bold leading-snug">{item.name}</span>
+                                            <span className="text-base font-black text-[#5f5c46]">{formatARS(item._parentPrice ?? item.price)}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+            </div>
+            {/* Fuera del contenedor para quedar por encima del menú de navegación */}
+            {modalsJsx}
+            </>
+        );
+    }
+
+    return (
+        <div className="h-full flex flex-col bg-slate-50 overflow-hidden">
+
+            {/* ── HEADER: Minimalist & Premium ── */}
+            <div className="px-4 py-3 bg-white border-b border-slate-100 shrink-0 shadow-sm z-20">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-6">
+                        {isWebTable && currentWebOrderId && (
+                            <button onClick={handleBackToWebList} className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center hover:bg-slate-100 transition-all active:scale-95">
+                                <IconChevronLeft size={22} className="text-slate-900" />
+                            </button>
+                        )}
+                        
+                        <div className="relative group">
+                            <div className="w-16 h-16 bg-slate-900 rounded-[1.5rem] flex items-center justify-center text-white shadow-xl shadow-slate-200 transition-all group-hover:scale-105">
+                                <span className="font-bold text-3xl tracking-tighter">
+                                    {(() => {
+                                        const clean = customerName.replace('Cliente: ', '');
+                                        if (tableId === WEB_ORDER_TABLE_RETIRO) return 'R';
+                                        if (tableId === WEB_ORDER_TABLE_DELIVERY) return 'E';
+                                        if (clean) return clean.charAt(0).toUpperCase();
+                                        return tableId < 100 ? tableId : 'N';
+                                    })()}
+                                </span>
+                            </div>
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 border-4 border-white rounded-full" />
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                            <div className="flex flex-col relative">
+                                <input
+                                    id="customer-name-input"
+                                    type="text"
+                                    value={customerSearchQuery !== "" ? customerSearchQuery : customerName.replace('Cliente: ', '')}
+                                    onChange={(e) => {
+                                        setCustomerSearchQuery(e.target.value);
+                                        setCustomerName(e.target.value);
+                                        if (!e.target.value) {
+                                            setSelectedCustomerId(null);
+                                            setCustomerResults([]);
+                                        } else {
+                                            handleCustomerSearch(e.target.value);
+                                        }
+                                    }}
+                                    placeholder={tableId < 100 ? `Mesa ${tableId}` : "Nombre del pedido..."}
+                                    className="text-4xl font-black text-slate-900 tracking-tighter leading-none bg-transparent border-none outline-none p-0 w-full placeholder:text-slate-200"
+                                />
+                                {customerResults.length > 0 && customerSearchQuery && (
+                                    <div className="absolute top-full left-0 w-80 mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden divide-y divide-gray-50">
+                                        {customerResults.map(c => (
+                                            <button
+                                                key={c.id}
+                                                onClick={() => {
+                                                    setSelectedCustomerId(c.id);
+                                                    setCustomerName(c.full_name);
+                                                    setSelectedCustomerBalance(c.balance);
+                                                    setCustomerSearchQuery("");
+                                                    setCustomerResults([]);
+                                                }}
+                                                className="w-full px-4 py-3 text-left hover:bg-gray-50 flex flex-col items-start transition-colors"
+                                            >
+                                                <div className="font-bold text-gray-900 leading-tight">{c.full_name}</div>
+                                                <div className="flex justify-between w-full items-center mt-1">
+                                                    <span className="text-[10px] text-gray-400 font-bold tracking-widest">{c.phone || "Sin tel"}</span>
+                                                    {Number(c.balance || 0) > 0 && (
+                                                        <span className="text-[10px] font-black text-red-500">Deuda: ${Number(c.balance).toLocaleString('es-AR')}</span>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const cycle: Array<'LOCAL' | 'DELIVERY' | 'TAKEAWAY'> = ['LOCAL', 'DELIVERY', 'TAKEAWAY'];
+                                        const next = cycle[(cycle.indexOf(orderType) + 1) % cycle.length];
+                                        setOrderType(next);
+                                        supabase.from('salon_tables').update({ order_type: next }).eq('id', tableId).then(() => {});
+                                    }}
+                                    className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer ${orderType === 'LOCAL' ? 'bg-slate-100 text-slate-500 hover:bg-slate-200' : orderType === 'DELIVERY' ? 'bg-sky-100 text-sky-600 hover:bg-sky-200' : 'bg-amber-100 text-amber-600 hover:bg-amber-200'}`}
+                                    title="Clic para cambiar"
+                                >
+                                    {orderType === 'LOCAL' ? 'Salón' : orderType === 'DELIVERY' ? 'Delivery' : 'Retiro'}
+                                </button>
+                                <span className="text-[10px] text-slate-400 font-bold">• {cart.reduce((s, i) => s + i.quantity, 0)} ÍTEMS</span>
+                                {Number(selectedCustomerBalance) > 0 && !customerSearchQuery && (
+                                    <span className="text-[10px] font-black text-red-500 bg-red-50 px-2 py-0.5 rounded border border-red-100 ml-1">
+                                        DEUDA: ${Number(selectedCustomerBalance).toLocaleString('es-AR')}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <select
+                            value={selectedWaiter}
+                            onChange={(e) => setSelectedWaiter(e.target.value)}
+                            className="h-10 px-3 bg-slate-50 border border-transparent rounded-xl text-xs font-bold text-slate-600 outline-none hover:bg-slate-100 transition-colors cursor-pointer"
+                        >
+                            <option value="">Mozo...</option>
+                            {waiters.map(w => <option key={w.id} value={w.id}>{w.full_name}</option>)}
+                        </select>
+
+                        <button
+                            onClick={() => {
+                                setIsKitchenReceipt(false);
+                                setIsPrecuenta(true);
+                                setShowReceiptModal(true);
+                            }}
+                            className="w-11 h-11 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-all active:scale-95"
+                            title="Imprimir Pre-cuenta"
+                        >
+                            <IconPrinter size={20} />
+                        </button>
+                    </div>
+
+                        <div className="h-10 w-[1px] bg-gray-100 mx-2" />
+
+                        <button
+                            onClick={handleFreeTable}
+                            className="h-11 px-5 rounded-xl text-red-500 bg-red-50 hover:bg-red-100 text-xs font-black uppercase tracking-widest transition-all active:scale-95"
+                        >
+                            Liberar
+                        </button>
+                        
+                        <button
+                            onClick={handleClose}
+                            className="w-11 h-11 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-900 transition-all active:scale-90"
+                        >
+                            <IconX size={20} />
+                        </button>
+                    </div>
+                </div>
+
+            {/* ── BODY ── */}
+            <div className="flex-1 flex overflow-hidden">
+
+                {/* ── IZQUIERDA: búsqueda + categorías + productos ── */}
+                <div className="flex-1 flex flex-col overflow-hidden">
+
+                    {/* Barra de búsqueda */}
+                    <div className="px-4 py-3 bg-white border-b border-gray-100 shrink-0 flex gap-2">
+                        <div className="relative flex-1">
+                            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+                            <input
+                                id="product-search"
+                                type="text"
+                                autoFocus
+                                value={productSearch}
+                                onChange={(e) => { setProductSearch(e.target.value); setActiveCategory(null); }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && displayProducts.length > 0) {
+                                        handleSelectProduct(displayProducts[0]);
+                                        setProductSearch("");
+                                    }
+                                }}
+                                placeholder="Buscar producto..."
+                                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 rounded-xl text-sm text-gray-800 border border-gray-200 outline-none focus:ring-2 focus:ring-gray-300 transition-all"
+                                autoComplete="off"
+                            />
+                        </div>
+                        <button
+                            onClick={() => {
+                                setVariosName("");
+                                setVariosPrice("");
+                                setVariosQuantity("1");
+                                setShowVariosModal(true);
+                            }}
+                            className="bg-gray-900 text-white px-4 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black active:scale-95 transition-all shadow-md shrink-0 flex items-center"
+                        >
+                            + Varios
+                        </button>
+                    </div>
+
+                    {/* Sub-header: volver a categorías cuando hay una activa */}
+                    {(activeCategory || searchTerm) && (
+                        <div className="px-4 py-2 bg-white border-b border-gray-100 shrink-0 flex items-center gap-2">
+                            <button
+                                onClick={() => { setActiveCategory(null); setProductSearch(''); }}
+                                className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors"
+                            >
+                                <IconChevronLeft size={14} />
+                                {searchTerm
+                                    ? `Resultados para "${productSearch}"`
+                    : (categories.find((c: any) => c.id === activeCategory)?.name ?? 'Categoría')}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Área principal: categorías o productos */}
+                    <div className="flex-1 overflow-y-auto p-3 no-scrollbar">
+                        {isShowingDailyOffers ? (
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-xl font-black text-slate-900">Ofertas del Día</h3>
+                                    <button 
+                                        onClick={() => setIsShowingDailyOffers(false)}
+                                        className="text-xs font-bold text-slate-400 hover:text-slate-900"
+                                    >
+                                        Volver ←
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {dailyPromos.map(promo => (
+                                        <button
+                                            key={promo.id}
+                                            onClick={() => {
+                                                const nameLower = (promo.name || "").toLowerCase();
+                                                const isCoffee = nameLower.includes("café") || nameLower.includes("cafe") || 
+                                                               nameLower.includes("jarrito") || nameLower.includes("té") || 
+                                                               nameLower.includes("te") || nameLower.includes("submarino");
+                                                
+                                                if (isCoffee) {
+                                                    addToCart({
+                                                        id: `promo-${promo.id}`,
+                                                        name: promo.name,
+                                                        price: promo.price || 0,
+                                                        quantity: 1
+                                                    });
+                                                    setFeedback({ message: `Agregado: ${promo.name}`, type: 'success' });
+                                                } else {
+                                                    addToCart({
+                                                        id: `promo-${promo.id}`,
+                                                        name: promo.name,
+                                                        price: promo.price || 0,
+                                                        quantity: 1
+                                                    });
+                                                    setFeedback({ message: `Agregado: ${promo.name}`, type: 'success' });
+                                                }
+                                            }}
+                                            className="p-6 rounded-[2rem] bg-white border border-slate-100 shadow-sm text-left hover:scale-[1.02] active:scale-98 transition-all group"
+                                        >
+                                            <h4 className="text-lg font-black text-slate-900 mb-1 group-hover:text-blue-600">{promo.name}</h4>
+                                            <p className="text-2xl font-black text-slate-900">${(promo.price || 0).toLocaleString('es-AR')}</p>
+                                        </button>
+                                    ))}
+                                    {dailyPromos.length === 0 && (
+                                        <div className="col-span-2 py-12 text-center">
+                                            <p className="text-slate-400 font-bold">No hay ofertas cargadas hoy.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : !searchTerm && !activeCategory ? (
+                            <div className="flex flex-col gap-4">
+                                {/* ── Accesos rápidos — barra Bloom ── */}
+                                <div className="flex gap-2.5 mb-4">
+
+                                    {/* Plato del Día — pill verde inglés destacado */}
+                                    <button
+                                        onClick={() => {
+                                            if (featuredProduct) {
+                                                setPendingProduct(featuredProduct);
+                                                const nameLower = featuredProduct.name.toLowerCase();
+                                                const platoDiaHasGarnish = nameLower.includes("guarnicion") || nameLower.includes("guarnición") ||
+                                                                            nameLower.includes("c/guarn") || nameLower.includes("con guarn");
+                                                setConfigStep('drink-detail');
+                                                setSelectedDrinkGroup(null);
+                                                setSelectedDrink(null);
+                                                setSelectedGarnish(null);
+                                                setSelectedFlavor(null);
+                                                setConfigNotes("");
+                                                setShouldSkipGarnish(!platoDiaHasGarnish);
+                                                setIsEspecialContext(true);
+                                                setIsPlatoDiaContext(true);
+                                                setShowConfigurator(true);
+                                            } else {
+                                                const cat = categories.find(c => c.name.toLowerCase().includes('plato'));
+                                                if (cat) setActiveCategory(cat.id);
+                                            }
+                                        }}
+                                        className="flex-[1.3] flex items-center px-4 py-3 rounded-xl bg-english-700 text-bloom-cream text-left hover:bg-english-600 active:scale-[0.98] transition-all min-h-[60px]"
+                                    >
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                            <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-bloom-gold/70 mb-0.5">Plato del Día</span>
+                                            <span className="text-[13px] font-bold leading-tight text-bloom-cream truncate">
+                                                {featuredProduct ? featuredProduct.name : "Sin configurar →"}
+                                            </span>
+                                            {featuredProduct && (
+                                                <span className="text-[10px] text-bloom-gold font-bold mt-0.5">
+                                                    {appSettings?.plato_dia_price && Number(appSettings.plato_dia_price) > 0
+                                                        ? `$${Number(appSettings.plato_dia_price).toLocaleString('es-AR')} · c/bebida`
+                                                        : `$${Number(featuredProduct.price).toLocaleString('es-AR')}`}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </button>
+
+                                    {/* Ofertas del Día — pill crema con borde dorado */}
+                                    <button
+                                        onClick={() => {
+                                            setIsShowingDailyOffers(true);
+                                            setActiveCategory(null);
+                                            setProductSearch("");
+                                        }}
+                                        className="flex-1 flex items-center px-4 py-3 rounded-xl bg-bloom-cream border border-bloom-gold/30 text-left hover:bg-bloom-100 hover:border-bloom-gold/60 active:scale-[0.98] transition-all min-h-[60px]"
+                                    >
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-bloom-gold-dark mb-0.5">Acceso rápido</span>
+                                            <span className="text-[13px] font-bold text-english-700 leading-tight">Ofertas del Día</span>
+                                        </div>
+                                    </button>
+
+                                    {/* Platos Diarios — pill crema con borde dorado */}
+                                    <button
+                                        onClick={() => {
+                                            const cat = categories.find(c => c.name.toLowerCase().includes('plato') && !c.name.toLowerCase().includes('día'));
+                                            if (cat) setActiveCategory(cat.id);
+                                        }}
+                                        className="flex-1 flex items-center px-4 py-3 rounded-xl bg-bloom-cream border border-bloom-gold/30 text-left hover:bg-bloom-100 hover:border-bloom-gold/60 active:scale-[0.98] transition-all min-h-[60px]"
+                                    >
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-bloom-gold-dark mb-0.5">Menú</span>
+                                            <span className="text-[13px] font-bold text-english-700 leading-tight">Platos Diarios</span>
+                                        </div>
+                                    </button>
+
+                                </div>
+
+                                {/* Grilla de Categorías — paleta Bloom */}
+                                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2.5">
+                                {(() => {
+                                    const priorityOrder = (name: string): number => {
+                                        const n = name.toLowerCase().trim();
+                                        if (n.includes('plato')) return 0;
+                                        if (n.includes('promoci') || n.includes('oferta')) return 1;
+                                        if (n.includes('desayuno') || n.includes('merienda')) return 2;
+                                        return 99;
+                                    };
+                                    const getCategoryIcon = (name: string) => {
+                                        const n = name.toLowerCase();
+                                        const props = { size: 20, stroke: 1.5 };
+                                        if (n.includes('ensala') || n.includes('vegeta'))                                                                              return <IconSalad {...props} />;
+                                        if (n.includes('carne') || n.includes('mila') || n.includes('bife') || n.includes('lomo') || n.includes('parri') || n.includes('poll')) return <IconMeat {...props} />;
+                                        if (n.includes('pizza') || n.includes('muzza') || n.includes('fuga'))                                                          return <IconPizza {...props} />;
+                                        if (n.includes('hamb') || n.includes('burg'))                                                                                  return <IconBurger {...props} />;
+                                        if (n.includes('desayuno') || n.includes('merienda') || n.includes('caf') || n.includes('latte') || n.includes('capu'))        return <IconCoffee {...props} />;
+                                        if (n.includes('infus') || n.includes('te '))                                                                                  return <IconCup {...props} />;
+                                        if (n.includes('helad') || n.includes('postr'))                                                                                return <IconIceCream {...props} />;
+                                        if (n.includes('torta') || n.includes('dulc') || n.includes('cake'))                                                           return <IconCake {...props} />;
+                                        if (n.includes('soda') || n.includes('agua') || n.includes('gaseosa') || n.includes('bebida'))                                 return <IconBottle {...props} />;
+                                        if (n.includes('cerve') || n.includes('pinta') || n.includes('alco'))                                                          return <IconBeer {...props} />;
+                                        if (n.includes('vino') || n.includes('copa'))                                                                                  return <IconGlass {...props} />;
+                                        if (n.includes('pan') || n.includes('factu') || n.includes('medialun') || n.includes('sandwich'))                              return <IconBread {...props} />;
+                                        if (n.includes('pasta') || n.includes('fideo') || n.includes('sopa'))                                                          return <IconSoup {...props} />;
+                                        if (n.includes('empa'))                                                                                                        return <IconCookie {...props} />;
+                                        if (n.includes('queso') || n.includes('tabla'))                                                                                return <IconCheese {...props} />;
+                                        if (n.includes('pescado') || n.includes('maris'))                                                                              return <IconFish {...props} />;
+                                        if (n.includes('verdura') || n.includes('vegano'))                                                                             return <IconCarrot {...props} />;
+                                        if (n.includes('promo') || n.includes('oferta'))                                                                               return <IconStar {...props} />;
+                                        return <IconToolsKitchen2 {...props} />;
+                                    };
+                                    return categories.filter(c =>
+                                        !c.name.toLowerCase().includes('plato') &&
+                                        !c.name.toLowerCase().includes('menú')
+                                    ).sort((a: any, b: any) => {
+                                        const prioA = priorityOrder(a.name);
+                                        const prioB = priorityOrder(b.name);
+                                        if (prioA !== prioB) return prioA - prioB;
+                                        return (a.sort_order || 0) - (b.sort_order || 0);
+                                    }).map((cat: any) => (
+                                        <button
+                                            key={cat.id}
+                                            onClick={() => setActiveCategory(cat.id)}
+                                            className="group relative h-20 bg-bloom-cream border border-bloom-gold/20 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1.5 hover:bg-english-600 hover:border-english-600 active:scale-95 transition-all"
+                                        >
+                                            <div className="text-english-600 group-hover:text-bloom-cream transition-colors">
+                                                {getCategoryIcon(cat.name)}
+                                            </div>
+                                            <span className="text-[9px] font-bold uppercase tracking-tight text-english-700 group-hover:text-bloom-cream text-center leading-tight line-clamp-2 transition-colors">
+                                                {cat.name}
+                                            </span>
+                                        </button>
+                                    ));
+                                })()}
+                                </div>
+                            </div>
+                        ) : (
+                            /* Productos: grilla Bloom */
+                            <div className="grid gap-3 w-full pb-20 [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))]">
+                                {displayProducts.map((item: any) => {
+                                    const getSmartIcon = (name: string, cat: string) => {
+                                        const n = (name + " " + cat).toLowerCase();
+                                        const props = { size: 22, stroke: 1.5 };
+                                        if (n.includes('rucula') || n.includes('ensala') || n.includes('vegeta')) return <IconSalad {...props} />;
+                                        if (n.includes('mila') || n.includes('carne') || n.includes('bife') || n.includes('lomo') || n.includes('parri') || n.includes('beef')) return <IconMeat {...props} />;
+                                        if (n.includes('poll') || n.includes('supre') || n.includes('alitas')) return <IconMeat {...props} />;
+                                        if (n.includes('piz') || n.includes('muzza') || n.includes('fuga')) return <IconPizza {...props} />;
+                                        if (n.includes('ham') || n.includes('burg')) return <IconBurger {...props} />;
+                                        if (n.includes('caf') || n.includes('latte') || n.includes('capu')) return <IconCoffee {...props} />;
+                                        if (n.includes('te ') || n.includes('infus')) return <IconCup {...props} />;
+                                        if (n.includes('helad') || n.includes('postr')) return <IconIceCream {...props} />;
+                                        if (n.includes('torta') || n.includes('dulc') || n.includes('cake')) return <IconCake {...props} />;
+                                        if (n.includes('soda') || n.includes('agua') || n.includes('coca')) return <IconBottle {...props} />;
+                                        if (n.includes('jug') || n.includes('batid')) return <IconGlassFull {...props} />;
+                                        if (n.includes('cerve') || n.includes('pinta')) return <IconBeer {...props} />;
+                                        if (n.includes('vino')) return <IconGlass {...props} />;
+                                        if (n.includes('papa') || n.includes('frit')) return <IconToolsKitchen2 {...props} />;
+                                        if (n.includes('factu') || n.includes('media') || n.includes('pan')) return <IconBread {...props} />;
+                                        if (n.includes('pasta') || n.includes('fideo')) return <IconSoup {...props} />;
+                                        if (n.includes('empa')) return <IconCookie {...props} />;
+                                        return <IconToolsKitchen2 {...props} />;
+                                    };
+
+                                    const catName = categoryMap[item.category_id] || "";
+                                    const IconComponent = getSmartIcon(item.name, catName);
+
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => handleSelectProduct(item)}
+                                            className="group relative bg-bloom-cream border border-bloom-gold/20 rounded-2xl p-4 hover:shadow-md hover:border-english-600 hover:-translate-y-0.5 transition-all flex flex-col items-center justify-center gap-3 overflow-hidden min-h-[130px]"
+                                        >
+                                            <div className="w-11 h-11 bg-white rounded-xl flex items-center justify-center text-english-600 group-hover:bg-english-700 group-hover:text-bloom-cream transition-all shadow-sm">
+                                                {IconComponent}
+                                            </div>
+
+                                            <div className="text-center">
+                                                <p className="text-[9px] font-bold text-bloom-gold-dark uppercase tracking-[0.12em] mb-1">{catName}</p>
+                                                <p className="text-[12px] font-bold text-english-900 leading-tight tracking-tight mb-2 line-clamp-2 group-hover:text-english-700">
+                                                    {item.name}
+                                                </p>
+                                                <span className="inline-block px-3 py-1 bg-white border border-bloom-gold/30 text-english-700 group-hover:bg-english-700 group-hover:text-bloom-cream group-hover:border-english-700 rounded-lg text-[11px] font-bold tracking-tight transition-all">
+                                                    ${Number(item.price || 0).toLocaleString('es-AR')}
+                                                </span>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── DERECHA: Datos Cliente + Carrito ── */}
+                <div className="w-72 xl:w-96 min-h-0 flex flex-col bg-white border-l border-bloom-gold/20 shrink-0">
+
+                    {/* Banner de Entrega / Contacto si corresponde */}
+                    {(customerAddress || customerPhone) && (
+                        <div className="mx-4 mt-3 p-3 bg-red-50 border border-red-200/70 rounded-2xl text-xs flex flex-col gap-1 shadow-sm shrink-0">
+                            {customerAddress && (
+                                <div className="font-bold text-red-950 flex items-start gap-1.5 leading-snug">
+                                    <span className="shrink-0 text-sm">📍</span>
+                                    <span>{customerAddress}</span>
+                                </div>
+                            )}
+                            {customerPhone && (
+                                <div className="text-[11px] font-bold text-red-800 flex items-center gap-1.5">
+                                    <span className="shrink-0">📞</span>
+                                    <span>{customerPhone}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Lista de Productos en el Carrito */}
+                    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2 scroll-smooth">
+                        {cart.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center opacity-20 py-10">
+                                <IconToolsKitchen2 size={40} className="mb-2" />
+                                <p className="text-xs font-bold uppercase tracking-widest">Carrito Vacío</p>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-2">
+                                {cart.map((item, index) => (
+                                    <div key={index} className="group relative bg-white border border-gray-100 p-3 rounded-2xl grid grid-cols-[auto_minmax(0,1fr)] gap-3 items-center hover:border-black transition-all">
+                                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-black group-hover:text-white transition-all shrink-0">
+                                            <IconToolsKitchen2 size={18} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold text-gray-900 break-words uppercase tracking-tight">{item.name}</p>
+                                            <p className="text-[10px] font-black text-slate-400 mt-0.5">
+                                                ${Number(item.price).toLocaleString('es-AR')} x {item.quantity}
+                                            </p>
+                                            {item.notes && <p className="text-[9px] text-slate-900 font-bold mt-1 leading-tight">{item.notes}</p>}
+                                        </div>
+                                        <div className="col-span-2 flex items-center justify-end gap-1.5">
+                                            <div className="flex items-center bg-slate-50 rounded-xl p-1 px-1.5 gap-2">
+                                                <button
+                                                    onClick={() => updateQuantity(index, -1)}
+                                                    className="w-6 h-6 flex items-center justify-center bg-white rounded shadow-sm text-slate-600 hover:text-red-500 active:scale-95 disabled:opacity-50"
+                                                >
+                                                    <span className="font-bold text-sm leading-none">-</span>
+                                                </button>
+                                                <span className="text-xs font-black text-slate-700 w-4 text-center">{item.quantity}</span>
+                                                <button
+                                                    onClick={() => updateQuantity(index, 1)}
+                                                    className="w-6 h-6 flex items-center justify-center bg-white rounded shadow-sm text-slate-600 hover:text-emerald-500 active:scale-95"
+                                                >
+                                                    <span className="font-bold text-sm leading-none">+</span>
+                                                </button>
+                                            </div>
+                                            <span className="text-xs font-black text-slate-900 tracking-tight w-16 text-right">
+                                                ${(Number(item.price || 0) * Number(item.quantity || 1)).toLocaleString('es-AR')}
+                                            </span>
+                                            <button
+                                                onClick={() => removeFromCart(index)}
+                                                className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-300 hover:bg-red-50 hover:text-red-500 active:scale-90 transition-all"
+                                                title="Quitar"
+                                            >
+                                                <IconTrash size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Footer del carrito — paleta Bloom */}
+                    <details open className="max-h-[45%] overflow-y-auto bg-bloom-cream border-t border-bloom-gold/30 shrink-0">
+<summary className="sticky top-0 z-10 cursor-pointer bg-bloom-cream px-4 py-3 font-bold text-english-900">Total ${finalTotal.toLocaleString('es-AR')} · Notas y cobro</summary>
+<div className="flex flex-col gap-2 p-4 pt-1">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                                placeholder="Notas de cocina..."
+                                className="w-full px-5 py-3.5 bg-white border border-bloom-gold/30 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-english-600/10 focus:border-english-600 transition-all placeholder:text-bloom-300 shadow-sm"
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-between px-2">
+                            <span className="text-[10px] font-bold text-bloom-600 uppercase tracking-widest">Subtotal</span>
+                            <span className="text-2xl font-bold text-english-900 tracking-tighter">${total.toLocaleString('es-AR')}</span>
+                        </div>
+
+                        {/* Descuento en pesos */}
+                        <div className="flex items-center gap-4 px-2">
+                            <span className="text-[10px] font-bold text-bloom-600 uppercase tracking-widest shrink-0">Descuento $</span>
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={discountAmountInput}
+                                onChange={(e) => {
+                                    const rawValue = e.target.value.replace(/\D/g, "");
+                                    if (rawValue === "") {
+                                        setDiscountAmountInput("");
+                                        setDiscount(0);
+                                        return;
+                                    }
+                                    const pesos = Math.min(total, Math.max(0, Number(rawValue)));
+                                    setDiscountAmountInput(String(pesos));
+                                    const pct = total > 0 ? (pesos / total) * 100 : 0;
+                                    setDiscount(Math.round(pct * 100) / 100);
+                                }}
+                                placeholder="0"
+                                className="w-full bg-white border border-bloom-gold/30 rounded-xl px-4 py-2 text-sm font-black text-right outline-none focus:border-english-600 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-between px-2 pt-1 border-t border-bloom-gold/20">
+                            <span className={`text-[10px] font-bold uppercase tracking-widest ${discount > 0 ? 'text-emerald-500' : 'text-bloom-600'}`}>
+                                {discount > 0 ? 'Total con descuento' : 'Total Final'}
+                            </span>
+                            <span className={`text-4xl font-bold tracking-tighter ${discount > 0 ? 'text-emerald-600' : 'text-english-900'}`}>
+                                ${finalTotal.toLocaleString('es-AR')}
+                            </span>
+                        </div>
+
+                        {/* Delivery Person Selector */}
+                        {(orderType === 'DELIVERY' || orderType === 'TAKEAWAY') && (
+                            <div className="mt-2">
+                                <label className="block text-[10px] font-black text-bloom-600 uppercase tracking-widest mb-1.5 ml-1">Repartidor (opcional)</label>
+                                <select
+                                    value={selectedDeliveryPerson}
+                                    onChange={(e) => setSelectedDeliveryPerson(e.target.value)}
+                                    className="w-full bg-white border border-bloom-gold/30 rounded-xl px-4 py-2.5 text-xs font-bold text-english-700 outline-none focus:ring-4 focus:ring-english-600/10 focus:border-english-600 transition-all"
+                                >
+                                    <option value="">-- Sin asignar --</option>
+                                    {deliveryPersons.map((p: any) => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        <button
+                            onClick={() => webOrderIsPaid ? finishOrder() : setShowPaymentModal(true)}
+                            disabled={finalTotal === 0 || isFinishing}
+                            className={`w-full h-16 rounded-[1.5rem] font-bold text-lg transition-all disabled:cursor-not-allowed ${
+                                finalTotal === 0 || isFinishing
+                                    ? 'bg-bloom-cream border border-bloom-gold/20 text-gris shadow-none'
+                                    : webOrderIsPaid
+                                        ? 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95 shadow-xl shadow-emerald-200'
+                                        : 'bg-english-700 text-bloom-cream hover:bg-english-600 active:scale-95 shadow-xl shadow-english-900/20'
+                            }`}
+                        >
+                            {webOrderIsPaid
+                                ? `Finalizar Pago`
+                                : `Ir a Cobrar`
+                            }
+                        </button>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                onClick={() => sendToKitchen()}
+                                disabled={cart.length === 0 || isFinishing}
+                                className="h-14 bg-bloom-cream border border-bloom-gold/30 text-english-700 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-bloom-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                            >
+                                Enviar pedido
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    setIsKitchenReceipt(true); // Es comanda mozo
+                                    await sendToKitchen(true, true); // Enviamos a cocina sin cerrar todavía (esperamos al modal)
+                                    setShowReceiptModal(true); // Abrimos el ticket para imprimir
+                                }}
+                                disabled={cart.length === 0 || isFinishing}
+                                className="h-14 bg-bloom-cream border border-bloom-gold/30 text-english-700 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-bloom-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center gap-2"
+                            >
+                                <IconPrinter size={16} /> Comanda Mozo
+                            </button>
+                        </div>
+                </div></details>
+            </div>
+
+
+            {modalsJsx}
         </div>
     </div>
 );

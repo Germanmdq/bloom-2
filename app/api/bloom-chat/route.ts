@@ -1,3 +1,4 @@
+import { arsFormatter } from "@/lib/format";
 import { NextRequest } from "next/server";
 import Groq, { APIError } from "groq-sdk";
 import type { ChatCompletionChunk } from "groq-sdk/resources/chat/completions";
@@ -35,7 +36,7 @@ function messagesToGroqTurns(messages: { role: "user" | "assistant" | "system"; 
 }
 
 function formatArs(n: number) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
+  return arsFormatter.format(n);
 }
 
 function timeOfDayLabel(clientTimeISO: string): "mañana" | "tarde" | "noche" {

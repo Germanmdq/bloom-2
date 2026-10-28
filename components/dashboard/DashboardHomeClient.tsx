@@ -1,12 +1,13 @@
 "use client";
 
+import { arsFormatter } from "@/lib/format";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { IconArrowRight, IconCalendar, IconChartBar, IconCurrencyDollar, IconLayoutGrid, IconLoader2, IconPackage, IconShoppingBag, IconTrendingUp, IconUsers } from "@tabler/icons-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 type Order = { id: string; created_at: string; customer_name?: string | null; total?: number | null; status?: string | null; order_type?: string | null; table_id?: number | null };
-const money = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+const money = arsFormatter;
 const terminalStatuses = new Set(["entregado", "cancelado", "delivered", "cancelled", "completed"]);
 const isToday = (value: string) => { const date = new Date(value); const today = new Date(); return date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth() && date.getDate() === today.getDate(); };
 const orderLabel = (order: Order) => order.customer_name?.trim() || (order.table_id ? `Mesa ${order.table_id}` : order.order_type === "DELIVERY" ? "Pedido delivery" : "Pedido sin nombre");

@@ -49,7 +49,7 @@ export function useOrderNotification() {
                         
                         soundAlerts.playOrderAlert();
                         toast.success(`¡Pago Recibido!: ${customer}`, {
-                            description: `Monto: $${total.toLocaleString()}`,
+                            description: `Monto: $${total.toLocaleString('es-AR')}`,
                             duration: 10000,
                         });
                     }

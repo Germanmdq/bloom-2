@@ -1,5 +1,6 @@
 "use client";
 
+import { arsFormatter } from "@/lib/format";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -8,7 +9,7 @@ import type { CustomerOrderRow } from "@/lib/types/dashboard-customers";
 
 function fmtMoney(n: number | null): string {
   if (n == null || Number.isNaN(n)) return "—";
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(
+  return arsFormatter.format(
     n
   );
 }

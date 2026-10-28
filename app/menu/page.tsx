@@ -1,5 +1,6 @@
 "use client";
 
+import { arsFormatter } from "@/lib/format";
 import AutoplayVideo from "@/components/Menu/AutoplayVideo";
 import { normalizePhoneOrKeep } from "@/lib/phone";
 import React, { useState, useEffect, useMemo, Suspense } from "react";
@@ -33,11 +34,7 @@ import "./menu-pwa.css";
 
 // Formato de moneda argentina
 const formatCurrency = (val: number) =>
-  new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    maximumFractionDigits: 0,
-  }).format(val);
+  arsFormatter.format(val);
 
 const PAYMENTS_SIMULATION = process.env.NEXT_PUBLIC_PAYMENTS_SIMULATION === "true";
 

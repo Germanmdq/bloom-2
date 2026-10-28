@@ -26,6 +26,9 @@ interface PaymentModalProps {
     setSelectedCustomerId?: (id: string | null) => void;
     customerName?: string;
     setCustomerName?: (name: string) => void;
+    /** Descuento en pesos (se muestra solo en pantallas angostas, donde el modal es la única pantalla de cobro). */
+    discountPesos?: number;
+    onDiscountPesos?: (pesos: number) => void;
 }
 
 export function PaymentModal({
@@ -44,7 +47,9 @@ export function PaymentModal({
     selectedCustomerId,
     setSelectedCustomerId,
     customerName,
-    setCustomerName
+    setCustomerName,
+    discountPesos = 0,
+    onDiscountPesos,
 }: PaymentModalProps) {
     const supabase = createClient();
     const [willPrintFactura, setWillPrintFactura] = useState(false);
@@ -88,7 +93,7 @@ export function PaymentModal({
     const cafeGratisDisponible = clienteStamps !== null && stampsConCarrito >= 10;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-12">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 md:p-12">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
             <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -104,18 +109,18 @@ export function PaymentModal({
                     }}
                     className="flex flex-col md:flex-row w-full h-full"
                 >
-                <div className="md:w-1/3 bg-[#FFD60A] p-7 flex flex-col justify-between relative overflow-hidden">
+                <div className="md:w-1/3 bg-[#FFD60A] p-4 md:p-7 flex flex-col justify-between relative overflow-hidden shrink-0">
                     <div>
-                        <h3 className="text-lg font-black uppercase tracking-widest opacity-40 mb-2">Total a Cobrar</h3>
-                        <p className="text-6xl font-black tracking-tighter text-black mb-8">${finalTotal.toLocaleString()}</p>
+                        <h3 className="text-xs md:text-lg font-black uppercase tracking-widest opacity-40 mb-1 md:mb-2">Total a Cobrar</h3>
+                        <p className="text-4xl md:text-6xl font-black tracking-tighter text-black mb-0 md:mb-8">${finalTotal.toLocaleString('es-AR')}</p>
                     </div>
                     {discount > 0 && (
-                        <div className="flex flex-col gap-1 bg-black/5 p-4 rounded-xl">
+                        <div className="hidden md:flex flex-col gap-1 bg-black/5 p-4 rounded-xl">
                             <span className="text-[10px] font-black uppercase opacity-40">Descuento aplicado</span>
-                            <span className="text-2xl font-black text-black">-${Math.round(total * (discount / 100)).toLocaleString()}</span>
+                            <span className="text-2xl font-black text-black">-${Math.round(total * (discount / 100)).toLocaleString('es-AR')}</span>
                         </div>
                     )}
-                    <div className="mt-8">
+                    <div className="mt-8 hidden md:block">
                         <p className="text-xs font-bold uppercase tracking-widest opacity-40 mb-2">Detalles</p>
                         <div className="text-sm font-bold flex flex-col gap-1">
                             <span>Items: {cart.length}</span>
@@ -123,9 +128,23 @@ export function PaymentModal({
                     </div>
                 </div>
 
-                <div className="flex-1 p-6 md:p-8 bg-white flex flex-col overflow-y-auto">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-2xl font-black uppercase tracking-tighter">Método de Pago</h3>
+                <div className="flex-1 min-h-0 p-4 md:p-8 bg-white flex flex-col overflow-y-auto">
+                    {onDiscountPesos && (
+                        <div className="md:hidden mb-4 flex items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-2.5">
+                            <label htmlFor="pm-discount" className="text-xs font-black uppercase tracking-widest text-gray-500">Descuento $ (opcional)</label>
+                            <input
+                                id="pm-discount"
+                                type="text"
+                                inputMode="numeric"
+                                value={discountPesos ? discountPesos.toLocaleString("es-AR") : ""}
+                                onChange={(e) => onDiscountPesos(Number(e.target.value.replace(/\D/g, "")) || 0)}
+                                placeholder="0"
+                                className="w-28 bg-white border border-gray-200 rounded-xl px-3 py-2 text-right text-base font-black outline-none"
+                            />
+                        </div>
+                    )}
+                    <div className="flex justify-between items-center mb-4 md:mb-6">
+                        <h3 className="text-lg md:text-2xl font-black uppercase tracking-tighter">Método de Pago</h3>
                         {waiterId && (
                             <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100">
                                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Mozo</span>
@@ -179,7 +198,7 @@ export function PaymentModal({
                                                         <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200">☕ CAFÉ GRATIS</span>
                                                     )}
                                                     {Number(cust.balance || 0) > 0 && (
-                                                        <span className="text-[10px] font-black text-red-500 bg-red-50 px-2 py-1 rounded-lg border border-red-100">DEUDOR: ${Number(cust.balance).toLocaleString()}</span>
+                                                        <span className="text-[10px] font-black text-red-500 bg-red-50 px-2 py-1 rounded-lg border border-red-100">DEUDOR: ${Number(cust.balance).toLocaleString('es-AR')}</span>
                                                     )}
                                                 </div>
                                             </button>
@@ -224,7 +243,7 @@ export function PaymentModal({
                     </div>
 
                     <div className="flex flex-col gap-3 mb-4">
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             <button
                                 type="button"
                                 onClick={() => setPaymentMethod("CASH")}
@@ -265,12 +284,15 @@ export function PaymentModal({
                                 className={`p-4 rounded-2xl border-2 text-left transition-all ${willPrintFactura ? "border-purple-500 bg-purple-50" : "border-gray-100"}`}
                             >
                                 <p className="font-black text-sm">Factura C</p>
-                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{willPrintFactura ? "✓ Activo" : "Imprimir"}</p>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                                    <span className="md:hidden">{willPrintFactura ? "✓ Se factura" : "No se factura"}</span>
+                                    <span className="hidden md:inline">{willPrintFactura ? "✓ Activo" : "Imprimir"}</span>
+                                </p>
                             </button>
                         </div>
                     </div>
 
-                    <div className="flex-1 bg-gray-50 rounded-3xl p-8 flex items-center justify-center border border-gray-100 mb-4 overflow-y-auto">
+                    <div className="flex-1 min-h-[72px] md:min-h-[96px] bg-gray-50 rounded-3xl p-3 md:p-8 flex items-center justify-center border border-gray-100 mb-4 overflow-y-auto">
                         {paymentMethod === "CASH" && (
                             <input
                                 type="number"
@@ -311,7 +333,7 @@ export function PaymentModal({
                         )}
                     </div>
 
-                    <div className="flex gap-3 mt-2">
+                    <div className="flex gap-3 mt-2 sticky bottom-0 -mx-4 px-4 pt-2 pb-1 bg-white md:static md:mx-0 md:px-0 md:pt-0 md:pb-0">
                         <button
                             type="button"
                             onClick={onClose}
@@ -328,7 +350,7 @@ export function PaymentModal({
                                 : "bg-black text-[#FFD60A]"
                             }`}
                         >
-                            {isFinishing ? "..." : (paymentMethod === "CUENTA_CORRIENTE" && !selectedCustomerId && !customerName ? "Seleccionar Cliente" : "Confirmar Venta")}
+                            {isFinishing ? "..." : (paymentMethod === "CUENTA_CORRIENTE" && !selectedCustomerId && !customerName ? "Seleccionar Cliente" : <><span className="md:hidden">Cobrar y cerrar</span><span className="hidden md:inline">Confirmar Venta</span></>)}
                         </button>
                     </div>
                 </div>

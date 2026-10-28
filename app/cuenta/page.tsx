@@ -1,5 +1,6 @@
 "use client";
 
+import { arsFormatter } from "@/lib/format";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { IconArrowLeft, IconLoader2, IconLogout } from "@tabler/icons-react";
@@ -25,7 +26,7 @@ type CuentaData = {
   movements: Array<{ id: string; date: string; type: "cargo" | "pago"; amount: number; detail: string }>;
 };
 
-const money = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
+const money = (n: number) => arsFormatter.format(n);
 const when = (iso: string) => new Date(iso).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 const STATUS_STYLE: Record<PaymentStatus, { label: string; className: string }> = {
