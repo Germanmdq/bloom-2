@@ -8,6 +8,7 @@ import { OrderSheet } from "@/components/dashboard/OrderSheet";
 import { createClient } from "@/lib/supabase/client";
 import { IconLoader2, IconX, IconTruck, IconShoppingBag, IconClock } from "@tabler/icons-react";
 import { useEscape } from "@/lib/hooks/useEscape";
+import { OrderCard, type CardKind, type CardState } from "@/components/dashboard/OrderCard";
 
 type WebOrder = {
     id: string;
@@ -25,7 +26,11 @@ type WebOrder = {
 
 
 
+type KitchenTicketRow = { id: string; order_id: string | null; table_id: number | string | null; status: string; created_at: string };
+
 export default function TablesPage() {
+    const [tickets, setTickets] = useState<KitchenTicketRow[]>([]);
+    const [nowTick, setNowTick] = useState(() => Date.now());
     const [tables, setTables] = useState<Table[]>([]);
     const [tableSearch, setTableSearch] = useState("");
     const [globalSearchClients, setGlobalSearchClients] = useState<any[]>([]);
@@ -79,6 +84,27 @@ export default function TablesPage() {
     const [isRegisteringCustomer, setIsRegisteringCustomer] = useState(false);
 
     const supabase = createClient();
+
+    // Comandas abiertas (para el estado de cada tarjeta) y reloj para el tiempo transcurrido.
+    useEffect(() => {
+        let alive = true;
+        const loadTickets = async () => {
+            const { data } = await supabase
+                .from('kitchen_tickets')
+                .select('id, order_id, table_id, status, created_at')
+                .in('status', ['PENDING', 'PREPARING', 'READY'])
+                .limit(500);
+            if (alive && data) setTickets(data as KitchenTicketRow[]);
+        };
+        loadTickets();
+        const channel = supabase
+            .channel('tables_kitchen_tickets')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'kitchen_tickets' }, loadTickets)
+            .subscribe();
+        const poll = setInterval(loadTickets, 30000);
+        const tick = setInterval(() => setNowTick(Date.now()), 30000);
+        return () => { alive = false; clearInterval(poll); clearInterval(tick); supabase.removeChannel(channel); };
+    }, []);
 
     const searchCustomers = async (q: string) => {
         setCustomerSearch(q);
@@ -510,6 +536,16 @@ export default function TablesPage() {
         else if (num >= 200 && num < 300) setNewTableType('TAKEAWAY');
 
         handleOpenTable(num);
+    };
+
+    const minutesSince = (ms: number) => Math.max(0, Math.floor((nowTick - ms) / 60000));
+
+    // Estado según las comandas abiertas: lo pendiente manda sobre lo que está en cocina, y esto sobre lo listo.
+    const stateFor = (list: KitchenTicketRow[], empty: CardState): CardState => {
+        if (list.length === 0) return empty;
+        if (list.some(t => t.status === 'PENDING')) return 'pending';
+        if (list.some(t => t.status === 'PREPARING')) return 'cooking';
+        return 'ready';
     };
 
     const activeTablesCount = tables.filter(t => t.status === 'OCCUPIED').length;
@@ -953,23 +989,22 @@ export default function TablesPage() {
                 </div>
             )}
 
-            <div className="flex justify-between items-center mb-8">
-                <div className="flex items-center gap-6">
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-6 sm:mb-8">
+                <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                     <div>
                         <h1 className="text-4xl font-black text-gray-900 tracking-tighter">
                             Bloom <span className="text-gray-300 font-light italic">OS</span>
                         </h1>
-                        <p className="text-[10px] font-bold text-green-500 uppercase tracking-widest mt-1">Dashboard Actualizado ✓</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="relative">
+                    <div className="flex w-full sm:w-auto items-center gap-2">
+                        <div className="relative flex-1 sm:flex-none">
                             <input
                                 id="table-search"
                                 type="text"
                                 placeholder="Buscar mesa, cliente o proveedor (F1)..."
                                 value={tableSearch}
                                 onChange={(e) => setTableSearch(e.target.value)}
-                                className="w-64 bg-white border border-gray-200 rounded-xl px-4 py-2 font-bold outline-none focus:border-black focus:ring-2 focus:ring-black/5 transition-all shadow-sm"
+                                className="w-full sm:w-64 bg-white border border-gray-200 rounded-xl px-4 py-2 font-bold outline-none focus:border-black focus:ring-2 focus:ring-black/5 transition-all shadow-sm"
                             />
                             {isGlobalSearching && (
                                 <IconLoader2 className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-gray-300" size={16} />
@@ -1075,16 +1110,12 @@ export default function TablesPage() {
                         </div>
                     )}
 
-                    <div className="flex gap-3">
-                        <div className="flex items-center gap-1.5 text-xs text-gray-500 font-bold">
-                            <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]" /> Salón
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-gray-500 font-bold">
-                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]" /> Retiro
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-gray-500 font-bold">
-                            <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)]" /> Delivery
-                        </div>
+                    <div className="hidden sm:flex gap-3">
+                        {([['#c98a2b','Pendiente'],['#2f6f7e','En cocina'],['#3f8a5a','Listo'],['#b5472f','Demorado']] as const).map(([c, l]) => (
+                            <div key={l} className="flex items-center gap-1.5 text-xs text-gray-500 font-bold">
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c }} /> {l}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -1124,205 +1155,52 @@ export default function TablesPage() {
                 </div>
             ) : (
                 <>
-                {(() => {
-                    const totalItems = filteredWebOrders.length + filteredSortedTables.length;
-                    const cols =
-                        totalItems <= 6 ? 3 :
-                        totalItems <= 8 ? 4 :
-                        totalItems <= 12 ? 5 : 6;
-                    const gridCols = cols === 3 ? 'grid-cols-3' : cols === 4 ? 'grid-cols-4' : cols === 5 ? 'grid-cols-5' : 'grid-cols-6';
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:[grid-template-columns:repeat(auto-fill,minmax(250px,1fr))]">
+                    {filteredWebOrders.map(order => {
+                        const isDelivery = order.delivery_type === 'delivery' || (!order.delivery_type && order.order_type === 'web');
+                        const created = new Date(order.created_at).getTime();
+                        return (
+                            <OrderCard
+                                key={order.id}
+                                layoutId={`weborder-${order.id}`}
+                                kind={isDelivery ? 'DELIVERY' : 'TAKEAWAY'}
+                                name={order.customer_name || 'Pedido web'}
+                                detail={order.delivery_info || order.customer_phone}
+                                state={stateFor(tickets.filter(t => t.order_id === order.id), 'pending')}
+                                itemCount={order.items?.length || 0}
+                                total={order.total}
+                                minutes={minutesSince(created)}
+                                onClick={() => setSelectedWebOrder(order)}
+                            />
+                        );
+                    })}
 
-                    const s = cols === 3 ? {
-                        minH: 'min-h-[170px]', pad: 'p-5', gap: 'gap-5',
-                        name: 'text-2xl', badge: 'text-[9px]', meta: 'text-[10px]',
-                        total: 'text-xl', time: 'text-sm', iconSize: 14,
-                    } : cols === 4 ? {
-                        minH: 'min-h-[155px]', pad: 'p-4', gap: 'gap-4',
-                        name: 'text-xl', badge: 'text-[8px]', meta: 'text-[9px]',
-                        total: 'text-lg', time: 'text-xs', iconSize: 12,
-                    } : cols === 5 ? {
-                        minH: 'min-h-[140px]', pad: 'p-4', gap: 'gap-3',
-                        name: 'text-lg', badge: 'text-[7px]', meta: 'text-[8px]',
-                        total: 'text-base', time: 'text-[10px]', iconSize: 11,
-                    } : {
-                        minH: 'min-h-[125px]', pad: 'p-3', gap: 'gap-2',
-                        name: 'text-base', badge: 'text-[6px]', meta: 'text-[7px]',
-                        total: 'text-sm', time: 'text-[9px]', iconSize: 10,
-                    };
-
-                    return (
-                        <div className={`grid ${gridCols} ${s.gap}`}>
-                             {/* Individual Web Order Cards */}
-                             {filteredWebOrders.map(order => {
-                                 const isDelivery = order.delivery_type === 'delivery' || (!order.delivery_type && order.order_type === 'web');
-                                 const now = Date.now();
-                                 const createdAt = new Date(order.created_at).getTime();
-                                 let minutesElapsed = Math.floor((now - createdAt) / 60000);
-                                 if (minutesElapsed < 0) minutesElapsed = 0;
-                                 const displayTime = minutesElapsed > 1440 ? '--' : `${minutesElapsed} min`;
-                                 const orderLabel = isDelivery ? 'Delivery' : 'Retiro';
-                                 const displayName = order.customer_name || 'Pedido Web';
-                                 const itemCount = order.items?.length || 0;
-
-                                 return (
-                                     <motion.div
-                                         key={order.id}
-                                         layoutId={`weborder-${order.id}`}
-                                         whileHover={{ scale: 1.03 }}
-                                         whileTap={{ scale: 0.97 }}
-                                         onClick={() => setSelectedWebOrder(order)}
-                                         className={`rounded-3xl ${s.pad} flex flex-col justify-between cursor-pointer transition-all duration-300 relative overflow-hidden ${s.minH} ${
-                                             isDelivery ? 'bg-red-500 shadow-[0_22px_70px_rgba(0,0,0,0.18)]' : 'bg-emerald-500 shadow-[0_22px_70px_rgba(0,0,0,0.18)]'
-                                         }`}
-                                     >
-                                         {/* Fila superior: chip tipo + tiempo con reloj */}
-                                         <div className="flex items-center justify-between w-full">
-                                             <span
-                                                 title={orderLabel}
-                                                 className={`${s.badge} font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded-full bg-white/20 text-white`}
-                                             >
-                                                 {orderLabel}
-                                             </span>
-                                             <span
-                                                 title={`${minutesElapsed} minutos activa`}
-                                                 className={`flex items-center gap-0.5 ${s.time} ${minutesElapsed >= 60 ? 'font-black' : 'font-semibold'} opacity-80 text-white`}
-                                             >
-                                                 <IconClock size={s.iconSize} strokeWidth={minutesElapsed >= 60 ? 2.5 : 1.8} />
-                                                 {displayTime}
-                                             </span>
-                                         </div>
-
-                                         {/* Nombre del cliente y dirección — izquierda */}
-                                         <div className="flex-1 flex flex-col justify-center min-w-0">
-                                             <span className={`${s.name} font-black leading-tight tracking-tight truncate w-full text-white`}>
-                                                 {displayName}
-                                             </span>
-                                             {order.delivery_info && (
-                                                 <span className="text-[11px] font-bold text-white/90 truncate mt-0.5 flex items-center gap-1">
-                                                     📍 {order.delivery_info}
-                                                 </span>
-                                             )}
-                                             {!order.delivery_info && order.customer_phone && (
-                                                 <span className="text-[11px] font-bold text-white/80 truncate mt-0.5 flex items-center gap-1">
-                                                     📞 {order.customer_phone}
-                                                 </span>
-                                             )}
-                                         </div>
-
-                                         {/* Divider sutil */}
-                                         <div className="w-full h-px mb-1 bg-white/20" />
-
-                                         {/* Fila inferior: items izquierda + total derecha */}
-                                         <div className="flex items-center justify-between w-full">
-                                             <span className={`${s.meta} font-bold uppercase tracking-widest opacity-60 text-white`}>
-                                                 {itemCount > 0 ? `${itemCount} items` : '—'}
-                                             </span>
-                                             <span className={`${s.total} font-black tracking-tight text-white`}>
-                                                 ${Number(order.total || 0).toLocaleString('es-AR')}
-                                             </span>
-                                         </div>
-                                     </motion.div>
-                                 );
-                             })}
-
-                            {/* POS Tables */}
-                            {filteredSortedTables.map(table => {
-                                const styles = getCardStyles(table);
-                                const isFree = table.status === 'FREE';
-                                const now = Date.now();
-                                const startTime = table.created_at || table.updated_at;
-                                const lastActive = startTime ? new Date(startTime).getTime() : now;
-                                let minutesElapsed = Math.floor((now - lastActive) / 60000);
-                                if (minutesElapsed < 0) minutesElapsed = 0;
-                                const displayTime = minutesElapsed > 1440 ? '--' : `${minutesElapsed} min`;
-                                
-                                // Determinar nombre o ID para mostrar
-                                const metaCust = table.items?.find((i: any) => i.id === 'meta-customer');
-                                const hasName = metaCust?.name;
-                                const isVirtual = table.id >= 5000 || table.order_type === 'DELIVERY' || table.order_type === 'TAKEAWAY';
-                                const isDeliveryTable = table.order_type === 'DELIVERY' || table.id === 5001;
-                                const displayName = hasName
-                                    ? metaCust.name.replace('Cliente: ', '')
-                                    : isVirtual
-                                        ? (isDeliveryTable ? 'Delivery' : 'Retiro')
-                                        : (isFree ? `Mesa ${table.id}` : String(table.id));
-                                const itemCount = (table.items || []).filter((i: any) => i.id !== 'meta-customer').length;
-                                const orderLabel = table.order_type === 'DELIVERY' ? 'Delivery' : table.order_type === 'TAKEAWAY' ? 'Retiro' : 'Salón';
-
-                                return (
-                                    <motion.div
-                                        key={table.id}
-                                        layoutId={`table-${table.id}`}
-                                        whileHover={{ scale: 1.03 }}
-                                        whileTap={{ scale: 0.97 }}
-                                        onClick={() => {
-                                            if (isFree) {
-                                                handleOpenTable(table.id);
-                                            } else {
-                                                setSelectedTable(table);
-                                            }
-                                        }}
-                                        className={`rounded-3xl ${s.pad} flex flex-col justify-between cursor-pointer transition-all duration-300 relative overflow-hidden ${s.minH} ${styles.bg}`}
-                                    >
-                                        {/* Fila superior: chip tipo + tiempo con reloj */}
-                                        <div className="flex items-center justify-between w-full">
-                                            <span
-                                                title={isFree ? 'Libre' : orderLabel}
-                                                className={`${s.badge} font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded-full ${styles.badgeBg}`}
-                                            >
-                                                {isFree ? 'Libre' : orderLabel}
-                                            </span>
-                                            {!isFree && (
-                                                <span
-                                                    title={`${minutesElapsed} minutos activa`}
-                                                    className={`flex items-center gap-0.5 ${s.time} ${minutesElapsed >= 60 ? 'font-black' : 'font-semibold'} opacity-80 ${styles.textColor}`}
-                                                >
-                                                    <IconClock size={s.iconSize} strokeWidth={minutesElapsed >= 60 ? 2.5 : 1.8} />
-                                                    {displayTime}
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {/* Nombre / número — izquierda, truncado */}
-                                        <div className="flex-1 flex items-center">
-                                            {isVirtual && !hasName ? (
-                                                <div className={`opacity-90 ${styles.textColor}`}>
-                                                    {isDeliveryTable
-                                                        ? <IconTruck size={s.iconSize * 2.8} strokeWidth={1.5} />
-                                                        : <IconShoppingBag size={s.iconSize * 2.8} strokeWidth={1.5} />}
-                                                </div>
-                                            ) : (
-                                                <div className="flex flex-col">
-                                                    <span className={`${s.name} font-black leading-tight tracking-tight truncate w-full ${styles.textColor}`}>
-                                                        {displayName}
-                                                    </span>
-                                                    {isFree && (
-                                                        <span className="text-[11px] font-bold text-amber-600/80 mt-0.5">
-                                                            + Abrir comanda
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Divider sutil */}
-                                        <div className={`w-full h-px mb-1 ${isFree ? 'bg-gray-100' : (styles.textColor === 'text-white' ? 'bg-white/20' : 'bg-black/10')}`} />
-
-                                        {/* Fila inferior: items izquierda + total derecha */}
-                                        <div className="flex items-center justify-between w-full">
-                                            <span className={`${s.meta} font-bold uppercase tracking-widest ${isFree ? 'text-gray-400' : 'opacity-60'} ${styles.textColor}`}>
-                                                {isFree ? 'Disponible' : (itemCount > 0 ? `${itemCount} items` : '—')}
-                                            </span>
-                                            <span className={`${s.total} font-black tracking-tight ${isFree ? 'text-gray-300' : styles.textColor}`}>
-                                                {isFree ? '$0' : `$${Number(table.total || 0).toLocaleString('es-AR')}`}
-                                            </span>
-                                        </div>
-                                    </motion.div>
-                                );
-                            })}
-                        </div>
-                    );
-                })()}
+                    {filteredSortedTables.map(table => {
+                        const mine = tickets.filter(t => Number(t.table_id) === table.id);
+                        const firstTicket = mine.length ? Math.min(...mine.map(t => new Date(t.created_at).getTime())) : null;
+                        const startTime = firstTicket ?? (table.created_at || table.updated_at ? new Date((table.created_at || table.updated_at) as string).getTime() : Date.now());
+                        const metaCust = table.items?.find((i: any) => i.id === 'meta-customer');
+                        const customerName = metaCust?.name ? String(metaCust.name).replace('Cliente: ', '') : '';
+                        const kind: CardKind = table.order_type === 'DELIVERY' || table.id === 5001 ? 'DELIVERY' : table.order_type === 'TAKEAWAY' || table.id === 5000 ? 'TAKEAWAY' : 'LOCAL';
+                        const isSalon = kind === 'LOCAL';
+                        const name = isSalon
+                            ? (customerName ? `Mesa ${table.id} · ${customerName}` : `Mesa ${table.id}`)
+                            : (customerName || (kind === 'DELIVERY' ? 'Delivery' : 'Retiro'));
+                        return (
+                            <OrderCard
+                                key={table.id}
+                                layoutId={`table-${table.id}`}
+                                kind={kind}
+                                name={name}
+                                state={stateFor(mine, 'unsent')}
+                                itemCount={(table.items || []).filter((i: any) => i.id !== 'meta-customer').length}
+                                total={table.total}
+                                minutes={minutesSince(startTime)}
+                                onClick={() => setSelectedTable(table)}
+                            />
+                        );
+                    })}
+                </div>
                 </>
             )}
 
