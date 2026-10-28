@@ -2,12 +2,35 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 import { normalizePhoneOrKeep } from "@/lib/phone";
+import { createClient as createSessionClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
         const { items, total, customer_name, table_id, notes, delivery_type, delivery_info, payment_method } = body;
-        const customer_phone = normalizePhoneOrKeep(body.customer_phone);
+        let customer_phone = normalizePhoneOrKeep(body.customer_phone);
+
+        // Cliente con sesión: el pedido queda asociado a su cuenta y, si falta algún dato, sale de su perfil.
+        // La identidad sale de la cookie de sesión, nunca del cuerpo del pedido.
+        let accountId: string | null = null;
+        let accountName: string | null = null;
+        let accountAddress: string | null = null;
+        try {
+            const session = await createSessionClient();
+            const { data: { user } } = await session.auth.getUser();
+            if (user && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+                const svc = createClient(getSupabaseUrl(), process.env.SUPABASE_SERVICE_ROLE_KEY.trim());
+                const { data: prof } = await svc.from("profiles").select("full_name, phone, default_address, is_customer").eq("id", user.id).maybeSingle();
+                if (prof?.is_customer) {
+                    accountId = user.id;
+                    accountName = prof.full_name?.trim() || null;
+                    accountAddress = prof.default_address?.trim() || null;
+                    if (!customer_phone && prof.phone) customer_phone = prof.phone;
+                }
+            }
+        } catch {
+            // Sin sesión legible: se trata como invitado.
+        }
 
         if (!items || !items.length) {
             return NextResponse.json({ error: "El pedido no contiene productos" }, { status: 400 });
@@ -18,7 +41,7 @@ export async function POST(request: Request) {
         const numericTableId = table_id ? Number(table_id) : null;
         const finalDeliveryType = numericTableId ? "salon" : (delivery_type || "retiro");
         const finalOrderType = numericTableId ? "LOCAL" : (finalDeliveryType === "delivery" ? "DELIVERY" : "TAKEAWAY");
-        const displayName = customer_name?.trim() || (numericTableId ? `Mesa ${numericTableId}` : "Cliente Web");
+        const displayName = customer_name?.trim() || accountName || (numericTableId ? `Mesa ${numericTableId}` : "Cliente Web");
 
         // 0. Validación y Descuento de Inventario en Tiempo Real
         const itemIds = items.map((i: any) => i.id).filter(Boolean);
@@ -76,7 +99,8 @@ export async function POST(request: Request) {
             customer_phone: customer_phone,
             order_type: finalOrderType,
             delivery_type: finalDeliveryType,
-            delivery_info: delivery_info?.trim() || null,
+            delivery_info: delivery_info?.trim() || (finalDeliveryType === "delivery" ? accountAddress : null),
+            customer_id: accountId,
             table_id: numericTableId,
             items,
             total: Number(total) || 0,
@@ -102,7 +126,7 @@ export async function POST(request: Request) {
         // 2. Crear Comanda en tabla 'kitchen_tickets' (aparece en Cocina del Dashboard)
         const kitchenNotes = [
             displayName,
-            numericTableId ? `Mesa ${numericTableId}` : (finalDeliveryType === 'delivery' ? `DELIVERY: ${delivery_info || ''}` : 'RETIRO EN LOCAL'),
+            numericTableId ? `Mesa ${numericTableId}` : (finalDeliveryType === 'delivery' ? `DELIVERY: ${delivery_info || accountAddress || ''}` : 'RETIRO EN LOCAL'),
             customer_phone ? `Tel: ${customer_phone}` : null,
             notes ? `Nota: ${notes}` : null
         ].filter(Boolean).join(" | ");
