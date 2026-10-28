@@ -15,7 +15,7 @@ export default function StaffPage() {
     const [isAddingDelivery, setIsAddingDelivery] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [deleteId, setDeleteId] = useState<string | null>(null);
-    const [newStaff, setNewStaff] = useState({ email: "", phone: "", fullName: "", role: "WAITER", password: "" });
+    const [newStaff, setNewStaff] = useState({ phone: "", fullName: "", role: "WAITER", password: "" });
     const [newDelivery, setNewDelivery] = useState({ name: "" });
 
     const supabase = createClient();
@@ -67,11 +67,11 @@ export default function StaffPage() {
 
             if (res.ok) {
                 setIsAdding(false);
-                setNewStaff({ email: "", phone: "", fullName: "", role: "WAITER", password: "" });
+                setNewStaff({ phone: "", fullName: "", role: "WAITER", password: "" });
                 fetchEverything();
             } else {
                 if (result.message?.includes("IconUser already registered")) {
-                    setError("Este email ya está registrado.");
+                    setError("Ese teléfono ya está registrado.");
                 } else if (result.message?.includes("Password should be")) {
                     setError("La contraseña debe tener al menos 6 caracteres.");
                 } else {
@@ -156,7 +156,7 @@ export default function StaffPage() {
                                 <h4 className="text-2xl font-black text-gray-900 tracking-tight leading-none mb-1">{profile.full_name || "Sin nombre"}</h4>
                                 <div className="flex items-center gap-2 text-gray-400 mb-8 lowercase">
                                     <IconMail size={12} />
-                                    <span className="text-xs font-bold tracking-tight">{profile.email || "No sincronizado"}</span>
+                                    <span className="text-xs font-bold tracking-tight">{profile.phone || "Sin teléfono"}</span>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4 pt-6 border-t border-gray-50/50">
@@ -264,16 +264,6 @@ export default function StaffPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Email</label>
-                                    <input
-                                        type="email" required
-                                        value={newStaff.email}
-                                        onChange={e => setNewStaff({ ...newStaff, email: e.target.value })}
-                                        className="w-full bg-white/60 border border-black/5 rounded-2xl px-6 py-4 focus:ring-4 focus:ring-black/5 outline-none font-bold"
-                                        placeholder="personal@bloom.com"
-                                    />
-                                </div>
-                                <div>
                                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Contraseña (mín. 10 caracteres)</label>
                                     <input
                                         type="password" required minLength={10} autoComplete="new-password"
@@ -283,7 +273,7 @@ export default function StaffPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Celular</label>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">Teléfono (para ingresar)</label>
                                     <PhoneInput
                                         value={newStaff.phone}
                                         onChange={v => setNewStaff({ ...newStaff, phone: v })}

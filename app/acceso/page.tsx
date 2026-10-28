@@ -9,12 +9,13 @@ const CREAM = "#F5EDD8";
 
 type AccessResult =
   | { status: "needs_registration" }
+  | { status: "needs_password" }
   | { status: "ok"; name: string; created: boolean }
   | { error: string };
 
 /** Solo rutas internas, para no redirigir a sitios externos. */
-function safeRedirect(raw: string | null) {
-  return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/cuenta";
+function safeRedirect(raw: string | null, fallback = "/cuenta") {
+  return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : fallback;
 }
 
 export default function AccesoPage() {
@@ -22,6 +23,8 @@ export default function AccesoPage() {
   const [fullName, setFullName] = useState("");
   const [address, setAddress] = useState("");
   const [needsRegistration, setNeedsRegistration] = useState(false);
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -41,6 +44,21 @@ export default function AccesoPage() {
 
     setLoading(true);
     try {
+      if (needsPassword) {
+        const res = await fetch("/api/auth/staff-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: cleanPhone, password }),
+        });
+        const out = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) {
+          setError(out.error ?? "No pudimos ingresar. Intentá de nuevo.");
+          return;
+        }
+        const target = safeRedirect(new URLSearchParams(window.location.search).get("redirect"), "/dashboard");
+        window.location.assign(target.startsWith("/dashboard") ? target : "/dashboard");
+        return;
+      }
       const response = await fetch("/api/auth/phone-access", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -54,6 +72,10 @@ export default function AccesoPage() {
 
       if (!response.ok || "error" in result) {
         setError("error" in result ? result.error : "No pudimos ingresar. Intentá de nuevo.");
+        return;
+      }
+      if (result.status === "needs_password") {
+        setNeedsPassword(true);
         return;
       }
       if (result.status === "needs_registration") {
@@ -101,12 +123,27 @@ export default function AccesoPage() {
                   autoComplete="tel"
                   placeholder="Ej. 223 615 1152"
                   value={phone}
-                  onChange={(event) => { setPhone(event.target.value); setError(""); setNeedsRegistration(false); }}
+                  onChange={(event) => { setPhone(event.target.value); setError(""); setNeedsRegistration(false); setNeedsPassword(false); setPassword(""); }}
                   className="w-full min-h-[52px] rounded-2xl border-2 border-neutral-200 bg-white px-4 pl-12 text-[16px] font-semibold outline-none placeholder:text-neutral-300 placeholder:font-normal focus:border-[#c9a84c] focus:ring-2 focus:ring-[#c9a84c]/25 transition-all"
                   autoFocus
                 />
               </div>
             </div>
+
+            {needsPassword && (
+              <div>
+                <label className="block text-[14px] font-bold text-neutral-700 mb-1.5">Contraseña</label>
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="Tu contraseña"
+                  value={password}
+                  onChange={(event) => { setPassword(event.target.value); setError(""); }}
+                  className="w-full min-h-[52px] rounded-2xl border-2 border-neutral-200 bg-white px-4 text-[16px] font-semibold outline-none placeholder:text-neutral-300 focus:border-[#2d4a3e]"
+                  autoFocus
+                />
+              </div>
+            )}
 
             {needsRegistration && (
               <>
@@ -150,7 +187,7 @@ export default function AccesoPage() {
               className="flex min-h-[54px] w-full items-center justify-center rounded-2xl text-[16px] font-black text-white shadow-md transition hover:opacity-90 disabled:opacity-60"
               style={{ backgroundColor: GREEN }}
             >
-              {loading ? <IconLoader2 className="h-5 w-5 animate-spin" /> : needsRegistration ? "CREAR CUENTA Y ENTRAR →" : "CONTINUAR →"}
+              {loading ? <IconLoader2 className="h-5 w-5 animate-spin" /> : needsRegistration ? "CREAR CUENTA Y ENTRAR →" : needsPassword ? "ENTRAR →" : "CONTINUAR →"}
             </button>
           </form>
         </div>
