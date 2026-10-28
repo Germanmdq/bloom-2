@@ -1,5 +1,6 @@
 "use client";
 
+import AutoplayVideo from "@/components/Menu/AutoplayVideo";
 import { normalizePhoneOrKeep } from "@/lib/phone";
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Image from "next/image";
@@ -719,7 +720,7 @@ function MenuContent() {
   }
 
   return (
-    <div className="app-shell" suppressHydrationWarning>
+    <div className="app-shell bloom-ui" suppressHydrationWarning>
       {/* HEADER SUPERIOR */}
       <header className="sticky top-0 z-40 bg-[#fffdf8]/90 backdrop-blur-md border-b border-[#c4b896]/20 px-4 py-3 sm:px-8">
         <div className="max-w-[1180px] mx-auto flex min-w-0 items-center justify-between gap-3">
@@ -837,14 +838,11 @@ function MenuContent() {
             {/* Video destacado: mantiene el contenido principal centrado antes de las categorías */}
             <div className="px-4 md:px-0 mb-7">
               <div className="home-feature-video rounded-[24px] overflow-hidden bg-[#1a3028] border border-[#c4b896]/25 shadow-md">
-                <video
+                <AutoplayVideo
                   className="w-full h-full object-cover"
                   src="/videos/yogurt-pouring.mp4"
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  aria-label="Preparación de yogurt Bloom"
+                  poster="/videos/yogurt-poster.jpg"
+                  label="Preparación de yogurt Bloom"
                 />
               </div>
             </div>
@@ -878,7 +876,7 @@ function MenuContent() {
                 <div className="px-4 md:px-0 mb-6">
                   <div
                     onClick={() => handleOpenProduct(platoDia)}
-                    className="w-full bg-white rounded-[22px] border border-[#c4b896]/25 overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow"
+                    className="glass-card is-pressable w-full overflow-hidden cursor-pointer"
                   >
                     {/* Franja superior destacada para el badge sin superposición */}
                     <div className="bg-[#777b5b] px-4 py-2.5 flex items-center justify-between gap-3">
@@ -1006,7 +1004,7 @@ function MenuContent() {
                   <article
                     key={p.id}
                     onClick={() => handleOpenProduct(p)}
-                    className="product-card"
+                    className="product-card glass-card is-pressable"
                   >
                     <div className="product-image">
                       <Image
@@ -1066,7 +1064,7 @@ function MenuContent() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 350, damping: 35 }}
-              className="product-sheet relative w-full max-w-lg bg-[#ffffff] rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col z-[160]"
+              className="product-sheet relative w-full max-w-lg bg-[#ffffff] rounded-t-[36px] sm:rounded-[36px] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col z-[160]"
             >
               <button
                 onClick={() => setSelectedProduct(null)}
@@ -1203,7 +1201,7 @@ function MenuContent() {
                     {cart.map((item) => (
                       <div
                         key={item.id}
-                        className="bg-white p-3.5 rounded-2xl border border-[#c4b896]/25 flex min-w-0 items-center justify-between gap-2.5 shadow-sm"
+                        className="glass-card !rounded-[16px] p-3.5 flex min-w-0 items-center justify-between gap-2.5"
                       >
                         <div className="flex-1 min-w-0">
                           <h4 className="font-bold text-sm text-[#1a3028] truncate">{item.name}</h4>

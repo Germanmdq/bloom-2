@@ -70,7 +70,7 @@ export default function AccesoPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col items-center justify-center px-4 py-12" style={{ backgroundColor: CREAM }}>
+    <div className="bloom-ui min-h-[100dvh] flex flex-col items-center justify-center px-4 py-12" style={{ backgroundColor: CREAM }}>
       <div className="w-full max-w-[400px]">
         <button
           type="button"
@@ -89,7 +89,7 @@ export default function AccesoPage() {
           <p className="mt-1 text-sm font-medium text-neutral-500">Escribí tu característica y número, sin 0 ni 15</p>
         </div>
 
-        <div className="rounded-3xl border border-black/[0.07] bg-white p-8 shadow-xl">
+        <div className="glass-card p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-[14px] font-bold text-neutral-700 mb-1.5">Número de teléfono</label>

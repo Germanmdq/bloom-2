@@ -157,7 +157,7 @@ export default function CuentaPage() {
   const inputClass = "w-full min-h-[48px] rounded-2xl border-2 border-neutral-200 bg-white px-4 text-[16px] font-semibold outline-none focus:border-[#1a3028]";
 
   return (
-    <div className="min-h-[100dvh] bg-[#f7f5ef] pb-16">
+    <div className="bloom-ui min-h-[100dvh] pb-16">
       <header className="sticky top-0 z-10 border-b border-[#c4b896]/30 bg-[#fffdf8]/90 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
           <Link href="/menu" className="inline-flex items-center gap-2 text-sm font-bold" style={{ color: GREEN }}>
@@ -219,7 +219,7 @@ export default function CuentaPage() {
           <p className={`rounded-2xl px-4 py-3 text-sm font-semibold ${payMessage.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{payMessage.text}</p>
         )}
 
-        <section className="rounded-3xl border border-black/[0.07] bg-white p-5 shadow-sm">
+        <section className="glass-card p-5">
           <h2 className="mb-4 text-base font-black text-neutral-900">Mis datos</h2>
           <form onSubmit={save} className="space-y-3">
             <label className="block">
@@ -243,7 +243,7 @@ export default function CuentaPage() {
           </form>
         </section>
 
-        <section className="rounded-3xl border border-black/[0.07] bg-white p-5 shadow-sm">
+        <section className="glass-card p-5">
           <h2 className="mb-3 text-base font-black text-neutral-900">Movimientos de cuenta corriente</h2>
           {data.movements.length === 0 ? (
             <p className="text-sm font-medium text-neutral-500">Todavía no tenés movimientos.</p>
@@ -264,7 +264,7 @@ export default function CuentaPage() {
           )}
         </section>
 
-        <section className="rounded-3xl border border-black/[0.07] bg-white p-5 shadow-sm">
+        <section className="glass-card p-5">
           <h2 className="mb-3 text-base font-black text-neutral-900">Mis pedidos</h2>
           {data.orders.length === 0 ? (
             <p className="text-sm font-medium text-neutral-500">Todavía no hiciste pedidos.</p>
