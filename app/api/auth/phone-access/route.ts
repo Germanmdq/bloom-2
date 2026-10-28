@@ -1,4 +1,4 @@
-﻿import { randomBytes } from "crypto";
+import { randomBytes } from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
@@ -7,6 +7,8 @@ import { supabaseSessionCookieOptions } from "@/lib/supabase/cookie-options";
 import { normalizePhone, phoneVariants, PHONE_ERROR } from "@/lib/phone";
 
 export const dynamic = "force-dynamic";
+
+const STAFF_ROLES = ["ADMIN", "MANAGER", "WAITER", "KITCHEN"];
 
 /**
  * Acceso de clientes por teléfono, sin contraseña ni código.
@@ -19,6 +21,7 @@ export const dynamic = "force-dynamic";
  * Respuestas:
  *   { status: "ok", name, created }       -> sesión abierta
  *   { status: "needs_registration" }      -> teléfono nuevo: pedir nombre y dirección
+ *   { status: "needs_password" }          -> teléfono de personal: pedir contraseña (/api/auth/staff-login)
  */
 
 // Limitador best-effort por IP (en memoria: en serverless se reinicia por instancia).
@@ -93,13 +96,12 @@ export async function POST(request: NextRequest) {
 
   const service = createServiceRoleClient();
 
-  // Solo cuentas de cliente: el personal nunca entra por esta vía.
+  // El personal se detecta acá pero se le pide contraseña; solo los clientes abren sesión sin ella.
   // Reconoce también teléfonos guardados en formatos viejos (0, 54, 549, 15, con espacios).
   const { data: matches, error: lookupError } = await service
     .from("profiles")
-    .select("id, full_name")
+    .select("id, full_name, role, is_customer")
     .in("phone", phoneVariants(phone))
-    .eq("is_customer", true)
     .limit(5);
   if (lookupError) {
     console.error("[phone-access] lookup", lookupError.message);
@@ -114,6 +116,11 @@ export async function POST(request: NextRequest) {
     );
   }
   const profile = matches?.[0] ?? null;
+
+  // Personal (administrador, encargado, mozo, cocina): nunca entra sin contraseña.
+  if (profile && profile.is_customer === false && STAFF_ROLES.includes(profile.role ?? "")) {
+    return NextResponse.json({ status: "needs_password" });
+  }
 
   if (profile) {
     const response = NextResponse.json({ status: "ok", name: profile.full_name?.trim() || "", created: false });

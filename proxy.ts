@@ -37,7 +37,7 @@ export async function proxy(request: NextRequest) {
 
   if (pathname.startsWith("/dashboard")) {
     if (!user) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return NextResponse.redirect(new URL("/acceso?redirect=/dashboard", request.url));
     }
 
     // Además del administrador histórico por email, permitir cualquier
@@ -50,7 +50,7 @@ export async function proxy(request: NextRequest) {
     // Un cliente (is_customer) nunca es personal, aunque su rol por defecto sea WAITER.
     const isStaff = isAdminEmail(user.email) || (profile?.is_customer !== true && ["ADMIN", "WAITER", "KITCHEN", "MANAGER"].includes(profile?.role ?? ""));
     if (!isStaff) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return NextResponse.redirect(new URL("/acceso?redirect=/dashboard", request.url));
     }
   }
 

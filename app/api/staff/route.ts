@@ -1,12 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { normalizePhone } from '@/lib/phone';
+import { normalizePhone, phoneVariants } from '@/lib/phone';
 import { requireManager } from '@/lib/dashboard/require-admin-api';
 
 export async function POST(req: Request) {
     try {
         if (!(await requireManager())) return NextResponse.json({ message: 'No autorizado' }, { status: 403 });
-        const { email, phone, fullName, role, password } = await req.json();
+        const { phone, fullName, role, password } = await req.json();
         if (typeof password !== 'string' || password.length < 10) throw new Error('La contraseña debe tener al menos 10 caracteres.');
         if (!['ADMIN', 'MANAGER', 'WAITER', 'KITCHEN'].includes(role || 'WAITER')) throw new Error('Rol inválido.');
 
@@ -18,9 +18,13 @@ export async function POST(req: Request) {
         const phoneClean = normalizePhone(phone);
         if (!phoneClean) throw new Error("Teléfono inválido (característica y número, ej. 223 615 1152).");
 
-        // 1. Crear usuario en Auth con la contraseña indicada por el administrador
+        // El teléfono identifica a la persona: no puede estar ya en otra cuenta (cliente o personal).
+        const { data: taken } = await supabase.from('profiles').select('id').in('phone', phoneVariants(phoneClean)).limit(1);
+        if (taken?.length) throw new Error('Ese teléfono ya pertenece a otra cuenta.');
+
+        // 1. Crear usuario en Auth. El email es interno (solo lo exige Supabase); se ingresa con teléfono + contraseña.
         const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-            email,
+            email: `${phoneClean}@staff.bloom.local`,
             password,
             email_confirm: true,
             user_metadata: { full_name: fullName }
