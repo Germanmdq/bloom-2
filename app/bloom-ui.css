@@ -276,3 +276,78 @@
   .bloom-ui *::-webkit-scrollbar { display: none; }
   .bloom-ui * { scrollbar-width: none; }
 }
+
+/* =====================================================================
+   CARTA — buscador y chips de categorías (antes sin estilos: se veían como texto suelto)
+   ===================================================================== */
+.bloom-ui .menu-sticky-controls {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px 12px;
+  background: rgba(247, 245, 239, 0.88);
+  -webkit-backdrop-filter: blur(var(--ui-blur-md));
+  backdrop-filter: blur(var(--ui-blur-md));
+}
+.bloom-ui .search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  min-height: 48px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.82)) padding-box,
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(196, 184, 150, 0.65) 55%, rgba(119, 123, 91, 0.45)) border-box;
+  box-shadow: rgba(26, 48, 40, 0.12) 0 10px 18px -12px;
+}
+.bloom-ui .search-box input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 8px 0;
+  font-size: 15px;
+}
+.bloom-ui .search-box input:focus { box-shadow: none; }
+.bloom-ui .filter-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  scroll-snap-type: x proximity;
+}
+.bloom-ui .filter-chip {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--ui-text-primary);
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.72)) padding-box,
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(196, 184, 150, 0.6) 55%, rgba(119, 123, 91, 0.4)) border-box;
+  box-shadow: rgba(26, 48, 40, 0.12) 0 8px 14px -10px;
+  transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1), color 150ms ease;
+}
+.bloom-ui .filter-chip:active { transform: scale(0.96); }
+.bloom-ui .filter-chip.active {
+  color: #f5e8ca;
+  font-weight: 600;
+  border-color: rgba(255, 255, 255, 0.28);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 55%), linear-gradient(135deg, #848867, #5f5c46);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3) inset, rgba(26, 48, 40, 0.35) 0 10px 18px -10px;
+}
