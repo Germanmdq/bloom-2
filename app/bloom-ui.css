@@ -308,14 +308,13 @@
 .bloom-ui .search-box input {
   flex: 1;
   min-width: 0;
-  background: none;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+  background: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   padding: 8px 0;
   font-size: 15px;
 }
-.bloom-ui .search-box input:focus { box-shadow: none; }
 .bloom-ui .filter-scroll {
   display: flex;
   gap: 8px;
