@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 import { supabaseSessionCookieOptions } from "@/lib/supabase/cookie-options";
-import { normalizePhone, PHONE_ERROR } from "@/lib/phone";
+import { normalizePhone, phoneVariants, PHONE_ERROR } from "@/lib/phone";
 
 export const dynamic = "force-dynamic";
 
@@ -94,17 +94,26 @@ export async function POST(request: NextRequest) {
   const service = createServiceRoleClient();
 
   // Solo cuentas de cliente: el personal nunca entra por esta vía.
-  const { data: profile, error: lookupError } = await service
+  // Reconoce también teléfonos guardados en formatos viejos (0, 54, 549, 15, con espacios).
+  const { data: matches, error: lookupError } = await service
     .from("profiles")
     .select("id, full_name")
-    .eq("phone", phone)
+    .in("phone", phoneVariants(phone))
     .eq("is_customer", true)
-    .limit(1)
-    .maybeSingle();
+    .limit(5);
   if (lookupError) {
     console.error("[phone-access] lookup", lookupError.message);
     return NextResponse.json({ error: "No pudimos verificar el número. Intentá de nuevo." }, { status: 500 });
   }
+  // Un mismo teléfono en dos cuentas: nunca se elige una "al azar" (podría ser la cuenta de otra persona).
+  if ((matches?.length ?? 0) > 1) {
+    console.error("[phone-access] teléfono duplicado en profiles", phone, matches?.map((m) => m.id));
+    return NextResponse.json(
+      { error: "Este teléfono figura en más de una cuenta. Pedí ayuda en el local para unificarlas." },
+      { status: 409 },
+    );
+  }
+  const profile = matches?.[0] ?? null;
 
   if (profile) {
     const response = NextResponse.json({ status: "ok", name: profile.full_name?.trim() || "", created: false });

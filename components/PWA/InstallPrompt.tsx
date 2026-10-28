@@ -15,7 +15,7 @@ export default function InstallPrompt() {
   return (
     <aside
       aria-label="Instalar aplicación"
-      className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-md z-[90] animate-in fade-in slide-in-from-bottom-5 duration-300"
+      className="fixed bottom-[calc(10.5rem+env(safe-area-inset-bottom))] left-4 right-4 sm:left-6 sm:right-auto sm:bottom-6 sm:max-w-md z-[90] animate-in fade-in slide-in-from-bottom-5 duration-300"
     >
       <div className="bg-[#777b5b] text-[#fffdf8] border border-[#c4b896]/35 rounded-[24px] p-4 sm:p-5 shadow-2xl backdrop-blur-xl">
         <div className="flex items-start gap-3.5">

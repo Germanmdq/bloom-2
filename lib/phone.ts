@@ -62,3 +62,17 @@ export function splitPhone(input: string | null | undefined): { area_code: strin
   const a = n.startsWith("11") ? 2 : 3;
   return { area_code: n.slice(0, a), number: n.slice(a) };
 }
+
+/**
+ * Formas en que un teléfono pudo haberse guardado antes de normalizar (para reconocer datos viejos):
+ * 10 dígitos, con 0 / 54 / 549 / +54 adelante y con el 15 después de la característica.
+ */
+export function phoneVariants(input: string | null | undefined): string[] {
+  const n = normalizePhone(input);
+  if (!n) return [];
+  const a = n.startsWith("11") ? 2 : 3;
+  const area = n.slice(0, a);
+  const local = n.slice(a);
+  const base = [n, `0${n}`, `54${n}`, `549${n}`, `+54${n}`, `+549${n}`, `${area}15${local}`, `0${area}15${local}`, `${area} ${local}`, `${area} ${local.slice(0, 3)} ${local.slice(3)}`];
+  return [...new Set(base)];
+}

@@ -1488,22 +1488,7 @@ function MenuContent() {
         )}
       </AnimatePresence>
 
-      <VoiceOrderAssistant
-        products={products}
-        onAddItems={handleVoiceAddItems}
-        onOpenCart={() => {
-          setOrderModality(voiceOrderModality || "retiro");
-          setIsCartOpen(true);
-        }}
-        isOverlayOpen={isCartOpen || Boolean(selectedProduct)}
-        customerName={customerName}
-        onCustomerDetails={(details) => {
-          if (details.name) setCustomerName(details.name);
-          if (details.phone) setCustomerPhone(details.phone);
-          if (details.address) setDeliveryAddress(details.address);
-          if (details.orderType) setVoiceOrderModality(details.orderType);
-        }}
-      />
+      <VoiceOrderAssistant isOverlayOpen={isCartOpen || Boolean(selectedProduct)} />
 
       {/* DOCK INFERIOR (PWA FLOATING DOCK) */}
       <div 

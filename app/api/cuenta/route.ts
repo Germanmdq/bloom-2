@@ -53,17 +53,25 @@ async function requireCustomer() {
 export async function GET() {
   const auth = await requireCustomer();
   if ("error" in auth) return auth.error;
-  const { supabase, user } = auth;
+  const { user } = auth;
+
+  // La identidad sale de la sesión (cookie verificada por Supabase) y TODAS las consultas se filtran por ese id:
+  // un cliente solo puede obtener sus propios datos, sin depender del estado de las políticas RLS.
+  // (Las políticas RLS de la migración siguen siendo la defensa para el acceso directo desde el navegador.)
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+    return NextResponse.json({ error: "El servidor no está configurado." }, { status: 503 });
+  }
+  const db = createServiceRoleClient();
 
   const [profileRes, ordersRes, paymentsRes] = await Promise.all([
-    supabase.from("profiles").select("full_name, phone, default_address, balance, is_customer").eq("id", user.id).maybeSingle(),
-    supabase
+    db.from("profiles").select("full_name, phone, default_address, balance, is_customer").eq("id", user.id).maybeSingle(),
+    db
       .from("orders")
       .select("id, created_at, total, items, status, paid, cuenta_corriente, payment_method, delivery_type, order_type")
       .eq("customer_id", user.id)
       .order("created_at", { ascending: false })
       .limit(500),
-    supabase
+    db
       .from("payments_history")
       .select("id, amount, method, remaining_balance, created_at, notes")
       .eq("profile_id", user.id)
@@ -71,14 +79,16 @@ export async function GET() {
       .limit(500),
   ]);
 
-  if (profileRes.error || !profileRes.data) {
-    return NextResponse.json({ error: "No se encontró tu perfil." }, { status: 404 });
+  if (profileRes.error) {
+    console.error("[cuenta] profile", profileRes.error.message);
+    return NextResponse.json({ error: "No pudimos leer tu perfil." }, { status: 500 });
   }
-  if (!profileRes.data.is_customer) {
-    return NextResponse.json({ error: "Esta sección es solo para clientes." }, { status: 403 });
+  if (!profileRes.data) return NextResponse.json({ error: "No se encontró tu perfil." }, { status: 404 });
+  if (!profileRes.data.is_customer) return NextResponse.json({ error: "Esta sección es solo para clientes." }, { status: 403 });
+  if (ordersRes.error || paymentsRes.error) {
+    console.error("[cuenta] consultas", ordersRes.error?.message, paymentsRes.error?.message);
+    return NextResponse.json({ error: "No pudimos leer tus pedidos y movimientos." }, { status: 500 });
   }
-  if (ordersRes.error) console.error("[cuenta] orders", ordersRes.error.message);
-  if (paymentsRes.error) console.error("[cuenta] payments", paymentsRes.error.message);
 
   const all = (ordersRes.data ?? []) as OrderRow[];
   const saleOrders = all.filter((o) => !isPaymentOrder(o));
