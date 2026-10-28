@@ -1,17 +1,20 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
+import { normalizePhoneOrKeep } from "@/lib/phone";
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { items, total, customer_name, customer_phone, table_id, notes, delivery_type, delivery_info, payment_method } = body;
+        const { items, total, customer_name, table_id, notes, delivery_type, delivery_info, payment_method } = body;
+        const customer_phone = normalizePhoneOrKeep(body.customer_phone);
 
         if (!items || !items.length) {
             return NextResponse.json({ error: "El pedido no contiene productos" }, { status: 400 });
         }
 
-        const supabase = createClient(getSupabaseUrl(), getSupabaseAnonKey());
+        // Con RLS por cliente, el insert con .select() necesita permiso de lectura: se usa la clave de servidor si existe.
+        const supabase = createClient(getSupabaseUrl(), process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || getSupabaseAnonKey());
         const numericTableId = table_id ? Number(table_id) : null;
         const finalDeliveryType = numericTableId ? "salon" : (delivery_type || "retiro");
         const finalOrderType = numericTableId ? "LOCAL" : (finalDeliveryType === "delivery" ? "DELIVERY" : "TAKEAWAY");
@@ -70,7 +73,7 @@ export async function POST(request: Request) {
         const isMercadoPago = payment_method === "MERCADO_PAGO";
         const orderPayload = {
             customer_name: displayName,
-            customer_phone: customer_phone?.trim() || null,
+            customer_phone: customer_phone,
             order_type: finalOrderType,
             delivery_type: finalDeliveryType,
             delivery_info: delivery_info?.trim() || null,

@@ -3,6 +3,7 @@ import { MercadoPagoConfig, Preference } from "mercadopago";
 import { createClient } from "@supabase/supabase-js";
 import { getMercadoPagoAccessToken } from "@/lib/mercadopago-access-token";
 import { getSupabaseUrl } from "@/lib/supabase/env";
+import { splitPhone } from "@/lib/phone";
 
 const PRODUCTION_SITE = "https://www.bloommdp.com";
 
@@ -22,27 +23,22 @@ type OrderRow = {
   paid: boolean;
   customer_name: string | null;
   customer_phone: string | null;
+  debt_payment_amount: number | string | null;
 };
-
-function normalizePhoneForPayer(phone: string): { area_code?: string; number?: string } | undefined {
-  const digits = phone.replace(/\D/g, "");
-  if (!digits) return undefined;
-  if (digits.length >= 10) {
-    return { area_code: digits.slice(0, 2), number: digits.slice(2) };
-  }
-  return { number: digits };
-}
 
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as any;
     const orderId = body.order_id?.trim();
-    const isDebtOnly = body.metadata?.type === 'DEBT_PAYMENT';
+    // El pago de saldo de cuenta corriente ahora es /api/cuenta/pagar (monto validado en el servidor).
+    if (body.metadata?.type === 'DEBT_PAYMENT') {
+      return NextResponse.json({ error: "Para pagar tu saldo usá el botón Pagar de Mi cuenta." }, { status: 410 });
+    }
     const simulationEnabled =
       process.env.PAYMENTS_SIMULATION === "true" ||
       process.env.NEXT_PUBLIC_PAYMENTS_SIMULATION === "true";
 
-    if (!orderId && !isDebtOnly) {
+    if (!orderId) {
       return NextResponse.json({ error: "order_id requerido" }, { status: 400 });
     }
 
@@ -55,7 +51,7 @@ export async function POST(req: Request) {
     const baseUrl = (process.env.NEXT_PUBLIC_URL ?? PRODUCTION_SITE).replace(/\/$/, "");
 
     // Modo demo: confirma el pedido sin llamar a Mercado Pago ni generar un cobro.
-    if (simulationEnabled && !isDebtOnly) {
+    if (simulationEnabled) {
       const { data: order, error: orderErr } = await supabase
         .from("orders")
         .select("id,status,paid")
@@ -99,23 +95,13 @@ export async function POST(req: Request) {
     let mpItems: any[] = [];
     let payerName = "Cliente";
     let payerPhoneRaw = "";
-    let externalReference = orderId || `DEBT_${body.metadata?.customer_id}_${Date.now()}`;
+    const externalReference = orderId;
 
-    if (isDebtOnly) {
-      // Flujo de pago de deuda solamente
-      payerName = body.customer?.name || "Cliente Bloom";
-      mpItems = (body.items || []).map((it: any, idx: number) => ({
-        id: it.id || `debt_${idx}`,
-        title: it.name || it.title || "Pago de Saldo",
-        quantity: it.quantity || 1,
-        unit_price: Number(it.unit_price || it.price),
-        currency_id: "ARS"
-      }));
-    } else {
+    {
       // Flujo de pedido (Order)
       const { data: order, error: orderErr } = await supabase
         .from("orders")
-        .select("id,total,items,status,paid,customer_name,customer_phone")
+        .select("id,total,items,status,paid,customer_name,customer_phone,debt_payment_amount")
         .eq("id", orderId)
         .maybeSingle();
 
@@ -156,7 +142,8 @@ export async function POST(req: Request) {
         });
       }
 
-      const debtAmount = Number(body.debt_payment_amount ?? 0);
+      // El monto de deuda lo fijó el servidor al crear el pedido; no se acepta uno nuevo desde el cliente.
+      const debtAmount = Number(row.debt_payment_amount ?? 0);
       if (debtAmount > 0) {
         mpItems.push({
           id: String(mpItems.length + 1),
@@ -171,7 +158,7 @@ export async function POST(req: Request) {
       payerPhoneRaw = (body.customer?.phone ?? row.customer_phone ?? "").trim();
     }
 
-    const phoneObj = payerPhoneRaw ? normalizePhoneForPayer(payerPhoneRaw) : undefined;
+    const phoneObj = payerPhoneRaw ? (splitPhone(payerPhoneRaw) ?? undefined) : undefined;
     const mpConfig = new MercadoPagoConfig({ accessToken, options: { timeout: 10000 } });
     const preference = new Preference(mpConfig);
 
@@ -183,15 +170,14 @@ export async function POST(req: Request) {
           ...(phoneObj ? { phone: phoneObj } : {}),
         },
         back_urls: {
-          success: isDebtOnly ? `${baseUrl}/cuenta` : `${baseUrl}/menu?payment=success`,
-          failure: isDebtOnly ? `${baseUrl}/cuenta` : `${baseUrl}/menu?payment=failure`,
-          pending: isDebtOnly ? `${baseUrl}/cuenta` : `${baseUrl}/menu?payment=pending`,
+          success: `${baseUrl}/menu?payment=success`,
+          failure: `${baseUrl}/menu?payment=failure`,
+          pending: `${baseUrl}/menu?payment=pending`,
         },
         auto_return: "approved",
         external_reference: externalReference,
         notification_url: `${baseUrl}/api/payments/webhook`,
         statement_descriptor: "BLOOM CAFE",
-        metadata: body.metadata,
       },
     });
 

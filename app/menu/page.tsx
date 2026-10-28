@@ -1,5 +1,7 @@
 "use client";
 
+import AutoplayVideo from "@/components/Menu/AutoplayVideo";
+import { normalizePhoneOrKeep } from "@/lib/phone";
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -594,7 +596,7 @@ function MenuContent() {
       delivery_type: orderModality === "mesa" ? "salon" : (orderModality === "delivery" ? "delivery" : "takeaway"),
       delivery_info: orderModality === "delivery" ? deliveryAddress.trim() : null,
       customer_name: computedCustomerName,
-      customer_phone: customerPhone.trim() || null,
+      customer_phone: normalizePhoneOrKeep(customerPhone),
       notes: orderNotes.trim() || null,
       items: cart.map((i) => ({
         id: i.id,
@@ -654,7 +656,7 @@ function MenuContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             order_id: data.orderId,
-            customer: { name: computedCustomerName, phone: customerPhone.trim() },
+            customer: { name: computedCustomerName, phone: normalizePhoneOrKeep(customerPhone) ?? "" },
           }),
         });
         const paymentData = await paymentRes.json();
@@ -718,7 +720,7 @@ function MenuContent() {
   }
 
   return (
-    <div className="app-shell" suppressHydrationWarning>
+    <div className="app-shell bloom-ui" suppressHydrationWarning>
       {/* HEADER SUPERIOR */}
       <header className="sticky top-0 z-40 bg-[#fffdf8]/90 backdrop-blur-md border-b border-[#c4b896]/20 px-4 py-3 sm:px-8">
         <div className="max-w-[1180px] mx-auto flex min-w-0 items-center justify-between gap-3">
@@ -769,6 +771,14 @@ function MenuContent() {
                 {tableLabel}
               </span>
             )}
+            <Link
+              href="/cuenta"
+              className="flex items-center gap-1.5 rounded-xl border border-[#c4b896]/30 bg-white p-2 text-sm font-bold text-[#1a3028] shadow-sm transition-colors hover:bg-[#f2f0e6] sm:px-3"
+              aria-label="Mi cuenta"
+            >
+              <User size={19} />
+              <span className="hidden sm:inline">Mi cuenta</span>
+            </Link>
             <button
               type="button"
               onClick={enableNotifications}
@@ -828,14 +838,11 @@ function MenuContent() {
             {/* Video destacado: mantiene el contenido principal centrado antes de las categorías */}
             <div className="px-4 md:px-0 mb-7">
               <div className="home-feature-video rounded-[24px] overflow-hidden bg-[#1a3028] border border-[#c4b896]/25 shadow-md">
-                <video
+                <AutoplayVideo
                   className="w-full h-full object-cover"
                   src="/videos/yogurt-pouring.mp4"
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  aria-label="Preparación de yogurt Bloom"
+                  poster="/videos/yogurt-poster.jpg"
+                  label="Preparación de yogurt Bloom"
                 />
               </div>
             </div>
@@ -869,7 +876,7 @@ function MenuContent() {
                 <div className="px-4 md:px-0 mb-6">
                   <div
                     onClick={() => handleOpenProduct(platoDia)}
-                    className="w-full bg-white rounded-[22px] border border-[#c4b896]/25 overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow"
+                    className="glass-card is-pressable w-full overflow-hidden cursor-pointer"
                   >
                     {/* Franja superior destacada para el badge sin superposición */}
                     <div className="bg-[#777b5b] px-4 py-2.5 flex items-center justify-between gap-3">
@@ -997,7 +1004,7 @@ function MenuContent() {
                   <article
                     key={p.id}
                     onClick={() => handleOpenProduct(p)}
-                    className="product-card"
+                    className="product-card glass-card is-pressable"
                   >
                     <div className="product-image">
                       <Image
@@ -1057,7 +1064,7 @@ function MenuContent() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 350, damping: 35 }}
-              className="product-sheet relative w-full max-w-lg bg-[#ffffff] rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col z-[160]"
+              className="product-sheet relative w-full max-w-lg bg-[#ffffff] rounded-t-[36px] sm:rounded-[36px] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col z-[160]"
             >
               <button
                 onClick={() => setSelectedProduct(null)}
@@ -1194,7 +1201,7 @@ function MenuContent() {
                     {cart.map((item) => (
                       <div
                         key={item.id}
-                        className="bg-white p-3.5 rounded-2xl border border-[#c4b896]/25 flex min-w-0 items-center justify-between gap-2.5 shadow-sm"
+                        className="glass-card !rounded-[16px] p-3.5 flex min-w-0 items-center justify-between gap-2.5"
                       >
                         <div className="flex-1 min-w-0">
                           <h4 className="font-bold text-sm text-[#1a3028] truncate">{item.name}</h4>
@@ -1479,22 +1486,7 @@ function MenuContent() {
         )}
       </AnimatePresence>
 
-      <VoiceOrderAssistant
-        products={products}
-        onAddItems={handleVoiceAddItems}
-        onOpenCart={() => {
-          setOrderModality(voiceOrderModality || "retiro");
-          setIsCartOpen(true);
-        }}
-        isOverlayOpen={isCartOpen || Boolean(selectedProduct)}
-        customerName={customerName}
-        onCustomerDetails={(details) => {
-          if (details.name) setCustomerName(details.name);
-          if (details.phone) setCustomerPhone(details.phone);
-          if (details.address) setDeliveryAddress(details.address);
-          if (details.orderType) setVoiceOrderModality(details.orderType);
-        }}
-      />
+      <VoiceOrderAssistant isOverlayOpen={isCartOpen || Boolean(selectedProduct)} />
 
       {/* DOCK INFERIOR (PWA FLOATING DOCK) */}
       <div 
@@ -1548,7 +1540,7 @@ function MenuContent() {
 
           <Link href="/cuenta" className="dock-item">
             <User size={22} />
-            <span>{tableLabel ? "Mesa" : "Cuenta"}</span>
+            <span>Mi cuenta</span>
           </Link>
         </nav>
       </div>

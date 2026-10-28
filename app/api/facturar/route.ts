@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 const { AfipServices } = require('facturajs');
 import path from 'path';
 import fs from 'fs';
+import { requireDashboardAdmin } from '@/lib/dashboard/require-admin-api';
 
 /**
  * API para facturación electrónica ARCA (AFIP) - MODO LOCAL 100% GRATIS
@@ -9,11 +10,16 @@ import fs from 'fs';
  * Certs are read from env vars AFIP_CERT_B64 and AFIP_KEY_B64 (base64-encoded)
  */
 export async function POST(request: Request) {
+  // Solo personal logueado (el POS factura con la sesión del usuario). Emite comprobantes reales en ARCA.
+  if (!(await requireDashboardAdmin())) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { amount } = body;
 
-    if (!amount || isNaN(amount)) {
+    if (!amount || isNaN(amount) || Number(amount) <= 0) {
       return NextResponse.json({ error: 'Monto inválido' }, { status: 400 });
     }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
+import { normalizePhoneOrKeep } from "@/lib/phone";
 import { WEB_ORDER_TABLE_DELIVERY, WEB_ORDER_TABLE_RETIRO } from "@/lib/orders/web-virtual-tables";
 
 type ConfirmBody = {
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Faltan datos del pedido o del cliente" }, { status: 400 });
     }
 
-    const phone = (customer_phone ?? "").trim();
+    const phone = normalizePhoneOrKeep(customer_phone) ?? "";
     if (!phone) {
       return NextResponse.json({ error: "Necesitamos un teléfono de contacto" }, { status: 400 });
     }

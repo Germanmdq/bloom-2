@@ -125,7 +125,7 @@ export default function ReportsPage() {
             const totals = (salesRes.data || []).reduce((acc, order) => {
                 const amount = Number(order.total);
                 if (order.payment_method === 'CASH') acc.cash += amount;
-                else if (order.payment_method === 'CARD') acc.card += amount;
+                else if (order.payment_method === 'CARD' || order.payment_method === 'GETNET') acc.card += amount; // Getnet (tarjeta/QR) se informa junto a tarjeta
                 else if (order.payment_method === 'MERCADO_PAGO') acc.mercadoPago += amount;
                 else if (order.payment_method === 'SANTANDER_RIO' || order.payment_method === 'BANK_TRANSFER') acc.santanderRio += amount;
                 acc.totalSales += amount;
@@ -192,7 +192,7 @@ export default function ReportsPage() {
         if (drillMethod === 'CASH') return o.payment_method === 'CASH';
         if (drillMethod === 'MERCADO_PAGO') return o.payment_method === 'MERCADO_PAGO';
         if (drillMethod === 'SANTANDER_RIO') return o.payment_method === 'SANTANDER_RIO' || o.payment_method === 'BANK_TRANSFER';
-        if (drillMethod === 'CARD') return o.payment_method === 'CARD';
+        if (drillMethod === 'CARD') return o.payment_method === 'CARD' || o.payment_method === 'GETNET';
         return false;
     }) : [];
 
@@ -242,6 +242,7 @@ export default function ReportsPage() {
     const PAYMENT_LABELS: Record<string, string> = {
         CASH: 'Efectivo',
         CARD: 'Tarjeta',
+        GETNET: 'Getnet',
         MERCADO_PAGO: 'Mercado Pago',
         SANTANDER_RIO: 'Santander',
         BANK_TRANSFER: 'Transferencia',

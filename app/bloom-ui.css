@@ -1,0 +1,138 @@
+/* Sistema de diseño de la parte de clientes (carta, detalle, carrito, /acceso, /cuenta).
+   Se activa solo dentro de .bloom-ui: el dashboard y el POS no se tocan.
+   Paleta tomada de la marca (globals.css): oliva del logo, verde inglés, crema y dorado. */
+.bloom-ui {
+  --ui-primary: #777b5b;          /* oliva del logo: acciones y énfasis */
+  --ui-primary-strong: #5f5c46;   /* oliva oscuro: hover/pressed */
+  --ui-secondary: #1a3028;        /* verde inglés oscuro: títulos, CTA fuertes */
+  --ui-tertiary: #a39a7f;         /* taupe: texto de apoyo, íconos inactivos */
+  --ui-accent: #c4b896;           /* dorado arena: detalles y selección */
+  --ui-deep: var(--ui-secondary);
+  --ui-background: #f7f5ef;       /* crema de página */
+  --ui-surface: rgba(255, 255, 255, 0.72);
+  --ui-surface-solid: #ffffff;
+  --ui-text-primary: #1a3028;
+  --ui-text-secondary: #6b6756;
+  --ui-border: rgba(196, 184, 150, 0.45);
+
+  --ui-radius-sm: 8px;
+  --ui-radius-md: 16px;
+  --ui-radius-lg: 24px;
+  --ui-radius-xl: 36px;
+  --ui-shadow: rgba(26, 48, 40, 0.28) 0 22px 40px -24px, rgba(26, 48, 40, 0.12) 0 8px 18px -10px;
+  --ui-shadow-lg: rgba(26, 48, 40, 0.35) 0 32px 56px -28px, rgba(26, 48, 40, 0.18) 0 8px 18px -10px;
+  --ui-blur-sm: 8px;
+  --ui-blur-md: 14px;
+  --ui-ease: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  font-family: var(--font-poppins), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  color: var(--ui-text-primary);
+  background-color: var(--ui-background);
+}
+
+/* Tarjeta de vidrio con borde en degradé sutil */
+.bloom-ui .glass-card {
+  position: relative;
+  background:
+    linear-gradient(var(--ui-surface), var(--ui-surface)) padding-box,
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(196, 184, 150, 0.55) 55%, rgba(119, 123, 91, 0.35)) border-box;
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-lg);
+  box-shadow: var(--ui-shadow);
+  -webkit-backdrop-filter: blur(var(--ui-blur-md)) saturate(140%);
+  backdrop-filter: blur(var(--ui-blur-md)) saturate(140%);
+  transition: box-shadow var(--ui-ease), transform var(--ui-ease);
+}
+.bloom-ui .glass-card.is-pressable:active { transform: scale(0.98); }
+@media (hover: hover) {
+  .bloom-ui .glass-card.is-pressable:hover { box-shadow: var(--ui-shadow-lg); }
+}
+
+.bloom-ui .glass-panel {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  -webkit-backdrop-filter: blur(var(--ui-blur-md)) saturate(150%);
+  backdrop-filter: blur(var(--ui-blur-md)) saturate(150%);
+}
+
+/* Botón principal de la marca */
+.bloom-ui .primary-action {
+  border-radius: var(--ui-radius-md);
+  background: linear-gradient(135deg, var(--ui-primary), var(--ui-primary-strong));
+  color: #f5e8ca;
+  box-shadow: 0 8px 20px rgba(95, 92, 70, 0.28);
+  transition: transform var(--ui-ease), box-shadow var(--ui-ease), filter var(--ui-ease);
+}
+.bloom-ui .primary-action:hover { filter: brightness(1.06); }
+
+/* Campos */
+.bloom-ui input:not([type="checkbox"]):not([type="radio"]),
+.bloom-ui textarea {
+  border-radius: var(--ui-radius-md);
+  transition: border-color var(--ui-ease), box-shadow var(--ui-ease);
+}
+.bloom-ui input:focus-visible,
+.bloom-ui textarea:focus-visible { box-shadow: 0 0 0 3px rgba(196, 184, 150, 0.45); }
+
+/* ---------- Detalle de producto (hoja inferior) ---------- */
+.bloom-ui .product-sheet {
+  background: rgba(255, 253, 248, 0.92);
+  -webkit-backdrop-filter: blur(var(--ui-blur-md));
+  backdrop-filter: blur(var(--ui-blur-md));
+  border-top: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 -12px 40px rgba(26, 48, 40, 0.22);
+}
+.bloom-ui .product-detail-image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #edeae0;
+}
+.bloom-ui .product-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 24px 12px;           /* margen lateral: el texto ya no toca el borde */
+}
+.bloom-ui .product-detail-content small {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-primary);
+}
+.bloom-ui .product-detail-content h1 {
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--ui-text-primary);
+}
+.bloom-ui .product-detail-content p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ui-text-secondary);
+}
+.bloom-ui .product-detail-price {
+  margin-top: 4px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ui-deep);
+}
+.bloom-ui .product-detail-actions {
+  padding: 12px 24px calc(20px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--ui-border);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bloom-ui * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+/* Tarjeta de producto de la carta: hereda el vidrio y conserva su layout */
+.bloom-ui .product-card.glass-card {
+  border-radius: var(--ui-radius-lg);
+  overflow: hidden;
+}
+.bloom-ui .product-info h3 { font-weight: 600; color: var(--ui-text-primary); }
+.bloom-ui .product-info p { color: var(--ui-text-secondary); }
+.bloom-ui .product-price { font-weight: 700; color: var(--ui-deep); }

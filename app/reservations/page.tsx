@@ -1,5 +1,6 @@
 "use client";
 
+import { normalizePhone, normalizePhoneOrKeep, PHONE_ERROR } from "@/lib/phone";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { IconCalendar, IconClock, IconUsers, IconUser, IconPhone, IconMessage, IconCircleCheck } from "@tabler/icons-react";
@@ -56,7 +57,7 @@ export default function ReservationsPage() {
     const validate = () => {
         const e: Record<string, string> = {};
         if (!form.name.trim()) e.name = "Ingresá tu nombre";
-        if (!form.phone.trim()) e.phone = "Ingresá tu teléfono";
+        if (!form.phone.trim() || !normalizePhone(form.phone)) e.phone = PHONE_ERROR;
         if (!form.date) e.date = "Elegí una fecha";
         if (!form.time) e.time = "Elegí un horario";
         setErrors(e);
@@ -68,7 +69,7 @@ export default function ReservationsPage() {
         setLoading(true);
         const { error } = await supabase.from("reservations").insert({
             customer_name: form.name,
-            customer_phone: form.phone,
+            customer_phone: normalizePhoneOrKeep(form.phone),
             date: form.date,
             time: form.time,
             guests: form.guests,

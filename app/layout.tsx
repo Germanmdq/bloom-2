@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
+import "./bloom-ui.css";
 import Providers from "./providers";
 
 // La aplicación usa sesión y datos en tiempo real; evita prerenderizar el
@@ -11,6 +12,13 @@ export const dynamic = "force-dynamic";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  display: "swap",
+});
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-poppins",
   display: "swap",
 });
 
@@ -53,7 +61,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={inter.variable} suppressHydrationWarning>
+    <html lang="es" className={`${inter.variable} ${poppins.variable}`} suppressHydrationWarning>
       <body className="antialiased text-neutral-900 bg-[#fffdf8]" suppressHydrationWarning>
         <Providers>
           {children}
