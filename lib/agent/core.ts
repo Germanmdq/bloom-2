@@ -156,3 +156,20 @@ export function isAffirmative(text: string) {
   if (/\b(no|pero|cambi|agreg|sac|quit|espera|mejor|ahora)\b/.test(t)) return false;
   return /^(si|sii+|dale|ok|okey|okay|confirmo|confirmado|confirmalo|perfecto|listo|de una|correcto|exacto|asi es|todo bien|mandalo|envialo|enviar|si confirmo|si dale|si perfecto|si correcto|si por favor|si, confirmo)( por favor| gracias)?$/.test(t);
 }
+
+/**
+ * El modelo ve la carta numerada (#n) solo para elegir productos. Esos números son internos:
+ * si se le escapan en la respuesta ("la oferta número 107", "#12"), se reemplazan por el nombre del producto
+ * y, si no corresponden a ningún producto, se quitan.
+ */
+export function humanizeReply(text: string, nameOf: (n: number) => string | undefined) {
+  const named = (n: string) => nameOf(Number(n));
+  let out = text
+    .replace(/(?:la |el |las |los )?(?:oferta|opci[oó]n|producto|[ií]tem|item|combo|promo(?:ci[oó]n)?|n[uú]mero|n[°º]|nro\.?)\s*(?:n[uú]mero\s*|n[°º]\s*|nro\.?\s*)?#?(\d{1,4})\b/gi, (m, n) => {
+      const name = named(n);
+      return name ? name : "";
+    })
+    .replace(/#\s?(\d{1,4})\b/g, (m, n) => named(n) ?? "");
+  out = out.replace(/\(\s*\)/g, "").replace(/\s{2,}/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim();
+  return out;
+}

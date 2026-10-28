@@ -12,6 +12,7 @@ import {
   sanitizeDraft,
   signDraft,
   summaryText,
+  humanizeReply,
   verifyDraft,
   type Draft,
   type OrderType,
@@ -52,11 +53,11 @@ const SYSTEM = `Sos el asistente de pedidos por voz de Bloom Café (Mar del Plat
 Tu trabajo: ayudar a elegir y armar el pedido con la carta de abajo, y tomar los datos para entregarlo.
 
 REGLAS:
-1. Usá SOLO productos de la carta y referilos por su número (#n). Nunca inventes productos, precios, ingredientes ni promociones. Si piden algo que no está, decilo y ofrecé algo parecido de la carta.
+1. Usá SOLO productos de la carta. En "items" referilos por su número (#n), pero en "reply" NUNCA digas ni escribas esos números: nombrá siempre el producto exactamente como figura en la carta (ej. "la Milanesa Napolitana", jamás "la oferta número 12"). Nunca inventes productos, precios, ingredientes ni promociones. Si piden algo que no está, decilo y ofrecé algo parecido de la carta.
 2. Los productos marcados AGOTADO no se pueden pedir: avisalo y ofrecé alternativas disponibles.
 3. Respetá lo que el cliente pide. Una característica explícita (pollo, jamón, una marca, una guarnición) debe coincidir con el producto; si no hay coincidencia exacta, decilo, no reemplaces en silencio.
 4. Si un producto tiene opciones (salsa, guarnición, tipo...), preguntá cuál quiere y guardala en "notes" del ítem.
-5. Hay que saber: si es para RETIRAR por el local o DELIVERY. Si es delivery necesitás la dirección y un teléfono. Siempre necesitás el nombre. Si hay datos guardados del cliente, ofrecelos ("¿te lo llevamos a ...?").
+5. Hay que saber: si es para RETIRAR por el local o DELIVERY. Si es delivery necesitás la dirección y un teléfono. Siempre necesitás el nombre. Si el cliente está logueado, su nombre, teléfono y dirección YA están cargados: NO se los pidas de nuevo. Solo si es delivery y quiere otra dirección, tomá la nueva en "address".
 6. Preguntas sobre la carta (qué hay, precios, ingredientes, recomendaciones): respondelas con los datos de la carta, de forma breve.
 7. Cuando el cliente diga que terminó ("eso es todo", "nada más", "cerrá el pedido", "listo") poné "done": true. NO confirmes ni digas que el pedido fue enviado: el sistema repite el detalle completo con el total y pide confirmación.
 8. "items" es la lista COMPLETA del pedido después de este mensaje (lo que ya había + lo nuevo − lo que el cliente quite). Si el cliente pide vaciar el pedido, poné "clear_order": true.
@@ -170,7 +171,16 @@ export async function POST(request: Request) {
         const how = draft.orderType === "delivery" ? `Te lo llevamos a ${draft.address}.` : "Lo podés retirar por el local cuando esté listo.";
         const pay = draft.orderType === "delivery" ? "Se paga al recibirlo." : "Se paga al retirar.";
         return NextResponse.json({
-          reply: `Listo, ${draft.name}. Tu pedido ${number ? `número ${number} ` : ""}quedó registrado por ${Math.round(priced.total).toLocaleString("es-AR")} pesos y ya está en cocina. ${how} ${pay}`,
+          // El código del pedido se muestra en pantalla; no se lee en voz alta (son letras y números sueltos).
+          reply: `Listo, ${draft.name}. Tu pedido quedó confirmado por ${Math.round(priced.total).toLocaleString("es-AR")} pesos y ya está en cocina. ${how} ${pay}`,
+          confirmation: {
+            number,
+            total: priced.total,
+            orderType: draft.orderType,
+            address: draft.orderType === "delivery" ? draft.address : null,
+            name: draft.name,
+            payment: pay,
+          },
           draft: emptyDraft(),
           lines: priced.lines,
           total: priced.total,
@@ -229,7 +239,10 @@ Hora local: ${new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: 
     return s && s.toLowerCase() !== "null" ? s : null;
   };
   if (out.order_type === "retiro" || out.order_type === "delivery") next.orderType = out.order_type as OrderType;
+  // Cliente logueado: la dirección de su cuenta se usa para delivery salvo que diga otra.
+  if (customerId && next.orderType === "delivery" && !next.address && saved.address) next.address = saved.address;
   if (text(out.address, 300)) next.address = text(out.address, 300);
+  if (customerId && next.orderType === "delivery" && !next.address && saved.address) next.address = saved.address;
   if (text(out.name, 100)) next.name = text(out.name, 100);
   if (text(out.phone, 30)) next.phone = text(out.phone, 30);
 
@@ -237,7 +250,7 @@ Hora local: ${new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: 
   const priced = priceDraft(next, menu.byId);
   const normalized: Draft = { ...next, items: priced.lines.map((l) => ({ id: l.id, quantity: l.quantity, ...(l.notes ? { notes: l.notes } : {}) })) };
   const problems = priced.problems.length ? `${[...new Set(priced.problems)].join(" ")} ` : "";
-  const modelReply = text(out.reply, 400) ?? "Contame qué querés pedir.";
+  const modelReply = humanizeReply(text(out.reply, 400) ?? "", (n) => menu.byNumber.get(n)?.name) || "Contame qué querés pedir.";
 
   if (out.done === true && normalized.items.length) {
     const missing = missingFields(normalized);

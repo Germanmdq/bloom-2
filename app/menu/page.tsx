@@ -249,6 +249,37 @@ function MenuContent() {
   );
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  // Cliente con sesión: sus datos salen de la cuenta y el formulario solo se muestra a invitados.
+  const [account, setAccount] = useState<{ name: string; phone: string; phoneFormatted: string; address: string } | null>(null);
+  const [editingAddress, setEditingAddress] = useState(false);
+
+  // Tras enviar un pedido el carrito limpia los campos: con sesión se vuelven a cargar desde la cuenta.
+  useEffect(() => {
+    if (!account) return;
+    if (!customerName) setCustomerName(account.name);
+    if (!customerPhone) setCustomerPhone(account.phone);
+    if (!deliveryAddress && !editingAddress) setDeliveryAddress(account.address);
+  }, [account, customerName, customerPhone, deliveryAddress, editingAddress]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/cuenta", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = await res.json();
+        const p = json?.profile;
+        if (cancelled || !p) return;
+        setAccount({ name: p.fullName ?? "", phone: p.phone ?? "", phoneFormatted: p.phoneFormatted ?? p.phone ?? "", address: p.address ?? "" });
+        setCustomerName((v) => v || p.fullName || "");
+        setCustomerPhone((v) => v || p.phone || "");
+        setDeliveryAddress((v) => v || p.address || "");
+      } catch {
+        // Sin sesión o sin red: se sigue como invitado.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [voiceOrderModality, setVoiceOrderModality] = useState<"mesa" | "retiro" | "delivery" | null>(null);
 
   useEffect(() => {
@@ -837,7 +868,7 @@ function MenuContent() {
 
             {/* Video destacado: mantiene el contenido principal centrado antes de las categorías */}
             <div className="px-4 md:px-0 mb-7">
-              <div className="home-feature-video rounded-[24px] overflow-hidden bg-[#1a3028] border border-[#c4b896]/25 shadow-md">
+              <div className="home-feature-video relative rounded-[24px] overflow-hidden bg-[#1a3028] border border-[#c4b896]/25 shadow-md">
                 <AutoplayVideo
                   className="w-full h-full object-cover"
                   src="/videos/yogurt-pouring.mp4"
@@ -1297,7 +1328,57 @@ function MenuContent() {
                       </div>
 
                       {/* Campos según la modalidad */}
-                      {orderModality === "mesa" && (
+                      {account && (
+                        <div className="glass-card space-y-2 p-3.5" aria-label="Datos del pedido">
+                          {orderModality === "mesa" && (
+                            <div>
+                              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-[#7a765a]">N° de mesa *</label>
+                              <input
+                                type="number"
+                                min={1}
+                                max={40}
+                                value={selectedTableNum}
+                                onChange={(e) => setSelectedTableNum(e.target.value)}
+                                placeholder="Ej: 3"
+                                className="w-full px-3 py-2.5 text-sm font-semibold"
+                              />
+                            </div>
+                          )}
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#7a765a]">Tu pedido</p>
+                          <p className="text-sm font-semibold leading-snug text-[#1a3028]">
+                            Pedido a nombre de {account.name || "tu cuenta"}
+                            {account.phoneFormatted ? ` · ${account.phoneFormatted}` : ""}
+                            {orderModality === "delivery" && account.address && !editingAddress ? ` · ${deliveryAddress || account.address}` : ""}
+                          </p>
+                          {orderModality === "delivery" && (!account.address || editingAddress) && (
+                            <div>
+                              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-[#7a765a]">Dirección de entrega *</label>
+                              <input
+                                type="text"
+                                value={deliveryAddress}
+                                onChange={(e) => setDeliveryAddress(e.target.value)}
+                                placeholder="Calle, número y departamento"
+                                className="w-full px-3 py-2.5 text-sm"
+                                autoFocus={editingAddress}
+                              />
+                            </div>
+                          )}
+                          {orderModality === "delivery" && account.address && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (editingAddress) setDeliveryAddress(account.address);
+                                setEditingAddress((v) => !v);
+                              }}
+                              className="btn btn-glass !min-h-9 !rounded-full !px-3 !py-1.5 text-xs"
+                            >
+                              {editingAddress ? "Usar mi dirección guardada" : "Cambiar dirección"}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {!account && orderModality === "mesa" && (
                         <div className="space-y-2 bg-[#fdfbf7] p-3 rounded-2xl border border-[#c4b896]/30">
                           <p className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider">Datos para la mesa</p>
                           <div className="grid grid-cols-2 gap-2">
@@ -1336,7 +1417,7 @@ function MenuContent() {
                         </div>
                       )}
 
-                      {orderModality === "retiro" && (
+                      {!account && orderModality === "retiro" && (
                         <div className="space-y-2 bg-[#fdfbf7] p-3 rounded-2xl border border-[#c4b896]/30">
                           <p className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider">Datos para retirar</p>
                           <div className="grid grid-cols-2 gap-2">
@@ -1368,7 +1449,7 @@ function MenuContent() {
                         </div>
                       )}
 
-                      {orderModality === "delivery" && (
+                      {!account && orderModality === "delivery" && (
                         <div className="space-y-2 bg-[#fdfbf7] p-3 rounded-2xl border border-[#c4b896]/30">
                           <p className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider">Datos para delivery</p>
                           <div className="grid grid-cols-2 gap-2">

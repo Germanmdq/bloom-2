@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bloom-pwa-v2';
+const CACHE_NAME = 'bloom-pwa-v3';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_ASSETS = [
@@ -51,6 +51,18 @@ self.addEventListener('fetch', (event) => {
     url.hostname.includes('mercadopago.com') ||
     url.protocol === 'ws:' ||
     url.protocol === 'wss:'
+  ) {
+    return;
+  }
+
+  // Video/audio y pedidos con Range: el navegador los resuelve solo. Si el service worker los intercepta,
+  // Safari en iPhone no reproduce el video (necesita respuestas 206 propias del servidor).
+  if (
+    request.headers.has('range') ||
+    request.destination === 'video' ||
+    request.destination === 'audio' ||
+    url.pathname.startsWith('/videos/') ||
+    /\.(mp4|webm|mov|m4v)$/i.test(url.pathname)
   ) {
     return;
   }

@@ -226,23 +226,26 @@ body {
 }
 
 /* Custom Scrollbar for clean look */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+/* Solo con mouse: en iPhone/Android una barra personalizada se dibuja SIEMPRE y queda como una
+   "pestaña gris" pegada al borde derecho, encima de la foto del producto y del asistente. */
+@media (hover: hover) and (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
 
-::-webkit-scrollbar-thumb {
-  background: var(--color-gris);
-  border-radius: 4px;
-  opacity: 0.5;
-}
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-gris);
+    border-radius: 4px;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-chocolate);
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-chocolate);
+  }
 }
 
 /* Utility Class for Glass Effect */
