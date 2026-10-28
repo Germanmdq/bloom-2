@@ -65,7 +65,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             {/* Sidebar */}
             <div className={`
                 fixed md:relative z-40 top-0 left-0 h-full
-                w-72 flex min-h-0 flex-col bg-white border-r border-gray-200
+                dashboard-sidebar w-72 flex min-h-0 flex-col border-r
                 transition-transform duration-300 ease-in-out
                 ${open ? 'translate-x-0' : '-translate-x-full'}
                 md:translate-x-0 md:w-80
@@ -96,11 +96,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                         const Icon = link.icon;
                         return (
                             <Link key={link.href} href={link.href} onClick={onClose}>
-                                <div className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${isActive
-                                    ? "bg-[#eef4f0] text-[#2d4a3e] font-semibold"
+                                <div className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isActive
+                                    ? "bg-[#777b5b] text-[#f5e8ca] font-semibold shadow-sm"
                                     : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                                 }`}>
-                                    <Icon size={18} className={isActive ? "text-[#2d4a3e]" : "opacity-75"} />
+                                    <Icon size={18} className={isActive ? "text-[#f5e8ca]" : "opacity-75"} />
                                     <span>{link.label}</span>
                                 </div>
                             </Link>

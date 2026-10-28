@@ -47,13 +47,12 @@ export function DashboardClientLayout({
 
   return (
     <div
-      className="flex h-screen w-full overflow-hidden bg-[#fafafa]"
-      style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+      className="flex h-screen w-full overflow-hidden bg-[#f7f5ef]"
     >
       <div className="dashboard-scope flex h-screen w-full">
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main className="relative h-full flex-1 overflow-y-auto">
-          <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-gray-200/80 bg-[#fafafa]/90 px-4 backdrop-blur md:px-8">
+          <header className="dashboard-header sticky top-0 z-20 flex h-16 items-center gap-3 border-b px-4 md:px-8">
             <button onClick={() => setSidebarOpen(true)} className="rounded-md p-2 text-gray-600 hover:bg-gray-100 md:hidden" aria-label="Abrir menú">
               <IconMenu2 size={20} />
             </button>
