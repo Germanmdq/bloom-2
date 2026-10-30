@@ -70,8 +70,18 @@ const { data: u } = await supabase.auth.admin.getUserById(userId);
 const anon = createClient(URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_HNrP-eOoDNRb17Q0BfmMQQ_hNuFi50h", { auth: { persistSession: false } });
 const { error: loginError } = await anon.auth.signInWithPassword({ email: u.user.email, password });
 
+// Verificación contra producción: el mismo endpoint que usa la pantalla /acceso.
+let prodResult;
+try {
+  const res = await fetch("https://bloom-2-drab.vercel.app/api/auth/staff-login", {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone, password }),
+  });
+  prodResult = res.ok ? "OK" : `FALLÓ (HTTP ${res.status}: ${(await res.json().catch(() => ({}))).error ?? "sin detalle"})`;
+} catch (e) { prodResult = `FALLÓ (${e.message})`; }
+
 console.log(`\n${mode}: ${name} (${phone})`);
-console.log(loginError ? `ATENCIÓN: la verificación de login falló: ${loginError.message}` : "Verificación de login: OK");
+console.log(loginError ? `ATENCIÓN: la verificación de login falló: ${loginError.message}` : "Verificación de login (Supabase): OK");
+console.log(`Verificación en producción (/api/auth/staff-login): ${prodResult}`);
 console.log("\nIngresá en https://bloom-2-drab.vercel.app/acceso con tu teléfono y esta contraseña:");
 console.log(`\n   CONTRASEÑA_TEMPORAL=${password}\n`);
 console.log("Se muestra una sola vez. Cambiala en https://bloom-2-drab.vercel.app/dashboard/password");
