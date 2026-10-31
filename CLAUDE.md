@@ -9,7 +9,7 @@ Café: POS para el local + carta pública y cuenta de clientes. Los mensajes del
 
 ## Forma de trabajo
 - Cada cambio terminado se despliega a producción: mergear a `main` y verificar que el deploy de Vercel quede en Ready.
-- Antes de desplegar tienen que pasar build, tsc y tests (`npm run build`, `npx tsc --noEmit`, `node --test lib/phone.test.mjs lib/getnet.test.mjs lib/agent/core.test.mjs lib/agent/order.test.mjs`). Si algo falla, no desplegar y avisar.
+- Antes de desplegar tienen que pasar build, tsc y tests (`npm run build`, `npx tsc --noEmit`, `node --test lib/phone.test.mjs lib/getnet.test.mjs lib/agent/core.test.mjs lib/agent/order.test.mjs lib/os/core.test.mjs`). Si algo falla, no desplegar y avisar.
 - Nunca correr migraciones SQL ni modificar o borrar datos reales sin aprobación explícita del dueño.
 - Nunca imprimir ni guardar la clave `service_role` ni otros secretos; las credenciales van solo en variables de entorno de Vercel.
 
@@ -22,6 +22,9 @@ Café: POS para el local + carta pública y cuenta de clientes. Los mensajes del
 - Colores verde, amarillo y rojo de las tarjetas de mesas (`app/dashboard/tables/page.tsx`).
 - Atajos F1–F12 del POS en computadora (`components/dashboard/OrderSheet.tsx`).
 - Precios en formato argentino ($8.000): usar `lib/format.ts`, y `toLocaleString('es-AR')`.
+
+## API para Bloom OS
+- `/api/os/...` (token `BLOOM_OS_API_TOKEN`, nunca en código). Documentación en `docs/API_BLOOM_OS.md`. Las escrituras dependen de la migración `20261031000000_proveedores_gastos_os.sql` (sin ejecutar, espera aprobación).
 
 ## Pagos
 - Getnet: pendiente de credenciales. El botón de pago online queda en "Próximamente".
