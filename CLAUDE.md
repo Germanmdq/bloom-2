@@ -33,6 +33,6 @@ Café: POS para el local + carta pública y cuenta de clientes. Los mensajes del
 - En paralelo se evalúa Cloudflare OS en `~/Proyectos/bloom-os` como capa de consultas y operación sobre Bloom. Bloom sigue siendo el sistema principal.
 
 ## Pendientes
-- Migración de seguridad `supabase/migrations/20261027000000_acceso_clientes.sql` (sin ejecutar, espera aprobación).
-- Módulo de proveedores y gastos.
-- POS conversacional.
+- Migración `supabase/migrations/20261031000000_proveedores_gastos_os.sql` (proveedores, compras, gastos, pagos y registro de la API de Bloom OS): sin ejecutar, espera aprobación.
+- Ya aplicada: `20261027000000_acceso_clientes.sql` (RLS por cliente, 2026-10-30). Reversión en `~/Proyectos/bloom-2-backups/revertir-acceso-clientes.sql`.
+- Interfaz de proveedores y gastos en el dashboard de Bloom y POS conversacional.
