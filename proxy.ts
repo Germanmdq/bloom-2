@@ -5,6 +5,9 @@ import { supabaseSessionCookieOptions } from "@/lib/supabase/cookie-options";
 import { isAdminEmail } from "@/lib/auth/admin";
 
 export async function proxy(request: NextRequest) {
+  // API de Bloom OS: se autentica con token propio; no necesita sesión de Supabase.
+  if (request.nextUrl.pathname.startsWith("/api/os/")) return NextResponse.next();
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(getSupabaseUrl(), getSupabaseAnonKey(), {
