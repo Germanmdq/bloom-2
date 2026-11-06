@@ -334,15 +334,15 @@ export default function ReportsPage() {
     }, []);
 
     return (
-        <div className="p-6 md:p-10 max-w-[1600px] mx-auto pb-40">
+        <div className="p-0 sm:p-6 md:p-10 max-w-[1600px] mx-auto pb-40">
             {/* Header Section */}
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-5 md:gap-8 mb-8 md:mb-16">
                 <div>
                     <div className="flex items-center gap-3 mb-2">
                         <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center">
                             <IconChartPie className="text-[#FFD60A]" size={20} />
                         </div>
-                        <h1 className="text-4xl font-black tracking-tight text-gray-900">Reporte Diario</h1>
+                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900">Reporte Diario</h1>
                     </div>
                     <p className="text-sm font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">Estatus del negocio en tiempo real</p>
                 </div>
@@ -352,7 +352,7 @@ export default function ReportsPage() {
                         <button
                             key={tf}
                             onClick={() => setTimeframe(tf)}
-                            className={`px-8 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                            className={`flex-1 md:flex-none px-5 md:px-8 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
                                 timeframe === tf 
                                 ? 'bg-white text-black shadow-sm border border-gray-100' 
                                 : 'text-gray-400 hover:text-gray-600'
@@ -370,9 +370,9 @@ export default function ReportsPage() {
                     <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-xs">Sincronizando datos...</p>
                 </div>
             ) : (
-                <div className="space-y-12">
+                <div className="space-y-6 md:space-y-12">
                     {/* APERTURA DE CAJA */}
-                    <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100">
+                    <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-5 md:p-8 shadow-sm border border-gray-100">
                         <div className="flex items-center justify-between mb-6">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Apertura de Caja</h3>
@@ -383,7 +383,7 @@ export default function ReportsPage() {
                             </button>
                         </div>
                         {apertura ? (
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                                 <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100"><p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Efectivo</p><p className="text-2xl font-black text-emerald-700">${apertura.efectivo.toLocaleString('es-AR')}</p></div>
                                 <div className="bg-sky-50 rounded-2xl p-5 border border-sky-100"><p className="text-[10px] font-black text-sky-500 uppercase tracking-widest mb-1">Mercado Pago</p><p className="text-2xl font-black text-sky-700">${apertura.mercadoPago.toLocaleString('es-AR')}</p></div>
                                 <div className="bg-red-50 rounded-2xl p-5 border border-red-100"><p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1">Santander Río</p><p className="text-2xl font-black text-red-700">${apertura.santander.toLocaleString('es-AR')}</p></div>
@@ -394,7 +394,7 @@ export default function ReportsPage() {
                     </div>
 
                     {/* RENDICION DE CAJA (ARQUEO) */}
-                    <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100">
+                    <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-5 md:p-8 shadow-sm border border-gray-100">
                         <div className="flex items-center justify-between mb-6">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Rendición de Caja</h3>
@@ -500,8 +500,8 @@ export default function ReportsPage() {
                     {/* Main Analytics Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Breakdown Chart-like area */}
-                        <div className="lg:col-span-2 bg-white rounded-[3rem] p-10 shadow-sm border border-gray-100">
-                            <div className="flex items-center justify-between mb-12">
+                        <div className="lg:col-span-2 bg-white rounded-[2rem] md:rounded-[3rem] p-5 md:p-10 shadow-sm border border-gray-100">
+                            <div className="flex items-center justify-between mb-6 md:mb-12">
                                 <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Medios de Pago</h3>
                                 <button onClick={fetchReports} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
                                     <IconRefresh size={18} className="text-gray-300" />
@@ -516,7 +516,7 @@ export default function ReportsPage() {
                         </div>
 
                         {/* Profitability Column */}
-                        <div className="bg-white rounded-[3rem] p-10 shadow-sm border border-gray-100 flex flex-col">
+                        <div className="bg-white rounded-[2rem] md:rounded-[3rem] p-5 md:p-10 shadow-sm border border-gray-100 flex flex-col">
                             <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase mb-10">Rentabilidad</h3>
                             <div className="space-y-8 flex-1">
                                 <div className="flex justify-between items-center group">
@@ -559,7 +559,7 @@ export default function ReportsPage() {
                         </div>
 
                         {Object.keys(stats.productsByCategory).length === 0 ? (
-                            <div className="bg-white p-20 rounded-[3rem] border border-gray-100 text-center">
+                            <div className="bg-white p-10 md:p-20 rounded-[2rem] md:rounded-[3rem] border border-gray-100 text-center">
                                 <IconPackage size={40} className="mx-auto text-gray-100 mb-4" />
                                 <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No hay ventas registradas</p>
                             </div>

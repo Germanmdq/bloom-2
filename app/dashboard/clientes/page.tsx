@@ -298,24 +298,24 @@ export default function ClientesPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
                 <div>
-                    <h2 className="text-4xl font-black tracking-tight text-gray-900 mb-1 leading-none uppercase">CLIENTES</h2>
+                    <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-gray-900 mb-1 leading-none uppercase">CLIENTES</h2>
                     <p className="text-gray-400 font-bold text-[10px] tracking-[0.2em] uppercase flex items-center gap-2">
                         <IconUsers size={12} className="text-accent" />
                         {clients.length} Registrados • Gestión de CRM
                     </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                    <div className="relative flex-1">
+                <div className="flex flex-wrap sm:flex-nowrap gap-3 w-full md:w-auto">
+                    <div className="relative w-full sm:w-auto sm:flex-1">
                         <IconSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         <input
                             type="text" placeholder="Filtro rápido..."
                             value={search} onChange={(e) => setSearch(e.target.value)}
-                            className="bg-white pl-12 pr-6 py-4 rounded-[1.5rem] border border-gray-100 shadow-sm w-full outline-none focus:ring-4 focus:ring-black/5 transition-all text-sm font-bold"
+                            className="bg-white pl-12 pr-6 py-3 sm:py-4 rounded-[1.5rem] border border-gray-100 shadow-sm w-full outline-none focus:ring-4 focus:ring-black/5 transition-all text-sm font-bold"
                         />
                     </div>
                     
-                    <div className="flex items-center gap-2 bg-white px-5 py-3 rounded-[1.5rem] border border-gray-100 shadow-sm">
+                    <div className="flex flex-1 sm:flex-none items-center gap-2 bg-white px-5 py-3 rounded-[1.5rem] border border-gray-100 shadow-sm">
                         <IconArrowsUpDown size={16} className="text-gray-400" />
                         <select 
                             value={sortBy} 
@@ -373,7 +373,7 @@ export default function ClientesPage() {
                                 <button
                                     type="button"
                                     onClick={() => setOpenClientGroups(prev => ({ ...prev, [group.key]: !prev[group.key] }))}
-                                    className="w-full px-6 py-5 flex items-center justify-between gap-4 text-left hover:bg-white/70 transition-colors"
+                                    className="w-full px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-4 text-left hover:bg-white/70 transition-colors"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${group.key === "deuda" ? "bg-red-100 text-red-600" : "bg-gray-100 text-gray-400"}`}>
@@ -405,9 +405,9 @@ export default function ClientesPage() {
                                                             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.02 }}
                                                             key={client.id || `client-${idx}`}
                                                             onClick={() => setSelectedClient(client)}
-                                                            className={`group flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-gray-50 sm:gap-5 ${isDebt ? "bg-red-50/20" : ""}`}
+                                                            className={`group flex w-full items-center gap-3 px-4 sm:px-5 py-4 text-left transition-colors hover:bg-gray-50 sm:gap-5 ${isDebt ? "bg-red-50/20" : ""}`}
                                                         >
-                                                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gray-100 text-xl font-black text-gray-400 group-hover:bg-black group-hover:text-[#FFD60A]">
+                                                            <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-gray-100 text-xl font-black text-gray-400 group-hover:bg-black group-hover:text-[#FFD60A]">
                                                                 {client.full_name?.[0]?.toUpperCase() || "?"}
                                                             </div>
                                                             <div className="min-w-0 flex-1">
@@ -448,22 +448,22 @@ export default function ClientesPage() {
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedClient(null)} className="absolute inset-0 bg-black/70 backdrop-blur-md" />
                         <motion.div 
                             initial={{ opacity: 0, scale: 0.9, y: 100 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 100 }}
-                            className="relative bg-white w-full max-w-2xl h-[90vh] sm:h-auto sm:max-h-[90vh] rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden shadow-2xl flex flex-col"
+                            className="relative bg-white w-full max-w-2xl max-h-[92dvh] sm:max-h-[90vh] rounded-t-[2rem] sm:rounded-[3rem] overflow-y-auto sm:overflow-hidden shadow-2xl flex flex-col"
                         >
                             {/* Header Gradient */}
-                            <div className="bg-gray-950 p-10 relative shrink-0 overflow-hidden">
+                            <div className="bg-gray-950 p-5 sm:p-10 relative shrink-0 overflow-hidden">
                                 <div className="absolute top-0 right-0 w-64 h-64 bg-accent/20 blur-[100px] rounded-full -mr-32 -mt-32" />
-                                <div className="relative flex items-start gap-8">
-                                    <div className="w-24 h-24 bg-white/5 border border-white/10 rounded-[2.5rem] flex items-center justify-center text-5xl font-black text-[#FFD60A] shadow-2xl shrink-0">
+                                <div className="relative flex items-start gap-4 sm:gap-8">
+                                    <div className="w-14 h-14 sm:w-24 sm:h-24 bg-white/5 border border-white/10 rounded-2xl sm:rounded-[2.5rem] flex items-center justify-center text-3xl sm:text-5xl font-black text-[#FFD60A] shadow-2xl shrink-0">
                                         {selectedClient.full_name?.[0]?.toUpperCase()}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#FFD60A] mb-1">Perfil de Cliente</p>
-                                        <h2 className="text-3xl font-black text-white leading-tight">{selectedClient.full_name}</h2>
+                                        <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight break-words">{selectedClient.full_name}</h2>
                                         <p className="text-white/40 text-sm font-bold flex items-center gap-2 mt-2 truncate">
                                             <IconPhone size={14} /> {selectedClient.phone || 'Sin teléfono'}
                                         </p>
-                                        <div className="flex gap-2 mt-4">
+                                        <div className="flex flex-wrap gap-2 mt-4">
                                             <button
                                                 onClick={() => { setIsEditing(v => !v); setSaveMsg(null); }}
                                                 className="flex items-center gap-1.5 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-white text-xs font-black uppercase tracking-widest transition-all"
@@ -479,7 +479,7 @@ export default function ClientesPage() {
 
                                 {/* Formulario de edición */}
                                 {isEditing && (
-                                    <div className="relative mt-8 space-y-3">
+                                    <div className="relative mt-5 sm:mt-8 space-y-3">
                                         <input
                                             value={editName}
                                             onChange={e => setEditName(e.target.value)}
@@ -518,9 +518,9 @@ export default function ClientesPage() {
                             </div>
 
                             {/* Main Scrollable Content */}
-                            <div className="flex-1 overflow-y-auto p-8 sm:p-10 space-y-12 no-scrollbar">
+                            <div className="sm:flex-1 sm:overflow-y-auto p-4 sm:p-10 space-y-6 sm:space-y-12 no-scrollbar">
                                 {/* Stats Cards */}
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                                     <div className="bg-gray-50/50 p-5 rounded-[2.5rem] text-center border border-gray-100 group hover:bg-white hover:shadow-xl transition-all">
                                         <IconTrendingUp className="mx-auto mb-3 text-black opacity-20" size={20} />
                                         <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Gasto Total</p>
@@ -547,7 +547,7 @@ export default function ClientesPage() {
                                 </div>
 
                                 {/* Debt Settlement Section */}
-                                <div className={`p-8 rounded-[3rem] ${selectedClient.balance > 0 ? 'bg-red-50 border-red-100' : 'bg-emerald-50 border-emerald-100'} border-2 flex flex-col gap-6 shadow-sm`}>
+                                <div className={`p-4 sm:p-8 rounded-3xl sm:rounded-[3rem] ${selectedClient.balance > 0 ? 'bg-red-50 border-red-100' : 'bg-emerald-50 border-emerald-100'} border-2 flex flex-col gap-6 shadow-sm`}>
                                     <div className="flex items-center gap-4">
                                         <div className={`w-14 h-14 ${selectedClient.balance > 0 ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'} rounded-full flex items-center justify-center`}>
                                             <IconReceipt size={28} />
@@ -585,13 +585,13 @@ export default function ClientesPage() {
                                             <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-gray-400">$</span>
                                             <input
                                                 type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)}
-                                                className="w-full h-16 pl-10 pr-6 rounded-2xl bg-white border-transparent focus:ring-4 ring-black/5 outline-none font-black text-xl text-gray-900 shadow-inner"
+                                                className="w-full h-14 sm:h-16 pl-10 pr-6 rounded-2xl bg-white border-transparent focus:ring-4 ring-black/5 outline-none font-black text-xl text-gray-900 shadow-inner"
                                                 placeholder="0.00"
                                             />
                                         </div>
                                         <button
                                             disabled={isPaying} onClick={() => handleSettleDebt(selectedClient.id)}
-                                            className={`h-16 px-10 ${selectedClient.balance > 0 ? 'bg-red-600 shadow-red-600/20' : 'bg-emerald-600 shadow-emerald-600/20'} text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-black hover:scale-105 active:scale-95 transition-all shadow-xl`}
+                                            className={`h-14 sm:h-16 px-10 ${selectedClient.balance > 0 ? 'bg-red-600 shadow-red-600/20' : 'bg-emerald-600 shadow-emerald-600/20'} text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-black hover:scale-105 active:scale-95 transition-all shadow-xl`}
                                         >
                                             {isPaying ? <IconLoader2 className="animate-spin" size={18} /> : <><IconCircleCheck size={18} /> Confirmar Pago</>}
                                         </button>
@@ -662,9 +662,9 @@ export default function ClientesPage() {
                                                                     setExpandedOrderId(isExpanded ? null : orderKey);
                                                                 }
                                                             }}
-                                                            className="w-full p-5 flex items-center justify-between gap-4 text-left cursor-pointer"
+                                                            className="w-full p-4 sm:p-5 flex items-center justify-between gap-3 sm:gap-4 text-left cursor-pointer"
                                                         >
-                                                            <div className="flex items-center gap-5 min-w-0">
+                                                            <div className="flex items-center gap-3 sm:gap-5 min-w-0">
                                                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all shrink-0 ${iconClasses}`}>
                                                                     <IconReceipt size={20} />
                                                                 </div>
@@ -770,8 +770,8 @@ export default function ClientesPage() {
 
                                 {/* CONTACT FOOTER */}
                                 <div className="pt-8 border-t border-gray-100 space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="flex items-center gap-3 p-5 bg-gray-50 rounded-[1.5rem] border border-transparent hover:border-gray-200 transition-colors">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                        <div className="flex items-center gap-3 p-4 sm:p-5 bg-gray-50 rounded-[1.5rem] border border-transparent hover:border-gray-200 transition-colors">
                                             <IconPhone size={18} className="text-gray-300" />
                                             <div>
                                                 <p className="text-[8px] font-black uppercase opacity-40 text-black mb-0.5">Teléfono</p>
@@ -796,11 +796,11 @@ export default function ClientesPage() {
             {/* Modal Nuevo Cliente */}
             <AnimatePresence>
                 {showNewModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowNewModal(false)} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9, y: 40 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 40 }}
-                            className="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-10 flex flex-col gap-5"
+                            className="relative bg-white w-full max-w-md max-h-[92dvh] overflow-y-auto rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl p-5 sm:p-10 flex flex-col gap-4 sm:gap-5"
                         >
                             <div className="flex items-center justify-between mb-2">
                                 <h3 className="text-2xl font-black">Nuevo Cliente</h3>

@@ -125,3 +125,13 @@
 .dashboard-scope button.bg-white:active,
 .dashboard-scope button.bg-gray-50:active,
 .dashboard-scope button.bg-gray-100:active { transform: scale(0.98); }
+
+/* Celular: los campos con letra menor a 16px hacen que el iPhone agrande la pantalla al tocarlos
+   y el cobro queda corrido. Se fuerza un mínimo de 16px solo en pantallas chicas. */
+@media (max-width: 767px) {
+    .dashboard-scope input:not([type="checkbox"]):not([type="radio"]),
+    .dashboard-scope select,
+    .dashboard-scope textarea {
+        font-size: max(16px, 1em);
+    }
+}

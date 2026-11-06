@@ -846,192 +846,51 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
         const mpId = ctx?.mpOrderId ?? mpPosOrderId;
         const effectiveCustomerId = ctx?.customerId ?? selectedCustomerId;
 
-        // ── CUENTA CORRIENTE: cierre directo, sin timers ni persistTableState ──
+        // ── CUENTA CORRIENTE: venta + cliente + saldo en un solo paso en el servidor ──
         if (paymentMethod === "CUENTA_CORRIENTE") {
-            // Capturar todo antes de limpiar estado
-            const capturedCart      = [...cart];
-            const capturedTotal     = finalTotal;
-            const capturedDiscount  = discount;
-            const capturedWaiter    = selectedWaiter;
-            const capturedCustName  = customerName;
-            const capturedDelivery  = selectedDeliveryPerson;
-            const capturedCustId    = isWebTable ? (webOrderData?.customer_id || null) : effectiveCustomerId;
-
-            // 1. Vaciar carrito YA — sin ningún await antes para no darle tiempo a persistTableState
-            clearCart();
-            finishingRef.current = true;
+            const ccCustomerId = effectiveCustomerId || (isWebTable ? (webOrderData?.customer_id || null) : null);
+            if (!ccCustomerId) {
+                window.alert("Para cobrar a cuenta corriente elegí el cliente de la lista.");
+                return;
+            }
+            finishingRef.current = true; // frena persistTableState mientras se cierra la mesa
             setIsFinishing(true);
-
-            // 2. Para mesas reales: usar RPC atómico que libera mesa + crea orden en una transacción
-            //    Para web tables: liberar manualmente (no tienen salon_tables real)
-            if (!isWebTable) {
-                const { data: rpcResult, error: rpcErr } = await supabase.rpc('close_table_and_create_order', {
-                    p_table_id: tableId,
-                    p_total: capturedTotal,
-                    p_payment_method: 'CASH',
-                    p_status: 'pending',
-                    p_paid: false,
-                    p_waiter_id: capturedWaiter || null,
-                    p_customer_id: capturedCustId || null,
-                    p_customer_name: capturedCustName || null,
-                    p_discount: capturedDiscount,
-                    p_items: capturedCart,
-                    p_delivery_person_id: capturedDelivery ? parseInt(capturedDelivery) : null,
+            let result: { ok?: boolean; error?: string; orderId?: string } = {};
+            try {
+                const res = await fetch('/api/orders/cuenta-corriente', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tableId,
+                        isWebTable,
+                        customerId: ccCustomerId,
+                        total: finalTotal,
+                        discount,
+                        items: cart,
+                        waiterId: selectedWaiter || null,
+                        deliveryPersonId: selectedDeliveryPerson || null,
+                        webOrderId: webOrderId || currentWebOrderId || null,
+                    }),
                 });
-                if (rpcErr) console.error('❌ [CC] close_table_and_create_order RPC failed:', rpcErr.message);
-                const rpcOrderId = rpcResult?.order_id;
+                result = await res.json().catch(() => ({ error: `Error ${res.status}` }));
+                if (!res.ok && !result.error) result.error = `Error ${res.status}`;
+            } catch {
+                result = { error: "Sin conexión. La mesa sigue abierta, probá de nuevo." };
+            }
 
-                // 3. Cerrar el panel
+            if (result.ok || result.orderId) {
+                // La venta quedó registrada: cerrar la mesa en pantalla.
+                clearCart();
                 setIsFinishing(false);
+                setShowPaymentModal(false);
                 if (onOrderComplete) onOrderComplete();
                 onClose();
-
-                // 4. Background: loyalty + cuenta_corriente flag
-                void (async () => {
-                    try {
-                        let customerIdForDb = capturedCustId;
-                        let ccResolveIssue: 'not_found' | 'multiple' | null = null;
-
-                        if (!customerIdForDb && capturedCustName) {
-                            const { data: found } = await supabase
-                                .from('profiles').select('id')
-                                .ilike('full_name', capturedCustName.trim()).limit(5);
-                            if (found?.length === 1) {
-                                customerIdForDb = found[0].id;
-                            } else if (!found || found.length === 0) {
-                                ccResolveIssue = 'not_found';
-                            } else {
-                                ccResolveIssue = 'multiple';
-                            }
-                        }
-
-                        if (customerIdForDb) {
-                            const coffeeCount = capturedCart.reduce((acc, item) => {
-                                const n = item.name.toLowerCase();
-                                return (n.includes('café') || n.includes('cafe') || n.includes('capuccino') ||
-                                        n.includes('submarino') || n.includes('chocolatada') ||
-                                        n.includes('lágrima') || n.includes('lagrima'))
-                                    ? acc + item.quantity : acc;
-                            }, 0);
-                            const { data: prof } = await supabase.from('profiles')
-                                .select('coffee_stamps, balance').eq('id', customerIdForDb).single();
-                            const stamps = Number(prof?.coffee_stamps || 0) + coffeeCount;
-                            await supabase.from('profiles').update({
-                                coffee_stamps: stamps >= 10 ? stamps - 10 : stamps,
-                                balance: Number(prof?.balance || 0) + capturedTotal,
-                            }).eq('id', customerIdForDb);
-                        }
-
-                        if (rpcOrderId) {
-                            fetch('/api/orders/paid', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ orderId: rpcOrderId, cuenta_corriente: true }),
-                            }).then(res => {
-                                if (!res.ok) console.error('[CC] /api/orders/paid respondió', res.status, '— cuenta_corriente NO seteado, orderId:', rpcOrderId);
-                            }).catch(e => console.error('[CC] Error de red marcando cuenta_corriente:', e));
-                        }
-
-                        if (ccResolveIssue) {
-                            console.error('[CC] Balance no imputado para:', capturedCustName, '—', ccResolveIssue);
-                            const msg = ccResolveIssue === 'multiple'
-                                ? `Hay varios clientes con el nombre "${capturedCustName}".\nNo se puede determinar a cuál cargar el saldo — imputar al equivocado sería peor que no imputar.`
-                                : `No se encontró ningún cliente con el nombre "${capturedCustName}".`;
-                            setTimeout(() => {
-                                window.alert(
-                                    `⚠️ CUENTA CORRIENTE — SALDO NO IMPUTADO\n\n${msg}\n\n` +
-                                    `La venta ($${capturedTotal.toLocaleString('es-AR')}) quedó registrada, pero el saldo NO fue cargado a ninguna cuenta.\n\n` +
-                                    `Ajustá el balance manualmente en el panel de Clientes.`
-                                );
-                            }, 500);
-                        }
-                    } catch (e) {
-                        console.error('[CC] Error en background:', e);
-                    }
-                })();
+                if (result.error) setTimeout(() => window.alert(`⚠️ ${result.error}`), 300);
             } else {
-                // Web tables: no tienen salon_tables, usar createOrder normal
-                const { error: ccFreeErr } = await supabase.from("salon_tables").update({ status: "FREE", total: 0, items: [] }).eq("id", tableId);
-                if (ccFreeErr) console.error("❌ [CC] salon_tables FREE failed:", ccFreeErr.message);
-
+                // No se guardó nada: la mesa queda como estaba.
+                finishingRef.current = false;
                 setIsFinishing(false);
-                if (onOrderComplete) onOrderComplete();
-                onClose();
-
-                void (async () => {
-                    try {
-                        let customerIdForDb = capturedCustId;
-                        let ccResolveIssue: 'not_found' | 'multiple' | null = null;
-
-                        if (!customerIdForDb && capturedCustName) {
-                            const { data: found } = await supabase
-                                .from('profiles').select('id')
-                                .ilike('full_name', capturedCustName.trim()).limit(5);
-                            if (found?.length === 1) {
-                                customerIdForDb = found[0].id;
-                            } else if (!found || found.length === 0) {
-                                ccResolveIssue = 'not_found';
-                            } else {
-                                ccResolveIssue = 'multiple';
-                            }
-                        }
-
-                        if (customerIdForDb) {
-                            const coffeeCount = capturedCart.reduce((acc, item) => {
-                                const n = item.name.toLowerCase();
-                                return (n.includes('café') || n.includes('cafe') || n.includes('capuccino') ||
-                                        n.includes('submarino') || n.includes('chocolatada') ||
-                                        n.includes('lágrima') || n.includes('lagrima'))
-                                    ? acc + item.quantity : acc;
-                            }, 0);
-                            const { data: prof } = await supabase.from('profiles')
-                                .select('coffee_stamps, balance').eq('id', customerIdForDb).single();
-                            const stamps = Number(prof?.coffee_stamps || 0) + coffeeCount;
-                            await supabase.from('profiles').update({
-                                coffee_stamps: stamps >= 10 ? stamps - 10 : stamps,
-                                balance: Number(prof?.balance || 0) + capturedTotal,
-                            }).eq('id', customerIdForDb);
-                        }
-                        const newOrder = await createOrder.mutateAsync({
-                            table_id: tableId,
-                            total: capturedTotal,
-                            payment_method: "CASH",
-                            waiter_id: capturedWaiter || null,
-                            discount: capturedDiscount,
-                            status: 'pending',
-                            paid: false,
-                            customer_id: customerIdForDb,
-                            customer_name: capturedCustName || null,
-                            delivery_person_id: capturedDelivery ? parseInt(capturedDelivery) : null,
-                            items: capturedCart,
-                        });
-                        if (newOrder?.id) {
-                            fetch('/api/orders/paid', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ orderId: newOrder.id, cuenta_corriente: true }),
-                            }).then(res => {
-                                if (!res.ok) console.error('[CC] /api/orders/paid respondió', res.status, '— cuenta_corriente NO seteado, orderId:', newOrder.id);
-                            }).catch(e => console.error('[CC] Error de red marcando cuenta_corriente:', e));
-                        }
-
-                        if (ccResolveIssue) {
-                            console.error('[CC] Balance no imputado para:', capturedCustName, '—', ccResolveIssue);
-                            const msg = ccResolveIssue === 'multiple'
-                                ? `Hay varios clientes con el nombre "${capturedCustName}".\nNo se puede determinar a cuál cargar el saldo — imputar al equivocado sería peor que no imputar.`
-                                : `No se encontró ningún cliente con el nombre "${capturedCustName}".`;
-                            setTimeout(() => {
-                                window.alert(
-                                    `⚠️ CUENTA CORRIENTE — SALDO NO IMPUTADO\n\n${msg}\n\n` +
-                                    `La venta ($${capturedTotal.toLocaleString('es-AR')}) quedó registrada, pero el saldo NO fue cargado a ninguna cuenta.\n\n` +
-                                    `Ajustá el balance manualmente en el panel de Clientes.`
-                                );
-                            }, 500);
-                        }
-                    } catch (e) {
-                        console.error('[CC] Error registrando orden en background:', e);
-                    }
-                })();
+                window.alert(`⚠️ ${result.error || "No se pudo cobrar."}`);
             }
             return;
         }
@@ -1511,11 +1370,11 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                             initial={{ opacity: 0, scale: 0.9, y: 30 }} 
                             animate={{ opacity: 1, scale: 1, y: 0 }} 
                             exit={{ opacity: 0, scale: 0.9, y: 30 }} 
-                            className="relative bg-white w-full max-w-2xl rounded-[3.5rem] shadow-2xl overflow-hidden p-10"
+                            className="relative bg-white w-full max-w-2xl max-h-[92dvh] overflow-y-auto rounded-[2rem] md:rounded-[3.5rem] shadow-2xl p-5 md:p-10"
                         >
                             <div className="flex items-center justify-between mb-8">
                                 <div>
-                                    <h2 className="text-3xl font-black text-gray-900 tracking-tight">Personalizar Pedido</h2>
+                                    <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Personalizar Pedido</h2>
                                     <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mt-1">
                                         {pendingProduct?.name}
                                     </p>
@@ -1651,7 +1510,7 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                                         <h3 className="text-lg font-black mb-4 flex items-center gap-2">
                                             🥤 Selección de Bebida
                                         </h3>
-                                        <div className="grid grid-cols-2 gap-2 max-h-[400px] overflow-y-auto pr-2 pb-4">
+                                        <div className="grid grid-cols-2 gap-2 max-h-[40dvh] md:max-h-[400px] overflow-y-auto pr-2 pb-4">
                                             {(isEspecialContext 
                                                 ? ["Coca-Cola", "Coca Zero", "Sprite", "Sprite Zero", "Schweppes Pomelo", "Aquarius Pera", "Aquarius Manzana", "Aquarius Pomelo", "Aquarius Uva", "Agua sin Gas", "Agua con Gas"]
                                                 : ["Coca-Cola", "Coca Zero", "Sprite", "Sprite Zero", "Schweppes Pomelo", "Aquarius Pera", "Aquarius Manzana", "Aquarius Pomelo", "Aquarius Uva", "Agua sin Gas", "Agua con Gas", "Quilmes", "Stella Artois", "Patagonia", "Corona", "Vino Tinto", "Vino Blanco", "Copa de Vino", "Jugo de Naranja", "Limonada", "Exprimido"]
@@ -1767,7 +1626,7 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                             initial={{ opacity: 0, scale: 0.9, y: 30 }} 
                             animate={{ opacity: 1, scale: 1, y: 0 }} 
                             exit={{ opacity: 0, scale: 0.9, y: 30 }} 
-                            className="relative bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden p-10"
+                            className="relative bg-white w-full max-w-md max-h-[92dvh] overflow-y-auto rounded-[2rem] md:rounded-[3rem] shadow-2xl p-5 md:p-10"
                         >
                             <div className="flex items-center justify-between mb-8">
                                 <div>
@@ -1862,7 +1721,8 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                         onChange={(e) => {
                             setCustomerSearchQuery(e.target.value);
                             setCustomerName(e.target.value);
-                            if (!e.target.value) { setSelectedCustomerId(null); setCustomerResults([]); }
+                            setSelectedCustomerId(null); // al escribir se pierde el vínculo hasta elegir de la lista
+                            if (!e.target.value) { setCustomerResults([]); }
                             else handleCustomerSearch(e.target.value);
                         }}
                         placeholder={tableId < 100 ? `Mesa ${tableId}` : "Pedido"}
@@ -2099,8 +1959,8 @@ export function OrderSheet({ tableId, onClose, onOrderComplete, webOrderId, webO
                                     onChange={(e) => {
                                         setCustomerSearchQuery(e.target.value);
                                         setCustomerName(e.target.value);
+                                        setSelectedCustomerId(null); // al escribir se pierde el vínculo hasta elegir de la lista
                                         if (!e.target.value) {
-                                            setSelectedCustomerId(null);
                                             setCustomerResults([]);
                                         } else {
                                             handleCustomerSearch(e.target.value);
