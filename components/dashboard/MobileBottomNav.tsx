@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconLayoutGrid, IconListCheck, IconSettings, IconCalendar, IconDots } from "@tabler/icons-react";
+import { IconLayoutGrid, IconListCheck, IconSettings, IconCalendar, IconDots, IconUsers } from "@tabler/icons-react";
 
 const mainLinks = [
     { href: "/dashboard/tables",       label: "Mesas",    icon: IconLayoutGrid },
+    { href: "/dashboard/clientes",     label: "Clientes", icon: IconUsers },
     { href: "/dashboard/reservations", label: "Reservas", icon: IconCalendar },
     { href: "/dashboard/orders",       label: "Historial", icon: IconListCheck },
     { href: "/dashboard/settings",     label: "Ajustes",  icon: IconSettings },

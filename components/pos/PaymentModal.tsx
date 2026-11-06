@@ -58,6 +58,8 @@ export function PaymentModal({
     const [results, setResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [clienteStamps, setClienteStamps] = useState<number | null>(null);
+    const [linkedName, setLinkedName] = useState<string | null>(null);
+    const needsCustomer = paymentMethod === "CUENTA_CORRIENTE" && !selectedCustomerId;
 
     const handleSearch = async (val: string) => {
         setQ(val);
@@ -76,9 +78,12 @@ export function PaymentModal({
     };
 
     useEffect(() => {
-        if (!selectedCustomerId) { setClienteStamps(null); return; }
-        supabase.from('profiles').select('coffee_stamps').eq('id', selectedCustomerId).maybeSingle()
-            .then(({ data }) => setClienteStamps(data?.coffee_stamps ?? null));
+        if (!selectedCustomerId) { setClienteStamps(null); setLinkedName(null); return; }
+        supabase.from('profiles').select('full_name, coffee_stamps').eq('id', selectedCustomerId).maybeSingle()
+            .then(({ data }) => {
+                setClienteStamps(data?.coffee_stamps ?? null);
+                setLinkedName(data?.full_name ?? null);
+            });
     }, [selectedCustomerId]);
 
     const coffeeCountInCart = cart.reduce((acc, item) => {
@@ -103,7 +108,7 @@ export function PaymentModal({
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
-                        if (!isFinishing && !(paymentMethod === "CUENTA_CORRIENTE" && !selectedCustomerId && !customerName)) {
+                        if (!isFinishing && !needsCustomer) {
                             onConfirm({ customerId: selectedCustomerId, printFactura: willPrintFactura });
                         }
                     }}
@@ -154,7 +159,7 @@ export function PaymentModal({
                     </div>
 
                     <div className="mb-6">
-                        {!selectedCustomerId && !customerName ? (
+                        {!selectedCustomerId ? (
                             <div className="relative">
                                 <IconSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                 <input
@@ -171,7 +176,7 @@ export function PaymentModal({
                                             e.preventDefault();
                                         }
                                     }}
-                                    placeholder="Vincular cliente seleccionado..."
+                                    placeholder={paymentMethod === "CUENTA_CORRIENTE" ? "Buscá el cliente por nombre o teléfono" : "Vincular cliente (opcional)"}
                                     className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-black/5 focus:bg-white transition-all"
                                 />
                                 {isSearching && <IconLoader2 className="absolute right-4 top-1/3 h-4 w-4 animate-spin text-gray-400" />}
@@ -214,7 +219,7 @@ export function PaymentModal({
                                             <IconUser size={20} className="text-white" />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-black text-white leading-none">{customerName}</p>
+                                            <p className="text-sm font-black text-white leading-none">{linkedName || customerName}</p>
                                             <p className="text-[10px] font-bold text-white/40 mt-1 uppercase tracking-wider">
                                                 {clienteStamps !== null ? `${Math.min(stampsConCarrito, 10)}/10 cafés` : 'Cliente Vinculado'}
                                             </p>
@@ -297,8 +302,9 @@ export function PaymentModal({
                             <input
                                 type="number"
                                 placeholder={Math.round(finalTotal).toString()}
+                                inputMode="numeric"
                                 className="text-4xl font-black text-center bg-transparent outline-none w-full"
-                                autoFocus
+                                autoFocus={typeof window !== "undefined" && window.innerWidth >= 768}
                             />
                         )}
                         {paymentMethod === "MERCADO_PAGO" && (
@@ -320,14 +326,14 @@ export function PaymentModal({
                         {paymentMethod === "CUENTA_CORRIENTE" && (
                             <div className="text-center">
                                 <p className="text-sm font-bold text-orange-600 uppercase tracking-widest mb-2">Cuenta Corriente</p>
-                                {customerName ? (
+                                {selectedCustomerId ? (
                                     <div className="bg-orange-50 border border-orange-200 rounded-2xl px-5 py-3 mt-2">
                                         <p className="text-xs font-black text-orange-400 uppercase tracking-widest mb-0.5">Se carga a</p>
-                                        <p className="text-lg font-black text-orange-700">{customerName}</p>
+                                        <p className="text-lg font-black text-orange-700">{linkedName || customerName}</p>
                                         <p className="text-xs font-bold text-orange-400 mt-1">El total se suma al saldo pendiente</p>
                                     </div>
                                 ) : (
-                                    <p className="text-xs font-semibold text-red-400">Buscá y vinculá un cliente arriba para continuar.</p>
+                                    <p className="text-xs font-semibold text-red-400">Elegí el cliente de la lista de arriba para continuar.</p>
                                 )}
                             </div>
                         )}
@@ -343,14 +349,14 @@ export function PaymentModal({
                         </button>
                         <button
                             type="submit"
-                            disabled={isFinishing || (paymentMethod === "CUENTA_CORRIENTE" && !selectedCustomerId && !customerName)}
+                            disabled={isFinishing || needsCustomer}
                             className={`flex-[2] py-4 rounded-2xl font-black hover:scale-[1.02] disabled:opacity-20 shadow-xl transition-all ${
-                                paymentMethod === "CUENTA_CORRIENTE" && !selectedCustomerId && !customerName
+                                needsCustomer
                                 ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                                 : "bg-black text-[#FFD60A]"
                             }`}
                         >
-                            {isFinishing ? "..." : (paymentMethod === "CUENTA_CORRIENTE" && !selectedCustomerId && !customerName ? "Seleccionar Cliente" : <><span className="md:hidden">Cobrar y cerrar</span><span className="hidden md:inline">Confirmar Venta</span></>)}
+                            {isFinishing ? "..." : (needsCustomer ? "Elegí el cliente" : <><span className="md:hidden">Cobrar y cerrar</span><span className="hidden md:inline">Confirmar Venta</span></>)}
                         </button>
                     </div>
                 </div>
