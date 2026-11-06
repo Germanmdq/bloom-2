@@ -28,7 +28,7 @@ import {
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { saveOfflineOrder } from "@/lib/offline/order-queue";
-import { VoiceOrderAssistant } from "@/components/Menu/VoiceOrderAssistant";
+import { preparedProductImage } from "@/lib/menu/catalog";
 import { SalonIcon, TakeAwayIcon } from "@/components/Menu/AnimatedIcons";
 import "./menu-pwa.css";
 
@@ -297,7 +297,7 @@ function MenuContent() {
       const cachedProds = localStorage.getItem(menuCacheKey("products"));
       const cachedPlato = localStorage.getItem(menuCacheKey("plato_dia"));
       if (cachedCats) setCategories(JSON.parse(cachedCats));
-      if (cachedProds) setProducts(JSON.parse(cachedProds));
+      if (cachedProds) setProducts(withPhotos(JSON.parse(cachedProds)));
       if (cachedPlato) setPlatoDia(JSON.parse(cachedPlato));
     } catch (e) {
       console.warn("[Menu] Error leyendo caché local:", e);
@@ -306,17 +306,19 @@ function MenuContent() {
     // 2. Carga en red para mantener datos al día
     async function loadData() {
       try {
-        const [{ data: cats }, { data: prods }, { data: settings }] = await Promise.all([
+        const [{ data: cats }, { data: prodsRaw }, { data: settings }] = await Promise.all([
           supabase.from("categories").select("id, name, sort_order").order("sort_order", { ascending: true }),
           supabase.from("products").select("id, name, description, price, image_url, category_id, active").eq("active", true),
           supabase.from("app_settings").select("whatsapp, plato_del_dia_id, plato_dia_price").eq("id", 1).maybeSingle(),
         ]);
 
+        let prods = prodsRaw;
         if (cats && cats.length > 0) {
           setCategories(cats);
           try { localStorage.setItem(menuCacheKey("categories"), JSON.stringify(cats)); } catch {}
         }
         if (prods && prods.length > 0) {
+          prods = withPhotos(prods);
           setProducts(prods);
           try { localStorage.setItem(menuCacheKey("products"), JSON.stringify(prods)); } catch {}
 
@@ -791,6 +793,32 @@ function MenuContent() {
                 </span>
               </div>
             </Link>
+            <nav className="desktop-nav" aria-label="Secciones">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("inicio");
+                  setSelectedCategory("all");
+                  setSearchQuery("");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className={activeTab === "inicio" ? "active" : ""}
+              >
+                Inicio
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("menu");
+                  setSelectedCategory("all");
+                  setSearchQuery("");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className={activeTab === "menu" ? "active" : ""}
+              >
+                Menú
+              </button>
+            </nav>
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
@@ -840,7 +868,8 @@ function MenuContent() {
             TAB: INICIO — Tarjetas de categorías + Info del local
         ============================================ */}
         {activeTab === "inicio" && (
-          <>
+          <div className="home-layout">
+            <div className="home-col">
             {/* ========== TAKE AWAY / SALÓN ========== */}
             <div className="px-4 md:px-0 mb-6 grid grid-cols-2 gap-3">
               <button
@@ -874,7 +903,9 @@ function MenuContent() {
                 />
               </div>
             </div>
+            </div>
 
+            <div className="home-col">
             {/* ========== PLATO DEL DÍA ========== */}
             {latestNotification && (
               <div className="px-4 md:px-0 mb-4">
@@ -967,14 +998,15 @@ function MenuContent() {
                 <ChevronRight size={16} />
               </button>
             </div>
-          </>
+            </div>
+          </div>
         )}
 
         {/* ============================================
             TAB: MENÚ — Categorías + Búsqueda + Productos
         ============================================ */}
         {activeTab === "menu" && (
-          <>
+          <div className="menu-layout">
             <div className="menu-sticky-controls">
               {/* BUSCADOR */}
               <section className="search-box" aria-label="Buscador de productos">
@@ -1016,6 +1048,7 @@ function MenuContent() {
               </nav>
             </div>
 
+            <div className="menu-main">
             {/* GRILLA DE PRODUCTOS */}
             <section
               className={`products-grid ${/factura|medialuna|pasteler[ií]a|panificados/i.test(`${categories.find((category) => category.id === selectedCategory)?.name || ""} ${searchQuery}`) ? "products-grid-compact" : ""}`}
@@ -1071,7 +1104,8 @@ function MenuContent() {
                 </button>
               </div>
             )}
-          </>
+            </div>
+          </div>
         )}
       </main>
 
@@ -1564,8 +1598,6 @@ function MenuContent() {
         )}
       </AnimatePresence>
 
-      <VoiceOrderAssistant isOverlayOpen={isCartOpen || Boolean(selectedProduct)} />
-
       {/* DOCK INFERIOR (PWA FLOATING DOCK) */}
       <div 
         className={`bottom-dock-wrap transition-opacity duration-200 ${isCartOpen || selectedProduct ? "opacity-0 pointer-events-none" : "opacity-100"}`} 
@@ -1625,6 +1657,10 @@ function MenuContent() {
     </div>
   );
 }
+
+// Si el producto no tiene foto en la base, usar la foto preparada (si existe).
+const withPhotos = (list: any[]) =>
+  list.map((p) => (p?.image_url ? p : { ...p, image_url: preparedProductImage(p?.name) ?? p?.image_url ?? null }));
 
 export default function MenuPage() {
   return (
