@@ -124,7 +124,9 @@ export default function CuentaPage() {
       if (!res.ok) setMessage({ ok: false, text: json.error ?? "No pudimos guardar." });
       else {
         setMessage({ ok: true, text: "Datos guardados." });
-        await load();
+        // Guardado: directo a la carta para pedir
+        window.location.assign("/menu");
+        return;
       }
     } catch {
       setMessage({ ok: false, text: "No pudimos conectarnos." });
