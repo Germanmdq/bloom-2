@@ -319,6 +319,79 @@
 
 
 /* ================================
+   ESCRITORIO (compu, 1024px o más)
+   Celular y tablet no cambian.
+================================ */
+
+.desktop-nav { display: none; }
+
+@media (min-width: 1024px) {
+  .bloom-ui .desktop-nav {
+    display: flex;
+    gap: 4px;
+    margin-left: 24px;
+  }
+  .bloom-ui .desktop-nav button {
+    padding: 8px 16px;
+    border-radius: 9999px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #4b4e38;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .bloom-ui .desktop-nav button:hover { background: rgba(196, 184, 150, 0.2); }
+  .bloom-ui .desktop-nav button.active { background: #777b5b; color: #f5e8ca; }
+
+  /* Sin dock flotante: la navegación pasa al encabezado */
+  .bloom-ui .bottom-dock-wrap { display: none; }
+  .page-content { padding-bottom: 56px; padding-top: 24px !important; }
+
+  /* Inicio en dos columnas */
+  .home-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 32px;
+    align-items: start;
+  }
+  .home-feature-video { max-width: none; height: 340px; }
+
+  /* Menú: buscador y categorías a la izquierda, productos a la derecha */
+  .menu-layout {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+  .bloom-ui .menu-sticky-controls {
+    position: sticky;
+    top: 88px;
+    padding: 0;
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .bloom-ui .menu-sticky-controls .search-box { position: static; margin: 0; }
+  .bloom-ui .filter-scroll {
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    max-height: calc(100vh - 170px);
+    overflow-y: auto;
+  }
+  .bloom-ui .filter-chip { width: 100%; text-align: left; white-space: normal; }
+  .menu-main .products-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+}
+
+@media (min-width: 1280px) {
+  .menu-main .products-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* ================================
    ÍCONOS ANIMADOS (minimalistas)
 ================================ */
 

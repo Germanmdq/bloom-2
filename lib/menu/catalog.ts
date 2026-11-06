@@ -86,6 +86,15 @@ const GENERATED_PRODUCT_IMAGES: Record<string, string> = {
   "tostado-de-pan-arabe": "tostado-pan-arabe.png", "yogurt-c-fruta-y-granola": "yogurt-fruta-granola.png", "zanahoria-huevo-choclo-y-lentejas": "zanahoria-huevo-choclo-lentejas.png",
 };
 
+/** Foto preparada del producto, solo para mostrar cuando la base no tiene foto. */
+export const preparedProductImage = (name: unknown): string | undefined => {
+  const key = String(name ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const filename = GENERATED_PRODUCT_IMAGES[key];
+  if (filename) return `/images/menu-generadas/${filename}`;
+  if (/^tarta\s/i.test(String(name ?? "")) && !/^tarta de coco/i.test(String(name ?? ""))) return "/images/menu-generadas/tarta-pascualina.png";
+  return undefined;
+};
+
 const productImage = (product: any) => {
   const key = String(product.name ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const filename = GENERATED_PRODUCT_IMAGES[key];
