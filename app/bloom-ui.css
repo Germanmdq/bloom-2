@@ -282,7 +282,8 @@
    ===================================================================== */
 .bloom-ui .menu-sticky-controls {
   position: sticky;
-  top: 0;
+  /* Justo debajo del encabezado fijo (63px), para que no se tapen */
+  top: 63px;
   z-index: 30;
   display: flex;
   flex-direction: column;
@@ -291,6 +292,11 @@
   background: rgba(247, 245, 239, 0.88);
   -webkit-backdrop-filter: blur(var(--ui-blur-md));
   backdrop-filter: blur(var(--ui-blur-md));
+}
+/* El buscador va dentro del bloque fijo: no se pega por su cuenta */
+.bloom-ui .menu-sticky-controls .search-box {
+  position: static;
+  margin: 0;
 }
 .bloom-ui .search-box {
   display: flex;
