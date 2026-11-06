@@ -5,13 +5,16 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 import { supabaseSessionCookieOptions } from "@/lib/supabase/cookie-options";
 import { normalizePhone, phoneVariants, PHONE_ERROR } from "@/lib/phone";
+import { birthdateFrom, isCustomerPassword } from "@/lib/customer-access";
 
 export const dynamic = "force-dynamic";
 
 const STAFF_ROLES = ["ADMIN", "MANAGER", "WAITER", "KITCHEN"];
 
 /**
- * Acceso de clientes por teléfono, sin contraseña ni código.
+ * Acceso de clientes por teléfono. La contraseña del cliente son los últimos 6 números de su
+ * teléfono (se valida acá; la contraseña de Auth sigue siendo aleatoria y no se usa).
+ * Al registrarse se pide el cumpleaños (día y mes); a los clientes que no lo tienen, se les pide una vez.
  *
  * El servidor decide todo: busca al cliente por su teléfono normalizado (10 dígitos), y si existe
  * abre la sesión con un token de un solo uso que se genera y se canjea dentro de este mismo request
@@ -20,7 +23,9 @@ const STAFF_ROLES = ["ADMIN", "MANAGER", "WAITER", "KITCHEN"];
  *
  * Respuestas:
  *   { status: "ok", name, created }       -> sesión abierta
- *   { status: "needs_registration" }      -> teléfono nuevo: pedir nombre y dirección
+ *   { status: "needs_registration" }      -> teléfono nuevo: pedir nombre, dirección y cumpleaños
+ *   { status: "needs_customer_password", needsBirthday } -> cliente: pedir los últimos 6 números
+ *                                           (y el cumpleaños si no lo tiene cargado)
  *   { status: "needs_password" }          -> teléfono de personal: pedir contraseña (/api/auth/staff-login)
  */
 
@@ -93,6 +98,8 @@ export async function POST(request: NextRequest) {
 
   const fullName = String(body.fullName ?? "").trim().slice(0, 120);
   const address = String(body.address ?? "").trim().slice(0, 300);
+  const password = body.password;
+  const birthdate = birthdateFrom(body.birthDay, body.birthMonth);
 
   const service = createServiceRoleClient();
 
@@ -100,7 +107,7 @@ export async function POST(request: NextRequest) {
   // Reconoce también teléfonos guardados en formatos viejos (0, 54, 549, 15, con espacios).
   const { data: matches, error: lookupError } = await service
     .from("profiles")
-    .select("id, full_name, role, is_customer")
+    .select("id, full_name, role, is_customer, birthdate")
     .in("phone", phoneVariants(phone))
     .limit(5);
   if (lookupError) {
@@ -123,6 +130,20 @@ export async function POST(request: NextRequest) {
   }
 
   if (profile) {
+    const needsBirthday = !profile.birthdate;
+    if (password === undefined || password === null || password === "") {
+      return NextResponse.json({ status: "needs_customer_password", needsBirthday });
+    }
+    if (!isCustomerPassword(phone, password)) {
+      return NextResponse.json({ error: "La contraseña no es correcta. Son los últimos 6 números de tu teléfono." }, { status: 401 });
+    }
+    if (needsBirthday) {
+      if (!birthdate) {
+        return NextResponse.json({ error: "Elegí el día y el mes de tu cumpleaños." }, { status: 400 });
+      }
+      const { error: birthdayError } = await service.from("profiles").update({ birthdate }).eq("id", profile.id);
+      if (birthdayError) console.error("[phone-access] birthdate", birthdayError.message);
+    }
     const response = NextResponse.json({ status: "ok", name: profile.full_name?.trim() || "", created: false });
     if (!(await openSession(request, response, service, profile.id, phone))) {
       return NextResponse.json({ error: "No pudimos iniciar tu sesión. Intentá de nuevo." }, { status: 500 });
@@ -132,6 +153,9 @@ export async function POST(request: NextRequest) {
 
   // Teléfono nuevo: hace falta registrarse.
   if (!fullName || !address) return NextResponse.json({ status: "needs_registration" });
+  if (!birthdate) {
+    return NextResponse.json({ error: "Elegí el día y el mes de tu cumpleaños." }, { status: 400 });
+  }
 
   const { data: created, error: createError } = await service.auth.admin.createUser({
     email: `${phone}@clientes.bloom.local`,
@@ -146,7 +170,7 @@ export async function POST(request: NextRequest) {
 
   // Siempre cliente, nunca staff. No se envía `role`: queda el valor por defecto de la base.
   const { error: profileError } = await service.from("profiles").upsert(
-    { id: created.user.id, full_name: fullName, phone, default_address: address, is_customer: true },
+    { id: created.user.id, full_name: fullName, phone, default_address: address, birthdate, is_customer: true },
     { onConflict: "id" },
   );
   if (profileError) {

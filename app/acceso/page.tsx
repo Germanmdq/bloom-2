@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { IconArrowLeft, IconLoader2, IconMapPin, IconPhone } from "@tabler/icons-react";
 import { formatPhone, normalizePhone, PHONE_ERROR } from "@/lib/phone";
+import { MONTHS, birthdateFrom, customerPassword, daysInMonth } from "@/lib/customer-access";
 
 const GREEN = "#2d4a3e";
 const CREAM = "#F5EDD8";
@@ -10,6 +11,7 @@ const CREAM = "#F5EDD8";
 type AccessResult =
   | { status: "needs_registration" }
   | { status: "needs_password" }
+  | { status: "needs_customer_password"; needsBirthday: boolean }
   | { status: "ok"; name: string; created: boolean }
   | { error: string };
 
@@ -25,6 +27,10 @@ export default function AccesoPage() {
   const [needsRegistration, setNeedsRegistration] = useState(false);
   const [needsPassword, setNeedsPassword] = useState(false);
   const [password, setPassword] = useState("");
+  const [needsCustomerPassword, setNeedsCustomerPassword] = useState(false);
+  const [needsBirthday, setNeedsBirthday] = useState(false);
+  const [birthDay, setBirthDay] = useState("");
+  const [birthMonth, setBirthMonth] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -39,6 +45,14 @@ export default function AccesoPage() {
     }
     if (needsRegistration && (!fullName.trim() || !address.trim())) {
       setError("Completá tu nombre y tu dirección para crear tu cuenta.");
+      return;
+    }
+    if ((needsRegistration || needsBirthday) && !birthdateFrom(birthDay, birthMonth)) {
+      setError("Elegí el día y el mes de tu cumpleaños.");
+      return;
+    }
+    if (needsCustomerPassword && password.replace(/\D/g, "").length !== 6) {
+      setError("Escribí los últimos 6 números de tu teléfono.");
       return;
     }
 
@@ -66,6 +80,9 @@ export default function AccesoPage() {
           phone: cleanPhone,
           fullName: needsRegistration ? fullName.trim() : undefined,
           address: needsRegistration ? address.trim() : undefined,
+          password: needsCustomerPassword ? password : undefined,
+          birthDay: needsRegistration || needsBirthday ? birthDay : undefined,
+          birthMonth: needsRegistration || needsBirthday ? birthMonth : undefined,
         }),
       });
       const result = await response.json() as AccessResult;
@@ -76,6 +93,11 @@ export default function AccesoPage() {
       }
       if (result.status === "needs_password") {
         setNeedsPassword(true);
+        return;
+      }
+      if (result.status === "needs_customer_password") {
+        setNeedsCustomerPassword(true);
+        setNeedsBirthday(result.needsBirthday);
         return;
       }
       if (result.status === "needs_registration") {
@@ -123,7 +145,7 @@ export default function AccesoPage() {
                   autoComplete="tel"
                   placeholder="Ej. 223 615 1152"
                   value={phone}
-                  onChange={(event) => { setPhone(event.target.value); setError(""); setNeedsRegistration(false); setNeedsPassword(false); setPassword(""); }}
+                  onChange={(event) => { setPhone(event.target.value); setError(""); setNeedsRegistration(false); setNeedsPassword(false); setNeedsCustomerPassword(false); setNeedsBirthday(false); setPassword(""); }}
                   className="w-full min-h-[52px] rounded-2xl border-2 border-neutral-200 bg-white px-4 pl-12 text-[16px] font-semibold outline-none placeholder:text-neutral-300 placeholder:font-normal focus:border-[#c9a84c] focus:ring-2 focus:ring-[#c9a84c]/25 transition-all"
                   autoFocus
                 />
@@ -143,6 +165,33 @@ export default function AccesoPage() {
                   autoFocus
                 />
               </div>
+            )}
+
+            {needsCustomerPassword && (
+              <div>
+                <label className="block text-[14px] font-bold text-neutral-700 mb-1.5">Contraseña</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="current-password"
+                  maxLength={6}
+                  placeholder="••••••"
+                  value={password}
+                  onChange={(event) => { setPassword(event.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
+                  className="w-full min-h-[52px] rounded-2xl border-2 border-neutral-200 bg-white px-4 text-[20px] tracking-[0.4em] font-semibold outline-none placeholder:text-neutral-300 focus:border-[#2d4a3e]"
+                  autoFocus
+                />
+                <p className="mt-1.5 text-xs font-medium text-neutral-500">Son los últimos 6 números de tu teléfono.</p>
+              </div>
+            )}
+
+            {needsCustomerPassword && needsBirthday && (
+              <BirthdayPicker
+                day={birthDay}
+                month={birthMonth}
+                onChange={(day, month) => { setBirthDay(day); setBirthMonth(month); setError(""); }}
+                hint="Completalo una sola vez para tu café gratis de cumpleaños."
+              />
             )}
 
             {needsRegistration && (
@@ -176,6 +225,14 @@ export default function AccesoPage() {
                     />
                   </div>
                 </div>
+                <BirthdayPicker
+                  day={birthDay}
+                  month={birthMonth}
+                  onChange={(day, month) => { setBirthDay(day); setBirthMonth(month); setError(""); }}
+                />
+                <p className="rounded-xl border border-[#c4b896]/50 bg-[#fffaf0] px-4 py-3 text-[13px] font-medium text-neutral-700">
+                  Tu contraseña son los últimos 6 números de tu teléfono: <span className="font-black tracking-wider">{customerPassword(normalizePhone(phone) ?? "")}</span>
+                </p>
               </>
             )}
 
@@ -187,11 +244,62 @@ export default function AccesoPage() {
               className="flex min-h-[54px] w-full items-center justify-center rounded-2xl text-[16px] font-black text-white shadow-md transition hover:opacity-90 disabled:opacity-60"
               style={{ backgroundColor: GREEN }}
             >
-              {loading ? <IconLoader2 className="h-5 w-5 animate-spin" /> : needsRegistration ? "CREAR CUENTA Y ENTRAR →" : needsPassword ? "ENTRAR →" : "CONTINUAR →"}
+              {loading ? <IconLoader2 className="h-5 w-5 animate-spin" /> : needsRegistration ? "CREAR CUENTA Y ENTRAR →" : needsPassword || needsCustomerPassword ? "ENTRAR →" : "CONTINUAR →"}
             </button>
           </form>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Cumpleaños: día y mes, con selectores nativos (en el celular abren la rueda del sistema). */
+function BirthdayPicker({
+  day,
+  month,
+  onChange,
+  hint,
+}: {
+  day: string;
+  month: string;
+  onChange: (day: string, month: string) => void;
+  hint?: string;
+}) {
+  const maxDay = month ? daysInMonth(Number(month)) : 31;
+  const selectClass =
+    "w-full min-h-[52px] rounded-2xl border-2 border-neutral-200 bg-white px-4 text-[16px] font-semibold outline-none focus:border-[#2d4a3e]";
+  return (
+    <div>
+      <label className="block text-[14px] font-bold text-neutral-700 mb-1.5">🎂 Tu cumpleaños</label>
+      <div className="grid grid-cols-[1fr_1.6fr] gap-2">
+        <select
+          aria-label="Día de tu cumpleaños"
+          value={day}
+          onChange={(event) => onChange(event.target.value, month)}
+          className={selectClass}
+        >
+          <option value="">Día</option>
+          {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+            <option key={d} value={String(d)} disabled={d > maxDay}>{d}</option>
+          ))}
+        </select>
+        <select
+          aria-label="Mes de tu cumpleaños"
+          value={month}
+          onChange={(event) => {
+            const nextMonth = event.target.value;
+            const limit = nextMonth ? daysInMonth(Number(nextMonth)) : 31;
+            onChange(day && Number(day) > limit ? "" : day, nextMonth);
+          }}
+          className={selectClass}
+        >
+          <option value="">Mes</option>
+          {MONTHS.map((name, i) => (
+            <option key={name} value={String(i + 1)}>{name}</option>
+          ))}
+        </select>
+      </div>
+      <p className="mt-1.5 text-xs font-medium text-neutral-500">{hint ?? "Ese día te invitamos un café."}</p>
     </div>
   );
 }
