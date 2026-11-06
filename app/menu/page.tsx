@@ -147,8 +147,13 @@ const CATEGORY_EMOJIS: Record<string, React.ReactNode> = {
 
 // Orden pensado para que cada modalidad muestre sólo las categorías útiles.
 // Si una categoría todavía no existe en la base, simplemente no se muestra.
+// Primero las categorías que hoy existen en la base; después nombres viejos
+// que se conservan por si se vuelven a cargar.
 const LOCAL_CATEGORY_NAMES = [
+  "menú del día",
   "cafetería",
+  "platos",
+  "ofertas",
   "desayunos y meriendas",
   "platos diarios",
   "ensaladas",
@@ -163,6 +168,9 @@ const LOCAL_CATEGORY_NAMES = [
 const TAKEAWAY_CATEGORY_NAMES = [
   "cafetería delivery",
   "cafetería",
+  "platos",
+  "menú del día",
+  "ofertas",
   "panificados",
   "pastelería",
   "bebidas",
