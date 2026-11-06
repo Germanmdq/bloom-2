@@ -330,6 +330,8 @@
   padding-left: 16px;
   padding-right: 16px;
   scroll-snap-type: x proximity;
+  /* Que el primer botón no quede pegado al borde al alinearse */
+  scroll-padding-inline: 16px;
 }
 .bloom-ui .filter-chip {
   flex: 0 0 auto;

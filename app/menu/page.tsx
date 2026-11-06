@@ -444,10 +444,11 @@ function MenuContent() {
 
   const visibleCategories = useMemo(() => {
     const names = catalogMode === "local" ? LOCAL_CATEGORY_NAMES : TAKEAWAY_CATEGORY_NAMES;
+    // Solo categorías que tienen productos (ej.: "Empanadas" vacía no se muestra)
     return names
       .map((name) => categories.find((cat) => cat.name?.toLowerCase() === name))
-      .filter(Boolean);
-  }, [categories, catalogMode]);
+      .filter((cat: any) => cat && products.some((p: any) => p.category_id === cat.id));
+  }, [categories, catalogMode, products]);
 
   // Las facturas suelen ser lo primero que se busca. Las detectamos también
   // cuando el negocio las llamó "Pastelería" o "Panificados".
