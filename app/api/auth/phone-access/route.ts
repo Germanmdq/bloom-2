@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
   const profile = matches?.[0] ?? null;
 
   // Personal (administrador, encargado, mozo, cocina): nunca entra sin contraseña.
-  if (profile && profile.is_customer === false && STAFF_ROLES.includes(profile.role ?? "")) {
+  if (profile && STAFF_ROLES.includes(profile.role ?? "")) {
     return NextResponse.json({ status: "needs_password" });
   }
 
