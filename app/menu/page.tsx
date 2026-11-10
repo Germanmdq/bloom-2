@@ -185,9 +185,6 @@ const MENU_CACHE_VERSION = "v2-four-categories";
 const menuCacheKey = (name: string) => `bloom_${MENU_CACHE_VERSION}_${name}`;
 const REPEAT_ORDER_KEY = "bloom_repeat_order";
 
-// El video de apertura se muestra una vez por cada apertura de la app.
-const OPENING_VIDEO_SEEN_KEY = "bloom_opening_coffee_video_seen_v1";
-
 interface CartItem {
   id: string;
   name: string;
@@ -216,20 +213,9 @@ function MenuContent() {
 
   // Montaje en cliente (evita hydration mismatch)
   const [mounted, setMounted] = useState(false);
-  const [showOpeningVideo, setShowOpeningVideo] = useState(false);
   useEffect(() => {
     setMounted(true);
-    try {
-      if (!sessionStorage.getItem(OPENING_VIDEO_SEEN_KEY)) setShowOpeningVideo(true);
-    } catch {
-      setShowOpeningVideo(true);
-    }
   }, []);
-
-  const finishOpeningVideo = () => {
-    setShowOpeningVideo(false);
-    try { sessionStorage.setItem(OPENING_VIDEO_SEEN_KEY, "1"); } catch {}
-  };
 
   // Pestaña activa: 'inicio' | 'menu'
   const [activeTab, setActiveTab] = useState<"inicio" | "menu">("inicio");
@@ -774,35 +760,6 @@ function MenuContent() {
 
   return (
     <div className="app-shell bloom-ui" suppressHydrationWarning>
-      <AnimatePresence>
-        {showOpeningVideo && (
-          <motion.section
-            className="fixed inset-0 z-[200] overflow-hidden bg-[#4b4e38]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            aria-label="Video de bienvenida Bloom"
-          >
-            <video
-              className="h-full w-full object-cover"
-              src="/videos/coffee-opening.mp4"
-              autoPlay
-              muted
-              playsInline
-              onEnded={finishOpeningVideo}
-            />
-            <div className="absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/55 to-transparent px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-20">
-              <button
-                type="button"
-                onClick={finishOpeningVideo}
-                className="rounded-full border border-white/60 bg-white/90 px-5 py-2 text-sm font-extrabold text-[#4b4e38] shadow-lg transition-transform active:scale-95"
-              >
-                Entrar al menú
-              </button>
-            </div>
-          </motion.section>
-        )}
-      </AnimatePresence>
       {/* HEADER SUPERIOR */}
       <header className="sticky top-0 z-40 bg-[#fffdf8]/90 backdrop-blur-md border-b border-[#c4b896]/20 px-4 py-3 sm:px-8">
         <div className="max-w-[1180px] mx-auto flex min-w-0 items-center justify-between gap-3">
