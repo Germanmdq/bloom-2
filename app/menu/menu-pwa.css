@@ -15,6 +15,21 @@
   padding-bottom: calc(120px + env(safe-area-inset-bottom));
 }
 
+/* Inicio: concentra las piezas útiles en un mismo plano visual para que el
+   fondo no quede como espacio sobrante alrededor del pedido. */
+.home-layout {
+  margin: 12px;
+  padding: 14px 0 2px;
+  border: 1px solid rgba(196, 184, 150, 0.22);
+  border-radius: 30px;
+  background: linear-gradient(135deg, rgba(255, 253, 248, 0.94), rgba(242, 240, 230, 0.72));
+  box-shadow: 0 12px 28px rgba(75, 78, 56, 0.06);
+}
+
+.home-layout .home-col {
+  min-width: 0;
+}
+
 /* ================================
    BUSCADOR
 ================================ */
@@ -301,6 +316,11 @@
     padding-right: 24px;
   }
 
+  .home-layout {
+    margin: 0;
+    padding: 18px;
+  }
+
   .search-box {
     margin: 14px 0 18px;
   }
@@ -353,7 +373,7 @@
   .home-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 32px;
+    gap: 22px;
     align-items: start;
   }
   .home-feature-video { max-width: none; height: 340px; }
