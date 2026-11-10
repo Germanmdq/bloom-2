@@ -880,7 +880,7 @@ function MenuContent() {
           <div className="home-layout">
             <div className="home-col">
             {/* ========== TAKE AWAY / SALÓN ========== */}
-            <div className="px-4 md:px-0 mb-6 grid grid-cols-2 gap-3">
+            <div className="home-mode-grid px-4 md:px-0 mb-6 grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => changeCatalogMode("takeaway", true)}
@@ -902,7 +902,7 @@ function MenuContent() {
             </div>
 
             {/* Video destacado: mantiene vivo el inicio sin cambiar los accesos de pedido. */}
-            <div className="px-4 md:px-0 mb-7">
+            <div className="home-media-section px-4 md:px-0 mb-7">
               <div className="home-feature-video relative rounded-[24px] overflow-hidden bg-[#1a3028] border border-[#c4b896]/25 shadow-md">
                 <AutoplayVideo
                   className="w-full h-full object-cover"
@@ -941,10 +941,10 @@ function MenuContent() {
                     Nuestra recomendación especial de hoy
                   </p>
                 </div>
-                <div className="px-4 md:px-0 mb-6">
+                <div className="home-dish-section px-4 md:px-0 mb-6">
                   <div
                     onClick={() => handleOpenProduct(platoDia)}
-                    className="glass-card is-pressable w-full overflow-hidden cursor-pointer"
+                    className="home-dish-card glass-card is-pressable w-full overflow-hidden cursor-pointer"
                   >
                     {/* Franja superior destacada para el badge sin superposición */}
                     <div className="bg-[#777b5b] px-4 py-2.5 flex items-center justify-between gap-3">
@@ -958,7 +958,7 @@ function MenuContent() {
                     </div>
 
                     {/* Imagen del plato */}
-                    <div className="w-full h-[190px] sm:h-[230px] overflow-hidden relative bg-[#edeae0]">
+                    <div className="home-dish-image w-full h-[190px] sm:h-[230px] overflow-hidden relative bg-[#edeae0]">
                       <img
                         src={
                           platoDia.image_url ||
@@ -993,7 +993,7 @@ function MenuContent() {
             )}
 
             {/* CTA FINAL */}
-            <div className="px-4 md:px-0 mb-8">
+            <div className="home-menu-action px-4 md:px-0 mb-8">
               <button
                 type="button"
                 onClick={() => {
