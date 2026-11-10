@@ -1,7 +1,6 @@
 "use client";
 
 import { arsFormatter } from "@/lib/format";
-import AutoplayVideo from "@/components/Menu/AutoplayVideo";
 import { normalizePhoneOrKeep } from "@/lib/phone";
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Image from "next/image";
@@ -901,14 +900,15 @@ function MenuContent() {
               </button>
             </div>
 
-            {/* Video destacado: mantiene el contenido principal centrado antes de las categorías */}
+            {/* Imagen destacada: evita un bloque vacío si el navegador bloquea videos automáticos. */}
             <div className="px-4 md:px-0 mb-7">
               <div className="home-feature-video relative rounded-[24px] overflow-hidden bg-[#1a3028] border border-[#c4b896]/25 shadow-md">
-                <AutoplayVideo
-                  className="w-full h-full object-cover"
-                  src="/videos/yogurt-pouring.mp4"
-                  poster="/videos/yogurt-poster.jpg"
-                  label="Preparación de yogurt Bloom"
+                <Image
+                  src="/images/hero/hero-cafe-croissants.png"
+                  alt="Café y pastelería de Bloom"
+                  fill
+                  sizes="(min-width: 1024px) 50vw, 100vw"
+                  className="object-cover"
                 />
               </div>
             </div>
