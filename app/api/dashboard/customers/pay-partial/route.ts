@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireDashboardAdmin } from "@/lib/dashboard/require-admin-api";
-import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * Registra un pago parcial de un cliente. 
@@ -16,11 +16,11 @@ export async function POST(req: Request) {
 
     const { customerId, amount, paymentMethod } = await req.json();
 
-    if (!customerId || !amount || amount <= 0) {
+    if (!customerId || !Number.isFinite(Number(amount)) || Number(amount) <= 0) {
       return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
     }
 
-    const svc = createServiceRoleClient();
+    const svc = await createClient();
 
     // 1. Obtener balance actual
     const { data: profile, error: pErr } = await svc
@@ -33,7 +33,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 });
     }
 
-    const newBalance = Math.max(0, (profile.balance || 0) - amount);
+    const currentBalance = Math.max(0, Number(profile.balance) || 0);
+    const paidAmount = Number(amount);
+    if (paidAmount > currentBalance) {
+      return NextResponse.json({ error: "El pago no puede superar la deuda pendiente" }, { status: 400 });
+    }
+    const newBalance = Math.max(0, currentBalance - paidAmount);
 
     // 2. Actualizar balance
     const { error: upErr } = await svc
@@ -49,11 +54,11 @@ export async function POST(req: Request) {
       .from("orders")
       .insert({
         customer_id: customerId,
-        total: amount,
+        total: paidAmount,
         payment_method: paymentMethod || "CASH",
         status: "completed",
         customer_name: profile.full_name,
-        items: [{ name: "ABONO CUENTA CORRIENTE", quantity: 1, price: amount }],
+        items: [{ name: "ABONO CUENTA CORRIENTE", quantity: 1, price: paidAmount }],
         order_type: "pos"
       });
 

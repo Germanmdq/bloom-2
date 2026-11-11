@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { createClient } from "@/lib/supabase/server";
+import { requireDashboardAdmin } from "@/lib/dashboard/require-admin-api";
 
 export async function GET() {
-    const svc = createServiceRoleClient();
+    if (!await requireDashboardAdmin()) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    const svc = await createClient();
     const { data, error } = await svc
         .from("profiles")
         .select("id, full_name, email, role")

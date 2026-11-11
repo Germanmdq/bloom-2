@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireDashboardAdmin } from "@/lib/dashboard/require-admin-api";
-import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { createClient } from "@/lib/supabase/server";
 import type { CustomerOrderRow } from "@/lib/types/dashboard-customers";
 
 /** Pedidos de un cliente (solo admin). */
@@ -20,29 +20,18 @@ export async function GET(
       return NextResponse.json({ error: "userId requerido" }, { status: 400 });
     }
 
-    const svc = createServiceRoleClient();
+    const svc = await createClient();
 
     const { data: profile, error: pErr } = await svc
       .from("profiles")
-      .select("id, full_name, is_customer")
+      .select("id, full_name, phone, default_address, is_customer")
       .eq("id", customerId)
       .maybeSingle();
     if (pErr || !profile?.is_customer) {
       return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 });
     }
 
-    const { data: userData, error: uErr } = await svc.auth.admin.getUserById(customerId);
-    if (uErr || !userData?.user) {
-      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
-    }
-
-    const u = userData.user;
-    const meta = u.user_metadata ?? {};
-    const displayName =
-      String(profile.full_name ?? "").trim() ||
-      (typeof meta.full_name === "string" ? meta.full_name.trim() : "") ||
-      (typeof meta.name === "string" ? meta.name.trim() : "") ||
-      "—";
+    const displayName = String(profile.full_name ?? "").trim() || "—";
 
     const { data: orders, error: oErr } = await svc
       .from("orders")
@@ -61,13 +50,9 @@ export async function GET(
       customer: {
         id: customerId,
         displayName,
-        email: u.email ?? "—",
-        phone:
-          (typeof meta.phone === "string" ? meta.phone.trim() : "") ||
-          (u.phone ?? "").trim() ||
-          "—",
-        defaultAddress:
-          (typeof meta.default_address === "string" ? meta.default_address.trim() : "") || "—",
+        email: "—",
+        phone: String(profile.phone ?? "").trim() || "—",
+        defaultAddress: String(profile.default_address ?? "").trim() || "—",
       },
       orders: (orders ?? []) as CustomerOrderRow[],
     });

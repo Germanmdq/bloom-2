@@ -25,6 +25,8 @@ import {
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { saveOfflineOrder } from "@/lib/offline/order-queue";
+import { VoiceOrderAssistant } from "@/components/Menu/VoiceOrderAssistant";
+import { SalonIcon, TakeAwayIcon } from "@/components/Menu/AnimatedIcons";
 import "./menu-pwa.css";
 
 // Formato de moneda argentina
@@ -170,6 +172,14 @@ const TAKEAWAY_CATEGORY_NAMES = [
   "empanadas",
 ];
 
+// Algunos productos para llevar comparten categoría con los del salón
+// (por ejemplo, "Cafetería"). Mientras no exista una columna de modalidad
+// propia en la base, el rótulo comercial define que son exclusivos de retiro.
+const TAKEAWAY_ONLY_PRODUCT_PATTERN = /\b(?:delivery|take\s*-?\s*away|para\s+llevar|retiro)\b/i;
+
+const isTakeawayOnlyProduct = (product: { name?: string | null; description?: string | null }) =>
+  TAKEAWAY_ONLY_PRODUCT_PATTERN.test(`${product.name ?? ""} ${product.description ?? ""}`);
+
 // Cambiar esta versión cuando cambia la estructura del catálogo. Así no se
 // hidratan categorías/productos de una versión anterior desde localStorage.
 const MENU_CACHE_VERSION = "v2-four-categories";
@@ -245,6 +255,7 @@ function MenuContent() {
   );
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [voiceOrderModality, setVoiceOrderModality] = useState<"mesa" | "retiro" | "delivery" | null>(null);
 
   useEffect(() => {
     if (tableId) {
@@ -424,10 +435,19 @@ function MenuContent() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const changeCatalogMode = (mode: "local" | "takeaway") => {
+  const changeCatalogMode = (mode: "local" | "takeaway", openMenu = false) => {
     setCatalogMode(mode);
-    setSelectedCategory("all");
+    // El catálogo siempre comienza por café; "Todos" sigue disponible como filtro manual.
+    const coffeeCategory = categories.find((category) => category.name?.toLowerCase() === "cafetería");
+    const firstCategoryForMode = (mode === "local" ? LOCAL_CATEGORY_NAMES : TAKEAWAY_CATEGORY_NAMES)
+      .map((name) => categories.find((category) => category.name?.toLowerCase() === name))
+      .find(Boolean);
+    setSelectedCategory(coffeeCategory?.id ?? firstCategoryForMode?.id ?? "all");
     setSearchQuery("");
+    if (openMenu) {
+      setActiveTab("menu");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   // Filtrado reactivo de productos, según la modalidad elegida y la búsqueda.
@@ -435,6 +455,8 @@ function MenuContent() {
     const allowedCategoryIds = new Set(visibleCategories.map((category: any) => category.id));
     return products.filter((p) => {
       const matchCatalogMode = allowedCategoryIds.has(p.category_id);
+      const matchProductModality =
+        catalogMode === "takeaway" || !isTakeawayOnlyProduct(p);
       const matchCategory =
         selectedCategory === "all" ||
         p.category_id === selectedCategory ||
@@ -446,9 +468,9 @@ function MenuContent() {
         p.name?.toLowerCase().includes(q) ||
         p.description?.toLowerCase().includes(q);
 
-      return matchCatalogMode && matchCategory && matchSearch;
+      return matchCatalogMode && matchProductModality && matchCategory && matchSearch;
     });
-  }, [products, selectedCategory, searchQuery, visibleCategories]);
+  }, [products, catalogMode, selectedCategory, searchQuery, visibleCategories]);
 
   // Carrito helpers
   const cartTotal = useMemo(
@@ -492,6 +514,38 @@ function MenuContent() {
       description: selectedProduct.name,
     });
     setSelectedProduct(null);
+  };
+
+  const handleVoiceAddItems = (voiceItems: Array<{ id: string; quantity: number }>) => {
+    const additions = voiceItems
+      .map((item) => {
+        const product = products.find((candidate: any) => candidate.id === item.id);
+        return product
+          ? {
+              id: product.id,
+              name: product.name,
+              price: Number(product.price) || 0,
+              quantity: item.quantity,
+              image_url: product.image_url,
+            }
+          : null;
+      })
+      .filter(Boolean) as CartItem[];
+
+    if (!additions.length) return;
+    setCart((previous) => {
+      const next = [...previous];
+      for (const addition of additions) {
+        const existingIndex = next.findIndex((item) => item.id === addition.id);
+        if (existingIndex >= 0) {
+          next[existingIndex] = { ...next[existingIndex], quantity: next[existingIndex].quantity + addition.quantity };
+        } else {
+          next.push(addition);
+        }
+      }
+      return next;
+    });
+    toast.success("Agregamos tu pedido al carrito", { description: `${additions.length} producto(s) reconocido(s).` });
   };
 
   const updateQuantity = (id: string, delta: number) => {
@@ -580,6 +634,7 @@ function MenuContent() {
       setCustomerName("");
       setDeliveryAddress("");
       setCustomerPhone("");
+      setVoiceOrderModality(null);
       setOrderNotes("");
       toast.warning("¡Pedido guardado sin conexión! 📶", {
         description: "Se enviará automáticamente en cuanto recuperes señal.",
@@ -681,8 +736,8 @@ function MenuContent() {
     <div className="app-shell" suppressHydrationWarning>
       {/* HEADER SUPERIOR */}
       <header className="sticky top-0 z-40 bg-[#fffdf8]/90 backdrop-blur-md border-b border-[#c4b896]/20 px-4 py-3 sm:px-8">
-        <div className="max-w-[1180px] mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-[1180px] mx-auto flex min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             {activeTab === "menu" && (
               <button
                 type="button"
@@ -712,7 +767,7 @@ function MenuContent() {
               <div className="w-9 h-9 rounded-xl bg-[#1a3028] flex items-center justify-center text-[#f5e8ca] shadow-sm">
                 <Coffee size={19} />
               </div>
-              <div>
+              <div className="min-w-0">
                 <span className="font-extrabold text-base tracking-tight text-[#1a3028] block leading-none">
                   BLOOM
                 </span>
@@ -723,9 +778,9 @@ function MenuContent() {
             </Link>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {tableLabel && (
-              <span className="bg-[#1a3028] text-[#f5e8ca] text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
+              <span className="max-w-24 truncate bg-[#1a3028] text-[#f5e8ca] text-xs font-bold px-3 py-1.5 rounded-full shadow-sm sm:max-w-none">
                 {tableLabel}
               </span>
             )}
@@ -763,38 +818,26 @@ function MenuContent() {
         ============================================ */}
         {activeTab === "inicio" && (
           <>
-            {/* BANNER HERO */}
-            <div className="px-4 md:px-0 mb-5">
-              <div className="rounded-[24px] bg-[#1a3028] text-white p-6 shadow-md border border-[#c4b896]/20 relative overflow-hidden">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-[#c4b896] bg-white/10 px-3 py-1 rounded-full inline-block mb-2">
-                  Bloom Café de Especialidad
-                </span>
-                <h2 className="text-2xl font-extrabold text-[#f5e8ca]">Donde cada taza florece</h2>
-                <p className="text-xs text-[#a8c9b8] mt-1.5 max-w-sm leading-relaxed">
-                  Disfrutá de nuestros cafés tostados de especialidad, pastelería fresca del día y tostados artesanales.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab("menu");
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                    className="bg-[#c4b896] text-[#1a3028] text-xs font-bold px-4 py-2.5 rounded-full hover:bg-[#f5e8ca] transition-transform active:scale-95 cursor-pointer"
-                  >
-                    Explorar Menú Completo →
-                  </button>
-                  {hasFacturas && (
-                    <button
-                      type="button"
-                      onClick={openFacturas}
-                      className="bg-white/10 border border-[#c4b896]/50 text-[#f5e8ca] text-xs font-bold px-4 py-2.5 rounded-full hover:bg-white/20 transition-transform active:scale-95 cursor-pointer"
-                    >
-                      🥐 Ver facturas
-                    </button>
-                  )}
-                </div>
-              </div>
+            {/* ========== TAKE AWAY / SALÓN ========== */}
+            <div className="px-4 md:px-0 mb-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => changeCatalogMode("takeaway", true)}
+                className="flex flex-col items-center justify-center gap-1.5 py-5 rounded-[22px] bg-[#777b5b] text-[#f5e8ca] shadow-md active:scale-[0.97] transition-transform"
+              >
+                <TakeAwayIcon size={44} />
+                <span className="text-base font-extrabold tracking-wide">TAKE AWAY</span>
+                <span className="text-[11px] text-[#ebe8d6] font-semibold">Para llevar</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => changeCatalogMode("local", true)}
+                className="flex flex-col items-center justify-center gap-1.5 py-5 rounded-[22px] bg-[#c4b896] text-[#4b4e38] shadow-md active:scale-[0.97] transition-transform"
+              >
+                <SalonIcon size={44} />
+                <span className="text-base font-extrabold tracking-wide">SALÓN</span>
+                <span className="text-[11px] text-[#4b4e38]/70 font-semibold">Comer en el local</span>
+              </button>
             </div>
 
             {/* Video destacado: mantiene el contenido principal centrado antes de las categorías */}
@@ -831,7 +874,7 @@ function MenuContent() {
             {platoDia && (
               <>
                 <div className="px-4 md:px-0 mb-3">
-                  <h2 className="text-xl font-extrabold text-[#1a3028] tracking-tight">
+                  <h2 className="text-xl font-extrabold text-[#4b4e38] tracking-tight">
                     🍽️ Plato del Día
                   </h2>
                   <p className="text-xs text-[#7a765a] mt-0.5">
@@ -844,12 +887,12 @@ function MenuContent() {
                     className="w-full bg-white rounded-[22px] border border-[#c4b896]/25 overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow"
                   >
                     {/* Franja superior destacada para el badge sin superposición */}
-                    <div className="bg-[#1a3028] px-4 py-2.5 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-[#f5e8ca] text-xs font-extrabold uppercase tracking-wider">
+                    <div className="bg-[#777b5b] px-4 py-2.5 flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2 text-[#f5e8ca] text-xs font-extrabold uppercase tracking-wider">
                         <span>⭐</span>
                         <span>Plato del Día</span>
                       </div>
-                      <span className="text-[11px] text-[#c4b896] font-semibold">
+                      <span className="min-w-0 truncate text-right text-[11px] text-[#c4b896] font-semibold">
                         Recomendación del chef
                       </span>
                     </div>
@@ -871,15 +914,15 @@ function MenuContent() {
 
                     {/* Info del plato */}
                     <div className="p-4 pb-5">
-                      <h3 className="font-extrabold text-lg text-[#1a3028] leading-snug">{platoDia.name}</h3>
+                      <h3 className="font-extrabold text-lg text-[#4b4e38] leading-snug">{platoDia.name}</h3>
                       {platoDia.description && (
                         <p className="text-[13px] text-[#6b6756] mt-1.5 leading-relaxed line-clamp-2">{platoDia.description}</p>
                       )}
                       <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#c4b896]/20">
-                        <span className="font-extrabold text-xl text-[#1a3028]">
+                        <span className="font-extrabold text-xl text-[#4b4e38]">
                           {formatCurrency(platoDia.price)}
                         </span>
-                        <span className="bg-[#1a3028] text-[#f5e8ca] text-xs font-bold px-4 py-2 rounded-full shadow-sm">
+                        <span className="bg-[#777b5b] text-[#f5e8ca] text-xs font-bold px-4 py-2 rounded-full shadow-sm">
                           Ver detalle →
                         </span>
                       </div>
@@ -889,57 +932,18 @@ function MenuContent() {
               </>
             )}
 
-            {/* ========== CATEGORÍAS CON EMOJIS ========== */}
-            <div className="px-4 md:px-0 mb-3 home-categories-heading">
-              <h3 className="text-base font-extrabold text-[#1a3028] tracking-tight">
-                Elegí cómo querés pedir
-              </h3>
-              <div className="catalog-mode-switch" role="group" aria-label="Modalidad del catálogo">
-                <button
-                  type="button"
-                  onClick={() => changeCatalogMode("local")}
-                  className={catalogMode === "local" ? "active" : ""}
-                >
-                  🍽️ En el local
-                </button>
-                <button
-                  type="button"
-                  onClick={() => changeCatalogMode("takeaway")}
-                  className={catalogMode === "takeaway" ? "active" : ""}
-                >
-                  🛍️ Take Away
-                </button>
-              </div>
-            </div>
-            <section className="category-grid mb-6" aria-label="Categorías">
-              {visibleCategories.map((cat: any) => {
-                const emoji = CATEGORY_EMOJIS[cat.name.toLowerCase()] || "🍴";
-                const productCount = products.filter((p) => p.category_id === cat.id).length;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => openCategory(cat.id)}
-                    className="category-card-emoji"
-                  >
-                    <span className="text-4xl h-10 flex items-center justify-center mb-2">{emoji}</span>
-                    <h3 className="font-bold text-sm text-[#1a3028] leading-tight">{cat.name}</h3>
-                    <small className="text-[11px] text-[#7a765a] font-medium mt-1 block">
-                      {productCount} {productCount === 1 ? "producto" : "productos"}
-                    </small>
-                  </button>
-                );
-              })}
-            </section>
-
             {/* CTA FINAL */}
             <div className="px-4 md:px-0 mb-8">
               <button
                 type="button"
                 onClick={() => {
                   setActiveTab("menu");
+                  setSelectedCategory(
+                    categories.find((category) => category.name?.toLowerCase() === "cafetería")?.id ?? "all"
+                  );
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className="w-full flex items-center justify-center gap-2 bg-[#1a3028] text-[#f5e8ca] text-sm font-bold px-6 py-4 rounded-2xl shadow-lg hover:bg-[#243d32] transition-colors active:scale-[0.98]"
+                className="w-full flex items-center justify-center gap-2 bg-[#777b5b] text-[#f5e8ca] text-sm font-bold px-6 py-4 rounded-2xl shadow-lg hover:bg-[#5f5c46] transition-colors active:scale-[0.98]"
               >
                 <Coffee size={18} />
                 Ver Menú Completo
@@ -1208,7 +1212,7 @@ function MenuContent() {
                     {cart.map((item) => (
                       <div
                         key={item.id}
-                        className="bg-white p-3.5 rounded-2xl border border-[#c4b896]/25 flex items-center justify-between gap-3 shadow-sm"
+                        className="bg-white p-3.5 rounded-2xl border border-[#c4b896]/25 flex min-w-0 items-center justify-between gap-2.5 shadow-sm"
                       >
                         <div className="flex-1 min-w-0">
                           <h4 className="font-bold text-sm text-[#1a3028] truncate">{item.name}</h4>
@@ -1237,36 +1241,19 @@ function MenuContent() {
                           </button>
                         </div>
 
-                        <span className="font-extrabold text-sm text-[#1a3028] min-w-[65px] text-right">
+                        <span className="shrink-0 font-extrabold text-xs text-[#1a3028] sm:text-sm min-w-[58px] text-right">
                           {formatCurrency(item.price * item.quantity)}
                         </span>
                       </div>
                     ))}
 
-                    {/* Selector de Modalidad — 2 opciones grandes (DENTRO del scroll para que siempre sea visible) */}
+                    {/* Selector de modalidad — las tres opciones quedan en una misma fila. */}
                     <div className="mt-4 pt-4 border-t border-[#c4b896]/30 space-y-3">
                       <div className="space-y-2">
                         <label className="text-xs font-black tracking-wider uppercase text-[#1a3028] block">
                           ¿Cómo querés tu pedido? *
                         </label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {/* Comer en el local */}
-                          <button
-                            type="button"
-                            onClick={() => setOrderModality("mesa")}
-                            className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-3 rounded-2xl border-2 transition-all font-black text-sm ${
-                              orderModality === "mesa"
-                                ? "border-[#1a3028] bg-[#1a3028] text-[#f5e8ca] shadow-lg scale-[1.01]"
-                                : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#1a3028]/40"
-                            }`}
-                          >
-                            <span className="text-2xl">🍽️</span>
-                            <span className="text-center leading-tight">Comer en<br/>el local</span>
-                            {orderModality === "mesa" && (
-                              <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />
-                            )}
-                          </button>
-
+                        <div className="grid grid-cols-3 gap-2">
                           {/* Retirar */}
                           <button
                             type="button"
@@ -1277,9 +1264,43 @@ function MenuContent() {
                                 : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#1a3028]/40"
                             }`}
                           >
-                            <span className="text-2xl">🏃</span>
-                            <span className="text-center leading-tight">Retirar<br/>del local</span>
+                            <span className="text-xl">🏃</span>
+                            <span className="text-center leading-tight text-xs">Retirar<br/>del local</span>
                             {orderModality === "retiro" && (
+                              <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />
+                            )}
+                          </button>
+
+                          {/* Comer en el local */}
+                          <button
+                            type="button"
+                            onClick={() => setOrderModality("mesa")}
+                            className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-3 rounded-2xl border-2 transition-all font-black text-sm ${
+                              orderModality === "mesa"
+                                ? "border-[#1a3028] bg-[#1a3028] text-[#f5e8ca] shadow-lg scale-[1.01]"
+                                : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#1a3028]/40"
+                            }`}
+                          >
+                            <span className="text-xl">🍽️</span>
+                            <span className="text-center leading-tight text-xs">Comer en<br/>el local</span>
+                            {orderModality === "mesa" && (
+                              <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />
+                            )}
+                          </button>
+
+                          {/* Delivery */}
+                          <button
+                            type="button"
+                            onClick={() => setOrderModality("delivery")}
+                            className={`relative flex flex-col items-center justify-center gap-1.5 py-3.5 px-2 rounded-2xl border-2 transition-all font-black text-sm ${
+                              orderModality === "delivery"
+                                ? "border-[#1a3028] bg-[#1a3028] text-[#f5e8ca] shadow-lg scale-[1.01]"
+                                : "border-[#c4b896]/50 bg-white text-[#7a765a] hover:border-[#1a3028]/40"
+                            }`}
+                          >
+                            <span className="text-xl">🛵</span>
+                            <span className="text-center leading-tight text-xs">Delivery<br/>a domicilio</span>
+                            {orderModality === "delivery" && (
                               <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-[#f5e8ca]" />
                             )}
                           </button>
@@ -1354,6 +1375,44 @@ function MenuContent() {
                                 className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
                               />
                             </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {orderModality === "delivery" && (
+                        <div className="space-y-2 bg-[#fdfbf7] p-3 rounded-2xl border border-[#c4b896]/30">
+                          <p className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider">Datos para delivery</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1">Tu nombre *</label>
+                              <input
+                                type="text"
+                                value={customerName}
+                                onChange={(e) => setCustomerName(e.target.value)}
+                                placeholder="Ej: Juan"
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1 flex items-center gap-1"><Phone size={11} className="text-gray-500" /> Teléfono *</label>
+                              <input
+                                type="tel"
+                                value={customerPhone}
+                                onChange={(e) => setCustomerPhone(e.target.value)}
+                                placeholder="223 555-1234"
+                                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#7a765a] uppercase tracking-wider block mb-1">Dirección de entrega *</label>
+                            <input
+                              type="text"
+                              value={deliveryAddress}
+                              onChange={(e) => setDeliveryAddress(e.target.value)}
+                              placeholder="Calle, número y departamento"
+                              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#c4b896]/40 bg-white outline-none focus:border-[#1a3028]"
+                            />
                           </div>
                         </div>
                       )}
@@ -1438,6 +1497,23 @@ function MenuContent() {
         )}
       </AnimatePresence>
 
+      <VoiceOrderAssistant
+        products={products}
+        onAddItems={handleVoiceAddItems}
+        onOpenCart={() => {
+          setOrderModality(voiceOrderModality || "retiro");
+          setIsCartOpen(true);
+        }}
+        isOverlayOpen={isCartOpen || Boolean(selectedProduct)}
+        customerName={customerName}
+        onCustomerDetails={(details) => {
+          if (details.name) setCustomerName(details.name);
+          if (details.phone) setCustomerPhone(details.phone);
+          if (details.address) setDeliveryAddress(details.address);
+          if (details.orderType) setVoiceOrderModality(details.orderType);
+        }}
+      />
+
       {/* DOCK INFERIOR (PWA FLOATING DOCK) */}
       <div 
         className={`bottom-dock-wrap transition-opacity duration-200 ${isCartOpen || selectedProduct ? "opacity-0 pointer-events-none" : "opacity-100"}`} 
@@ -1465,7 +1541,9 @@ function MenuContent() {
             onClick={(e) => {
               e.preventDefault();
               setActiveTab("menu");
-              setSelectedCategory("all");
+              setSelectedCategory(
+                categories.find((category) => category.name?.toLowerCase() === "cafetería")?.id ?? "all"
+              );
               setSearchQuery("");
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}

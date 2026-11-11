@@ -1,25 +1,19 @@
 import { NextResponse } from "next/server";
-import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { requireDashboardAdmin } from "@/lib/dashboard/require-admin-api";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * Lista pedidos para el dashboard.
  * Identidad: sesión admin (mismo criterio que /dashboard). Datos: obligatorio service role (RLS no aplica a anon aquí).
  */
 export async function GET(req: Request) {
-  console.log(
-    "[orders/list] SERVICE_ROLE_KEY present:",
-    !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    "length:",
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.length
-  );
   try {
     const adminUser = await requireDashboardAdmin();
     if (!adminUser) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const supabase = createServiceRoleClient();
+    const supabase = await createClient();
     const requestedDays = Number(new URL(req.url).searchParams.get("days") ?? 90);
     const historyDays = Number.isFinite(requestedDays)
       ? Math.min(365, Math.max(1, Math.round(requestedDays)))

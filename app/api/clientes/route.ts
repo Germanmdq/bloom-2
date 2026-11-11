@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { createClient } from "@/lib/supabase/server";
+import { requireDashboardAdmin } from "@/lib/dashboard/require-admin-api";
 
 const ORDERS_PAGE_SIZE = 1000;
 const ORDERS_MAX_ROWS = 50000;
@@ -7,8 +8,8 @@ const ORDERS_MAX_ROWS = 50000;
 async function fetchOrders(svc: any, clientId?: string | null, includeItems = false) {
     const allOrders: any[] = [];
     const columns = includeItems
-        ? "id, customer_id, total, created_at, items, payment_method, table_id, paid, status"
-        : "id, customer_id, total, created_at";
+        ? "id, customer_id, total, created_at, items, payment_method, cuenta_corriente, table_id, paid, status"
+        : "id, customer_id, total, created_at, items, payment_method, cuenta_corriente, paid, status";
 
     for (let from = 0; from < ORDERS_MAX_ROWS; from += ORDERS_PAGE_SIZE) {
         const to = from + ORDERS_PAGE_SIZE - 1;
@@ -28,10 +29,32 @@ async function fetchOrders(svc: any, clientId?: string | null, includeItems = fa
     return allOrders;
 }
 
+function isCurrentAccountOrder(order: any) {
+    return order?.cuenta_corriente === true || order?.payment_method === "CUENTA_CORRIENTE";
+}
+
+function isAccountPayment(order: any) {
+    const items = Array.isArray(order?.items) ? order.items : [];
+    return items.some((item: any) => String(item?.id || "") === "cc-payment" || /pago cuenta corriente|abono cuenta corriente/i.test(String(item?.name || "")));
+}
+
+function itemQuantity(order: any) {
+    const items = Array.isArray(order?.items) ? order.items : [];
+    return items.reduce((total: number, item: any) => total + Math.max(0, Number(item?.quantity) || 0), 0);
+}
+
 function buildClientPayload(profile: any, orders: any[]) {
     const clientOrders = orders.filter((o: any) => o.customer_id === profile.id);
-    const totalSpent = clientOrders.reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0);
-    const orderCount = clientOrders.length;
+    const saleOrders = clientOrders.filter((order: any) => !isAccountPayment(order));
+    const totalSpent = saleOrders.reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0);
+    const orderCount = saleOrders.length;
+    const totalQuantity = saleOrders.reduce((sum: number, order: any) => sum + itemQuantity(order), 0);
+    const openDebtOrders = saleOrders.filter((order: any) => isCurrentAccountOrder(order) && order.paid !== true);
+    const debtFromOrders = openDebtOrders.reduce((sum: number, order: any) => sum + Math.max(0, Number(order.total) || 0), 0);
+    // El saldo del perfil se actualiza en los pagos parciales. Si todavía no
+    // existe (pedidos históricos), usamos las comandas pendientes como respaldo.
+    const storedBalance = Math.max(0, Number(profile.balance) || 0);
+    const balance = storedBalance > 0 ? storedBalance : debtFromOrders;
 
     let lastOrderAt = null;
     if (clientOrders.length > 0) {
@@ -53,7 +76,9 @@ function buildClientPayload(profile: any, orders: any[]) {
         cuit: profile.cuit || null,
         customer_number: profile.customer_number || "",
         points: profile.points || 0,
-        balance: Number(profile.balance || 0),
+        balance,
+        debt_order_count: openDebtOrders.length,
+        total_quantity: totalQuantity,
         coffee_stamps: profile.coffee_stamps || 0,
         created_at: profile.created_at || new Date().toISOString(),
         total_spent: totalSpent,
@@ -65,7 +90,9 @@ function buildClientPayload(profile: any, orders: any[]) {
 
 export async function GET(req: Request) {
     try {
-        const svc = createServiceRoleClient();
+        const adminUser = await requireDashboardAdmin();
+        if (!adminUser) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+        const svc = await createClient();
         const { searchParams } = new URL(req.url);
         const clientId = searchParams.get("clientId");
 

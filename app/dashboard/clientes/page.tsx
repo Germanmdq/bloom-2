@@ -285,7 +285,11 @@ export default function ClientesPage() {
             clients: filtered.filter(c => Number(c.balance || 0) <= 0),
             total: 0,
         },
-    ];
+    ].map(group => ({
+        ...group,
+        orders: group.clients.reduce((sum, client) => sum + (Number(client.order_count) || 0), 0),
+        quantities: group.clients.reduce((sum, client) => sum + (Number(client.total_quantity) || 0), 0),
+    }));
 
     const getInactivityInfo = (lastOrder: string | null) => {
         if (!lastOrder) return { label: "Sin pedidos", color: "text-gray-400 bg-gray-100" };
@@ -423,6 +427,7 @@ export default function ClientesPage() {
                                             <h3 className="font-black text-gray-950 uppercase tracking-tight">{group.title}</h3>
                                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                                 {group.clients.length} cliente{group.clients.length === 1 ? "" : "s"}
+                                                {` · ${group.orders} pedido${group.orders === 1 ? "" : "s"} · ${group.quantities} unidades`}
                                                 {group.total > 0 ? ` · $${group.total.toLocaleString()}` : ""}
                                             </p>
                                         </div>
@@ -433,59 +438,41 @@ export default function ClientesPage() {
                                 <AnimatePresence initial={false}>
                                     {isOpen && (
                                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 p-5 pt-0">
+                                            <div className="divide-y divide-gray-100 bg-white">
                                                 {group.clients.map((client, idx) => {
                                                     const inactivity = getInactivityInfo(client.last_order_at);
                                                     const isDebt = client.balance > 0;
 
                                                     return (
-                                                        <motion.div
+                                                        <motion.button
+                                                            type="button"
                                                             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.02 }}
                                                             key={client.id || `client-${idx}`}
                                                             onClick={() => setSelectedClient(client)}
-                                                            className={`group bg-white p-7 rounded-[2.5rem] border ${isDebt ? "border-red-100 shadow-red-900/5" : "border-transparent"} hover:border-gray-100 shadow-sm hover:shadow-2xl transition-all cursor-pointer relative overflow-hidden`}
+                                                            className={`group flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-gray-50 sm:gap-5 ${isDebt ? "bg-red-50/20" : ""}`}
                                                         >
-                                                            <div className="flex items-start justify-between mb-8">
-                                                                <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center font-black text-gray-300 text-3xl group-hover:bg-black group-hover:text-[#FFD60A] transition-all">
-                                                                    {client.full_name?.[0]?.toUpperCase() || "?"}
-                                                                </div>
-                                                                <div className="flex flex-col items-end gap-1.5">
-                                                                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${inactivity.color}`}>
-                                                                        {inactivity.label}
-                                                                    </span>
-                                                                    {isDebt && (
-                                                                        <span className="bg-red-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest animate-pulse">
-                                                                            Deuda
-                                                                        </span>
-                                                                    )}
-                                                                </div>
+                                                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gray-100 text-xl font-black text-gray-400 group-hover:bg-black group-hover:text-[#FFD60A]">
+                                                                {client.full_name?.[0]?.toUpperCase() || "?"}
                                                             </div>
-
-                                                            <h3 className="font-black text-xl text-gray-900 truncate mb-1">{client.full_name || "S/N"}</h3>
-                                                            <div className="flex flex-col gap-1.5 mb-8">
-                                                                <p className="text-[11px] font-bold text-gray-400 flex items-center gap-2 tracking-tight truncate">
-                                                                    <IconMail size={12} className="opacity-40" /> {client.email || 'Email no cargado'}
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                    <h3 className="truncate font-black text-gray-900">{client.full_name || "S/N"}</h3>
+                                                                    {isDebt && <span className="rounded-full bg-red-600 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-white">Deuda</span>}
+                                                                </div>
+                                                                <p className="mt-1 flex items-center gap-2 truncate text-[11px] font-bold text-gray-400">
+                                                                    <IconPhone size={12} className="opacity-40" /> {client.phone || "Sin teléfono"}
                                                                 </p>
-                                                                {client.phone && (
-                                                                    <p className="text-[11px] font-bold text-gray-400 flex items-center gap-2 tracking-tight">
-                                                                        <IconPhone size={12} className="opacity-40" /> {client.phone}
-                                                                    </p>
-                                                                )}
                                                             </div>
-
-                                                            <div className="grid grid-cols-2 gap-4 pt-6 border-t border-gray-100">
-                                                                <div>
-                                                                    <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">Gasto Total</p>
-                                                                    <p className="text-sm font-black text-gray-900 leading-none">${client.total_spent.toLocaleString()}</p>
-                                                                </div>
-                                                                <div className="text-right">
-                                                                    <p className={`text-[8px] font-black uppercase tracking-widest ${isDebt ? 'text-red-400' : 'text-gray-400'} mb-1`}>Saldo Cuenta</p>
-                                                                    <p className={`text-sm font-black ${isDebt ? 'text-red-600' : 'text-gray-900'} leading-none`}>
-                                                                        {isDebt ? `-$${client.balance.toLocaleString()}` : `$${client.balance.toLocaleString()}`}
-                                                                    </p>
-                                                                </div>
+                                                            <div className="hidden shrink-0 text-right sm:block">
+                                                                <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Pedidos · unidades</p>
+                                                                <p className="mt-1 text-sm font-black text-gray-800">{client.order_count || 0} · {client.total_quantity || 0}</p>
                                                             </div>
-                                                        </motion.div>
+                                                            <div className="shrink-0 text-right">
+                                                                <p className={`text-[9px] font-black uppercase tracking-widest ${isDebt ? "text-red-400" : "text-gray-400"}`}>Saldo CC</p>
+                                                                <p className={`mt-1 text-sm font-black ${isDebt ? "text-red-600" : "text-gray-900"}`}>{isDebt ? `-$${client.balance.toLocaleString()}` : "$0"}</p>
+                                                                <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-widest ${inactivity.color}`}>{inactivity.label}</span>
+                                                            </div>
+                                                        </motion.button>
                                                     );
                                                 })}
                                             </div>
@@ -698,7 +685,7 @@ export default function ClientesPage() {
                                                 const orderItems = normalizeOrderItems(order.items);
                                                 const orderKey = order.id || `order-${oIdx}`;
                                                 const isExpanded = expandedOrderId === orderKey;
-                                                const isDebtOrder = order.payment_method === "CUENTA_CORRIENTE" && order.paid !== true;
+                                                const isDebtOrder = (order.cuenta_corriente === true || order.payment_method === "CUENTA_CORRIENTE") && order.paid !== true;
                                                 const statusLabel = isDebtOrder ? "Adeudada" : "Pagada";
                                                 const statusClasses = isDebtOrder
                                                     ? "border-red-200 bg-red-50/80 hover:shadow-red-100"

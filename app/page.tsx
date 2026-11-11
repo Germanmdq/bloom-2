@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import DesktopHome from "./page.backup";
 
 const MenuPage = dynamic(() => import("./menu/page"), {
   ssr: false,
@@ -12,5 +13,15 @@ const MenuPage = dynamic(() => import("./menu/page"), {
 });
 
 export default function HomePage() {
-  return <MenuPage />;
+  return (
+    <>
+      {/* La home editorial se usa en escritorio; el menú rápido conserva la experiencia PWA móvil. */}
+      <div className="hidden lg:block">
+        <DesktopHome />
+      </div>
+      <div className="lg:hidden">
+        <MenuPage />
+      </div>
+    </>
+  );
 }
