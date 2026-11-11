@@ -232,6 +232,17 @@ function MenuContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [catalogMode, setCatalogMode] = useState<"local" | "takeaway">("local");
 
+  // Las tarjetas de la home abren directamente el catálogo solicitado.
+  useEffect(() => {
+    const mode = searchParams.get("mode");
+    const categoryName = searchParams.get("cat");
+    if (!mode && !categoryName) return;
+    if (mode === "local" || mode === "takeaway") setCatalogMode(mode);
+    setActiveTab("menu");
+    const category = categories.find((item) => item.name?.toLocaleLowerCase("es") === (categoryName || "Cafetería").toLocaleLowerCase("es"));
+    setSelectedCategory(category?.id ?? "all");
+  }, [categories, searchParams]);
+
   // Producto seleccionado para el modal de detalle
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [modalQuantity, setModalQuantity] = useState(1);

@@ -25,6 +25,7 @@ import { FoodKingMobileNavPanel } from "@/components/FoodKingMobileNav";
 import { SiteHeader } from "@/components/SiteHeader";
 import { BloomChat, type BloomChatHandle } from "@/components/Menu/BloomChat";
 import { Carousel, Card } from "@/components/ui/apple-cards-carousel";
+import { SalonIcon, TakeAwayIcon } from "@/components/Menu/AnimatedIcons";
 
 /** Video de fondo del hero: colocar el archivo en /public/videos/ (p. ej. hero-bloom.mp4). */
 const HERO_VIDEO_SRC = "/videos/hero-bloom.mp4";
@@ -285,6 +286,21 @@ export default function HomePage() {
               </Link>
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      <section className="bg-bloom-page py-12">
+        <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-6 px-6">
+          {([
+            { mode: "takeaway", title: "TAKE AWAY", subtitle: "Para llevar", Icon: TakeAwayIcon },
+            { mode: "local", title: "SALÓN", subtitle: "Comer en el local", Icon: SalonIcon },
+          ] as const).map(({ mode, title, subtitle, Icon }) => (
+            <Link key={mode} href={`/menu?mode=${mode}&cat=Cafeter%C3%ADa`} className={`flex items-center justify-center gap-6 rounded-[22px] px-8 py-8 transition-transform hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1a3028] ${mode === "takeaway" ? "bg-[#777b5b] text-[#f5e8ca]" : "bg-[#c4b896] text-[#4b4e38]"}`}>
+              <Icon size={64} />
+              <div><h2 className="text-2xl font-extrabold tracking-wide">{title}</h2><p className="mt-1 text-sm">{subtitle}</p></div>
+              <IconArrowRight size={24} aria-hidden />
+            </Link>
+          ))}
         </div>
       </section>
 

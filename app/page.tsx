@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 import DesktopHome from "./page.backup";
 
 const MenuPage = dynamic(() => import("./menu/page"), {
@@ -13,15 +14,14 @@ const MenuPage = dynamic(() => import("./menu/page"), {
 });
 
 export default function HomePage() {
-  return (
-    <>
-      {/* La home editorial se usa en escritorio; el menú rápido conserva la experiencia PWA móvil. */}
-      <div className="hidden lg:block">
-        <DesktopHome />
-      </div>
-      <div className="lg:hidden">
-        <MenuPage />
-      </div>
-    </>
-  );
+  const [desktop, setDesktop] = useState<boolean | null>(null);
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    const update = () => setDesktop(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  if (desktop === null) return <div className="min-h-screen bg-[#f7f5ef]" />;
+  return desktop ? <DesktopHome /> : <MenuPage />;
 }
