@@ -408,10 +408,17 @@ function MenuContent() {
   };
 
   const visibleCategories = useMemo(() => {
-    const names = catalogMode === "local" ? LOCAL_CATEGORY_NAMES : TAKEAWAY_CATEGORY_NAMES;
-    return names
-      .map((name) => categories.find((cat) => cat.name?.toLowerCase() === name))
-      .filter(Boolean);
+    // Conservar el catálogo real: una lista fija de nombres ocultaba categorías existentes.
+    const normalize = (name: string) => name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+    return categories
+      .filter((category) => catalogMode === "takeaway" || !isTakeawayOnlyProduct(category))
+      .map((category, index) => ({ category, index }))
+      .sort((a, b) => {
+        const coffeeA = /^(cafeteria|cafe|cafes)$/.test(normalize(a.category.name || ""));
+        const coffeeB = /^(cafeteria|cafe|cafes)$/.test(normalize(b.category.name || ""));
+        return Number(coffeeB) - Number(coffeeA) || a.index - b.index;
+      })
+      .map(({ category }) => category);
   }, [categories, catalogMode]);
 
   // Las facturas suelen ser lo primero que se busca. Las detectamos también

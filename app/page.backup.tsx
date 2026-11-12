@@ -18,13 +18,11 @@ import {
   IconToolsKitchen,
 } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { FoodKingMobileNavPanel } from "@/components/FoodKingMobileNav";
 import { SiteHeader } from "@/components/SiteHeader";
 import { BloomChat, type BloomChatHandle } from "@/components/Menu/BloomChat";
-import { Carousel, Card } from "@/components/ui/apple-cards-carousel";
 import { SalonIcon, TakeAwayIcon } from "@/components/Menu/AnimatedIcons";
 
 /** Video de fondo del hero: colocar el archivo en /public/videos/ (p. ej. hero-bloom.mp4). */
@@ -49,12 +47,6 @@ const CONTACT = {
   hours: "Lun–Dom · 08:00–22:00",
 };
 
-const categoryCards = [
-  { title: "Cafetería",  hint: "Cafés y bebidas calientes", href: "/menu?cat=Cafetería",        src: "/images/categories/cafeteria.png" },
-  { title: "Comidas",    hint: "Platos del día y más",      href: "/menu?cat=Platos%20Diarios", src: "/images/categories/platos-diarios.png" },
-  { title: "Bebidas",    hint: "Bebidas frías",              href: "/menu?cat=Bebidas",          src: "/images/categories/bebidas.png" },
-  { title: "Pastelería", hint: "Dulces y panificados",       href: "/menu?cat=Pastelería",       src: "/images/categories/pasteleria.png" },
-];
 
 const destacados: { name: string; desc: string; img: string; nameHint: string }[] = [
   {
@@ -104,7 +96,6 @@ const FadeIn = ({
 );
 
 export default function HomePage() {
-  const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [heroVideoReady, setHeroVideoReady] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -344,41 +335,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="py-24 md:py-32 bg-white">
-        <FadeIn className="text-center max-w-[640px] mx-auto mb-6 px-6">
-          <p className="text-[12px] font-semibold tracking-[0.14em] uppercase text-bloom-600 mb-3">Nuestra carta</p>
-          <h2 className="font-[300] tracking-tight text-ink-800" style={{ fontSize: "clamp(2.5rem,4vw,4.5rem)", lineHeight: 1.05 }}>
-            Elegí por <span className="text-bloom-600">categoría.</span>
-          </h2>
-        </FadeIn>
-
-        {/* Desktop: 4 cards in a static row */}
-        <div className="hidden md:flex gap-4 px-8 max-w-7xl mx-auto">
-          {categoryCards.map((c, index) => (
-            <Card
-              key={c.href}
-              index={index}
-              card={{ src: c.src, title: c.title, category: c.hint, content: null }}
-              onClick={() => router.push(c.href)}
-              className="flex-1 w-auto md:w-auto md:h-[26rem]"
-            />
-          ))}
-        </div>
-
-        {/* Mobile: scrollable carousel */}
-        <div className="md:hidden">
-          <Carousel
-            items={categoryCards.map((c, index) => (
-              <Card
-                key={c.href}
-                index={index}
-                card={{ src: c.src, title: c.title, category: c.hint, content: null }}
-                onClick={() => router.push(c.href)}
-              />
-            ))}
-          />
-        </div>
-      </section>
 
       {platoDelDia && (
       <section className="py-24 md:py-32 bg-ink-50">
