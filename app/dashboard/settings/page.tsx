@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { IconDeviceFloppy, IconBuildingStore, IconAdjustments, IconDatabase, IconPrinter, IconShield, IconDownload, IconLayoutGrid, IconKeyboard, IconStar, IconCheck, IconSpeakerphone, IconPlus, IconTrash, IconEdit, IconX } from "@tabler/icons-react";
+import { IconDeviceFloppy, IconBuildingStore, IconAdjustments, IconDatabase, IconPrinter, IconShield, IconDownload, IconLayoutGrid, IconKeyboard, IconStar, IconCheck, IconSpeakerphone, IconPlus, IconTrash, IconEdit, IconX, IconSearch } from "@tabler/icons-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ComparisonType } from "@/components/dashboard/SalesComparisonPanel";
 import { createClient } from "@/lib/supabase/client";
@@ -29,6 +29,8 @@ export default function SettingsPage() {
     const [selectedPlatoDia, setSelectedPlatoDia] = useState<string | null>(null);
     const [platoDiaPrice, setPlatoDiaPrice] = useState<string>("");
     const [savingPlatoDia, setSavingPlatoDia] = useState(false);
+    const [platoDiaSearch, setPlatoDiaSearch] = useState("");
+    const [platoDiaCategory, setPlatoDiaCategory] = useState("all");
     
     // Promociones States
     const [promotions, setPromotions] = useState<any[]>([]);
@@ -60,24 +62,16 @@ export default function SettingsPage() {
             if (savedF1) setF1Action(savedF1);
             if (savedF2) setF2Action(savedF2);
 
-            // Load Platos Diarios products
-            const { data: catData } = await supabase
-                .from('categories')
-                .select('id')
-                .ilike('name', '%plato%diario%')
-                .single();
-            if (catData) {
-                const { data: prods } = await supabase
-                    .from('products')
-                    .select('id, name, image_url, kind')
-                    .eq('category_id', catData.id)
-                    .eq('active', true)
-                    .order('name');
-                if (prods) {
-                    setPlatoDiaProducts(prods);
-                    const featured = prods.find((p: any) => p.kind === 'plato_del_dia');
-                    if (featured) setSelectedPlatoDia(featured.id);
-                }
+            // Cualquier producto activo del menú puede ser el Plato del Día.
+            const { data: prods } = await supabase
+                .from('products')
+                .select('id, name, image_url, kind, category_id, categories(name)')
+                .eq('active', true)
+                .order('name');
+            if (prods) {
+                setPlatoDiaProducts(prods);
+                const featured = prods.find((p: any) => p.kind === 'plato_del_dia');
+                if (featured) setSelectedPlatoDia(featured.id);
             }
 
             // Load Ofertas del Día (Desde la nueva tabla dedicada)
@@ -227,6 +221,24 @@ export default function SettingsPage() {
             .update({ plato_dia_price: price, updated_at: new Date().toISOString() })
             .eq('id', 1);
     };
+
+    const platoDiaCategories = Array.from(
+        new Set(
+            platoDiaProducts
+                .map((product: any) => {
+                    const category = product.categories;
+                    return Array.isArray(category) ? category[0]?.name : category?.name;
+                })
+                .filter((name): name is string => Boolean(name))
+        )
+    ).sort((a, b) => a.localeCompare(b, 'es'));
+
+    const filteredPlatoDiaProducts = platoDiaProducts.filter((product: any) => {
+        const category = Array.isArray(product.categories) ? product.categories[0]?.name : product.categories?.name;
+        const matchesCategory = platoDiaCategory === 'all' || category === platoDiaCategory;
+        const matchesSearch = product.name.toLowerCase().includes(platoDiaSearch.trim().toLowerCase());
+        return matchesCategory && matchesSearch;
+    });
 
     const handleSavePromo = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -405,7 +417,7 @@ export default function SettingsPage() {
                         </div>
                         <div>
                             <h2 className="text-xl font-black text-gray-900">Plato del Día</h2>
-                            <p className="text-xs text-gray-400 font-medium mt-0.5">El plato seleccionado se destacará en el menú público</p>
+                            <p className="text-xs text-gray-400 font-medium mt-0.5">Elegí cualquier producto activo del menú para destacarlo en el menú público</p>
                         </div>
                         {savingPlatoDia && <span className="ml-auto text-xs text-gray-400 animate-pulse">Guardando...</span>}
                     </div>
@@ -429,8 +441,35 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {platoDiaProducts.map(product => {
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-5">
+                        <label className="relative flex-1">
+                            <IconSearch size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                value={platoDiaSearch}
+                                onChange={(event) => setPlatoDiaSearch(event.target.value)}
+                                placeholder="Buscar en todo el menú..."
+                                className="w-full h-11 pl-10 pr-4 rounded-xl bg-gray-50 border border-gray-100 text-sm font-semibold outline-none focus:ring-2 ring-bloom-600/20"
+                            />
+                        </label>
+                        <select
+                            value={platoDiaCategory}
+                            onChange={(event) => setPlatoDiaCategory(event.target.value)}
+                            className="h-11 px-4 rounded-xl bg-gray-50 border border-gray-100 text-sm font-bold outline-none focus:ring-2 ring-bloom-600/20"
+                        >
+                            <option value="all">Todas las categorías</option>
+                            {platoDiaCategories.map((category) => (
+                                <option key={category} value={category}>{category}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {filteredPlatoDiaProducts.length === 0 ? (
+                        <p className="rounded-2xl bg-gray-50 px-4 py-8 text-center text-sm font-semibold text-gray-400">
+                            No encontramos productos con esos filtros.
+                        </p>
+                    ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[620px] overflow-y-auto pr-1">
+                        {filteredPlatoDiaProducts.map(product => {
                             const isSelected = selectedPlatoDia === product.id;
                             return (
                                 <button
@@ -468,6 +507,7 @@ export default function SettingsPage() {
                             );
                         })}
                     </div>
+                    )}
                 </section>
 
                 {/* OFERTAS DEL DÍA */}
@@ -575,7 +615,7 @@ export default function SettingsPage() {
                                 <div className="p-4 flex-1 flex flex-col justify-center">
                                     <h3 className="font-black text-gray-900 mb-1">{promo.name}</h3>
                                     <p className="text-[11px] font-medium text-gray-500 leading-tight mb-2 line-clamp-2">{promo.description}</p>
-                                    <span className="font-black text-indigo-600">${promo.price?.toLocaleString()}</span>
+                                    <span className="font-black text-indigo-600">${promo.price?.toLocaleString('es-AR')}</span>
                                 </div>
                                 <div className="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={(e) => { e.stopPropagation(); setPromoForm({ id: promo.id, name: promo.name, description: promo.description, price: promo.price || '', image_url: promo.image_url || '' }); setShowPromoModal(true); }} className="w-8 h-8 rounded-full bg-white/90 backdrop-blur shadow-sm flex items-center justify-center text-gray-600 hover:text-black">
@@ -642,7 +682,7 @@ export default function SettingsPage() {
                                     const headers = ["ID", "Fecha", "Total", "Estado", "Mesa"];
                                     const rows = sales.map(sale => [
                                         sale.id,
-                                        new Date(sale.created_at).toLocaleString(),
+                                        new Date(sale.created_at).toLocaleString('es-AR'),
                                         sale.total,
                                         sale.status,
                                         sale.table_id || '-'
@@ -735,3 +775,4 @@ export default function SettingsPage() {
         </div>
     );
 }
+
