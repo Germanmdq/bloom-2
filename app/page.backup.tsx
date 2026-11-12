@@ -18,12 +18,13 @@ import {
   IconToolsKitchen,
 } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { FoodKingMobileNavPanel } from "@/components/FoodKingMobileNav";
 import { SiteHeader } from "@/components/SiteHeader";
 import { BloomChat, type BloomChatHandle } from "@/components/Menu/BloomChat";
-import { SalonIcon, TakeAwayIcon } from "@/components/Menu/AnimatedIcons";
+import { Carousel, Card } from "@/components/ui/apple-cards-carousel";
 
 /** Video de fondo del hero: colocar el archivo en /public/videos/ (p. ej. hero-bloom.mp4). */
 const HERO_VIDEO_SRC = "/videos/hero-bloom.mp4";
@@ -47,6 +48,12 @@ const CONTACT = {
   hours: "Lun–Dom · 08:00–22:00",
 };
 
+const categoryCards = [
+  { title: "Cafetería",  hint: "Cafés y bebidas calientes", href: "/menu?cat=Cafetería",        src: "/images/categories/cafeteria.png" },
+  { title: "Comidas",    hint: "Platos del día y más",      href: "/menu?cat=Platos%20Diarios", src: "/images/categories/platos-diarios.png" },
+  { title: "Bebidas",    hint: "Bebidas frías",              href: "/menu?cat=Bebidas",          src: "/images/categories/bebidas.png" },
+  { title: "Pastelería", hint: "Dulces y panificados",       href: "/menu?cat=Pastelería",       src: "/images/categories/pasteleria.png" },
+];
 
 const destacados: { name: string; desc: string; img: string; nameHint: string }[] = [
   {
@@ -96,6 +103,7 @@ const FadeIn = ({
 );
 
 export default function HomePage() {
+  const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [heroVideoReady, setHeroVideoReady] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -280,18 +288,23 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-bloom-page py-12">
-        <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-6 px-6">
-          {([
-            { mode: "takeaway", title: "TAKE AWAY", subtitle: "Para llevar", Icon: TakeAwayIcon },
-            { mode: "local", title: "SALÓN", subtitle: "Comer en el local", Icon: SalonIcon },
-          ] as const).map(({ mode, title, subtitle, Icon }) => (
-            <Link key={mode} href={`/menu?mode=${mode}&cat=Cafeter%C3%ADa`} className={`flex items-center justify-center gap-6 rounded-[22px] px-8 py-8 transition-transform hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1a3028] ${mode === "takeaway" ? "bg-[#777b5b] text-[#f5e8ca]" : "bg-[#c4b896] text-[#4b4e38]"}`}>
-              <Icon size={64} />
-              <div><h2 className="text-2xl font-extrabold tracking-wide">{title}</h2><p className="mt-1 text-sm">{subtitle}</p></div>
-              <IconArrowRight size={24} aria-hidden />
+      <section className="bg-bloom-page py-8 sm:py-10">
+        <div className="mx-auto w-full max-w-[720px] px-6">
+          <FadeIn className="text-center mb-6">
+            <p className="text-[12px] font-semibold tracking-[0.14em] uppercase text-bloom-600">Pedí como prefieras</p>
+          </FadeIn>
+          <div className="grid grid-cols-2 gap-3 sm:gap-5">
+            <Link href="/menu" className="flex min-h-[154px] flex-col items-center justify-center gap-2 rounded-[22px] bg-[#777b5b] px-3 text-center text-[#f5e8ca] shadow-md transition-transform hover:-translate-y-0.5 active:scale-[0.97]">
+              <IconBike size={40} strokeWidth={1.8} />
+              <span className="text-base font-extrabold tracking-wide">TAKE AWAY</span>
+              <span className="text-[11px] font-semibold text-[#ebe8d6]">Para llevar</span>
             </Link>
-          ))}
+            <Link href="/menu" className="flex min-h-[154px] flex-col items-center justify-center gap-2 rounded-[22px] bg-[#c4b896] px-3 text-center text-[#4b4e38] shadow-md transition-transform hover:-translate-y-0.5 active:scale-[0.97]">
+              <IconCoffee size={40} strokeWidth={1.8} />
+              <span className="text-base font-extrabold tracking-wide">SALÓN</span>
+              <span className="text-[11px] font-semibold text-[#4b4e38]/70">Comer en el local</span>
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -335,7 +348,6 @@ export default function HomePage() {
         </div>
       </section>
 
-
       {platoDelDia && (
       <section className="py-24 md:py-32 bg-ink-50">
         <div className="mx-auto w-full max-w-[1200px] px-6">
@@ -364,7 +376,7 @@ export default function HomePage() {
                   <h3 className="text-3xl md:text-4xl font-bold tracking-tight text-ink-800 leading-snug mb-4">{platoDelDia.name}</h3>
                   <p className="text-lg text-ink-500 leading-relaxed mb-8">{platoDelDia.description || "Nuestra recomendación especial preparada hoy con ingredientes frescos."}</p>
                   <div className="flex flex-col sm:flex-row items-center gap-6">
-                    <span className="text-4xl font-black text-bloom-600">${platoDelDia.price?.toLocaleString() || "0"}</span>
+                    <span className="text-4xl font-black text-bloom-600">${platoDelDia.price?.toLocaleString('es-AR') || "0"}</span>
                     <button
                       type="button"
                       onClick={() => bloomChatRef.current?.openWithCategoryMessage({ categoryId: '', displayName: 'Sugerencias', productIds: [platoDelDia.id], fromHomeFeatured: true })}
@@ -423,7 +435,7 @@ export default function HomePage() {
                         <h3 className="text-2xl font-bold tracking-tight text-ink-800 leading-snug mb-3">{promo.name}</h3>
                         <p className="text-[15px] text-ink-500 leading-relaxed mb-6 flex-1">{promo.description}</p>
                         <div className="flex items-center justify-between mt-auto pt-6 border-t border-black/[0.04]">
-                          <span className="text-2xl font-black text-indigo-600">${promo.price?.toLocaleString()}</span>
+                          <span className="text-2xl font-black text-indigo-600">${promo.price?.toLocaleString('es-AR')}</span>
                           <button onClick={() => bloomChatRef.current?.openWithCategoryMessage({ categoryId: '', displayName: 'Promociones', productIds: [promo.id], fromHomeFeatured: true })} className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors duration-300">
                             <IconArrowRight size={20} />
                           </button>
@@ -629,3 +641,4 @@ export default function HomePage() {
     </main>
   );
 }
+
