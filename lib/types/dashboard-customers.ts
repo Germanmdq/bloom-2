@@ -9,6 +9,8 @@ export type DashboardCustomerRow = {
   defaultAddress: string;
   orderCount: number;
   lastOrderAt: string | null;
+  /** Fecha del último pedido enviado a cuenta corriente. */
+  debtDate: string | null;
   loyaltyPoints: number;
   balance: number;
   isSocio: boolean;
