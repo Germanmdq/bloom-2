@@ -7,7 +7,6 @@ import {
   IconCheck,
   IconChevronRight,
   IconClock,
-  IconCopy,
   IconLoader2,
   IconMessageCircle,
 } from "@tabler/icons-react";
